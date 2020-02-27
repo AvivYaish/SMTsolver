@@ -150,66 +150,47 @@ def preprocessing(cnf_formula):
     """
     :param cnf_formula: a formula, in CNF.
     :return: processed formula.
-    >>> preprocessing([[]])
-    []
-    >>> preprocessing([[1]])
-    [[1]]
-    >>> preprocessing([[1], [2]])
-    [[1], [2]]
-    >>> preprocessing([[1, 2], [3, 4]])
-    [[1, 2], [3, 4]]
-    >>> preprocessing([[1, 2, 1, 1, 2], [3, 4]])
-    [[1, 2], [3, 4]]
-    >>> preprocessing([[1, 2, 1, 1, 2, -1], [3, 4]])
-    [[3, 4]]
-    >>> preprocessing([[1, -1], [3, -4]])
-    [[3, -4]]
-    >>> preprocessing([[2, 1, -1], [3, -4]])
-    [[3, -4]]
-    >>> preprocessing([[1, 2, -1], [3, -4]])
-    [[3, -4]]
-    >>> preprocessing([[1, -1, 2], [3, -4]])
-    [[3, -4]]
-    >>> preprocessing([[1, 1, 2, 3, 3, -4], [3, -4, 1, 2]])
-    [[, -4]]
+    >>> preprocessing(frozenset({frozenset({})}))
+    frozenset()
+    >>> preprocessing(frozenset({frozenset({1})}))
+    frozenset({frozenset({1})})
+    >>> preprocessing(frozenset({frozenset({1}), frozenset({2})}))
+    frozenset({frozenset({2}), frozenset({1})})
+    >>> preprocessing(frozenset({frozenset({2, 1}), frozenset({3, 4})}))
+    frozenset({frozenset({3, 4}), frozenset({1, 2})})
+    >>> preprocessing(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})}))
+    frozenset({frozenset({3, 4}), frozenset({1, 2})})
+    >>> preprocessing(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})}))
+    frozenset({frozenset({3, 4})})
+    >>> preprocessing(frozenset({frozenset({1, -1}), frozenset({3, -4})}))
+    frozenset({frozenset({3, -4})})
+    >>> preprocessing(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})}))
+    frozenset({frozenset({3, -4})})
+    >>> preprocessing(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})}))
+    frozenset({frozenset({3, -4})})
+    >>> preprocessing(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})}))
+    frozenset({frozenset({3, -4})})
+    >>> preprocessing(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})}))
+    frozenset({frozenset({1, 2, 3, -4})})
     """
-    clause_idx = 0
-    while clause_idx < len(cnf_formula):
-        clause = cnf_formula[clause_idx]
-
-        if len(clause) == 0:
-            # Remove empty clauses
-            last_clause = cnf_formula.pop()
-            if clause_idx < len(cnf_formula):
-                cnf_formula[clause_idx] = last_clause
-            continue
-
-        seen_literals = set()
-        literal_idx = 0
-        while literal_idx < len(clause):
-            literal = clause[literal_idx]
-            if -literal in seen_literals:
+    preprocessed_formula = set()
+    for clause in cnf_formula:
+        trivial_clause = False
+        for literal in clause:
+            if -literal in clause:
                 # Remove trivial clauses
                 # If the same variable appears twice with
                 # different sign in the same clause
-                last_clause = cnf_formula.pop()
-                if clause_idx < len(cnf_formula):
-                    cnf_formula[clause_idx] = last_clause
-                clause_idx -= 1
+                trivial_clause = True
                 break
-            elif literal not in seen_literals:
-                seen_literals.add(literal)
-                literal_idx += 1
-            else:
-                # Remove redundant literals
-                # If the same variable appears twice with
-                # the same sign in the same clause
-                last_literal = clause.pop()
-                if literal_idx < len(clause):
-                    clause[literal_idx] = last_literal
-        clause_idx += 1
 
-    return cnf_formula
+        if trivial_clause or (len(clause) == 0):
+            # Remove empty clauses
+            continue
+
+        preprocessed_formula.add(clause)
+
+    return frozenset(preprocessed_formula)
 
 
 def unit_propagation(clause, assignment, level):
