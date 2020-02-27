@@ -49,15 +49,15 @@ def tseitin_tranform(formula: str):
     """
     Examples:
     >>> tseitin_tranform("not (=> (not (and p q)) (not r))")
-    ({'not (=> (not (and p q)) (not r))': 1, '=> (not (and p q)) (not r)': 2, 'not (and p q)': 3, 'not r': 4, 'r': 5, 'and p q': 6, 'p': 7, 'q': 8}, {1: [[-1, -2], [1, 2]], 2: [[-2, -3, 4], [3, 2], [-4, 2]], 4: [[-4, -5], [4, 5]], 3: [[-3, -6], [3, 6]], 6: [[-6, 7], [-6, 8], [-7, -8, 6]]})
+    ({'not (=> (not (and p q)) (not r))': 1, '=> (not (and p q)) (not r)': 2, 'not (and p q)': 3, 'not r': 4, 'r': 5, 'and p q': 6, 'p': 7, 'q': 8}, {1: {frozenset({-1, -2}), frozenset({1, 2})}, 2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})}, 4: {frozenset({-5, -4}), frozenset({4, 5})}, 3: {frozenset({-6, -3}), frozenset({3, 6})}, 6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}}, {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}), frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}), frozenset({-6, 7}), frozenset({2, -4})})
     >>> tseitin_tranform("not (=> (not (and pq78 q)) (not r))")
-    ({'not (=> (not (and pq78 q)) (not r))': 1, '=> (not (and pq78 q)) (not r)': 2, 'not (and pq78 q)': 3, 'not r': 4, 'r': 5, 'and pq78 q': 6, 'pq78': 7, 'q': 8}, {1: [[-1, -2], [1, 2]], 2: [[-2, -3, 4], [3, 2], [-4, 2]], 4: [[-4, -5], [4, 5]], 3: [[-3, -6], [3, 6]], 6: [[-6, 7], [-6, 8], [-7, -8, 6]]})
+    ({'not (=> (not (and pq78 q)) (not r))': 1, '=> (not (and pq78 q)) (not r)': 2, 'not (and pq78 q)': 3, 'not r': 4, 'r': 5, 'and pq78 q': 6, 'pq78': 7, 'q': 8}, {1: {frozenset({-1, -2}), frozenset({1, 2})}, 2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})}, 4: {frozenset({-5, -4}), frozenset({4, 5})}, 3: {frozenset({-6, -3}), frozenset({3, 6})}, 6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}}, {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}), frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}), frozenset({-6, 7}), frozenset({2, -4})})
     """
     # TODO: this both parses and does the transform, should split to 2 functions
     formula_list = [formula]
     subformulas = {}
     transformed_subformulas = {}
-    transformed_formula = []
+    transformed_formula = set()
     while formula_list:
         cur_formula = prepare_formula(formula_list.pop())
         if not cur_formula:
@@ -83,11 +83,11 @@ def tseitin_tranform(formula: str):
             if right_side not in subformulas:
                 subformulas[right_side] = len(subformulas) + 1
 
-            transformed_subformulas[subformulas[cur_formula]] = [
-                [-subformulas[cur_formula], -subformulas[right_side]],
-                [subformulas[cur_formula], subformulas[right_side]]
-            ]
-            transformed_formula += transformed_subformulas[subformulas[cur_formula]]
+            transformed_subformulas[subformulas[cur_formula]] = {
+                frozenset({-subformulas[cur_formula], -subformulas[right_side]}),
+                frozenset({subformulas[cur_formula], subformulas[right_side]})
+            }
+            transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
             formula_list.append(right_side)
             continue
 
@@ -112,37 +112,37 @@ def tseitin_tranform(formula: str):
 
         if operator == "and":
             # transformed_subformulas[subformulas[cur_formula]] = [[subformulas[left_side]], [subformulas[right_side]]]
-            transformed_subformulas[subformulas[cur_formula]] = [
-                [-subformulas[cur_formula], subformulas[left_side]],
-                [-subformulas[cur_formula], subformulas[right_side]],
-                [-subformulas[left_side], -subformulas[right_side], subformulas[cur_formula]],
-            ]
+            transformed_subformulas[subformulas[cur_formula]] = {
+                frozenset({-subformulas[cur_formula], subformulas[left_side]}),
+                frozenset({-subformulas[cur_formula], subformulas[right_side]}),
+                frozenset({-subformulas[left_side], -subformulas[right_side], subformulas[cur_formula]}),
+            }
         elif operator == "or":
             # transformed_subformulas[subformulas[cur_formula]] = [subformulas[left_side], subformulas[right_side]]
-            transformed_subformulas[subformulas[cur_formula]] = [
-                [-subformulas[cur_formula], subformulas[left_side], subformulas[right_side]],
-                [-subformulas[left_side], subformulas[cur_formula]],
-                [-subformulas[right_side], subformulas[cur_formula]]
-            ]
+            transformed_subformulas[subformulas[cur_formula]] = {
+                frozenset({-subformulas[cur_formula], subformulas[left_side], subformulas[right_side]}),
+                frozenset({-subformulas[left_side], subformulas[cur_formula]}),
+                frozenset({-subformulas[right_side], subformulas[cur_formula]})
+            }
         elif operator == "=>":
             # transformed_subformulas[subformulas[cur_formula]] = [-subformulas[left_side], subformulas[right_side]]
-            transformed_subformulas[subformulas[cur_formula]] = [
-                [-subformulas[cur_formula], -subformulas[left_side], subformulas[right_side]],
-                [subformulas[left_side], subformulas[cur_formula]],
-                [-subformulas[right_side], subformulas[cur_formula]]
-            ]
+            transformed_subformulas[subformulas[cur_formula]] = {
+                frozenset({-subformulas[cur_formula], -subformulas[left_side], subformulas[right_side]}),
+                frozenset({subformulas[left_side], subformulas[cur_formula]}),
+                frozenset({-subformulas[right_side], subformulas[cur_formula]})
+            }
         elif operator == "<=>":
             # TODO: add tests for this
-            transformed_subformulas[subformulas[cur_formula]] = [
+            transformed_subformulas[subformulas[cur_formula]] = {
                 # =>
-                [-subformulas[cur_formula], -subformulas[left_side], subformulas[right_side]],
-                [subformulas[left_side], subformulas[cur_formula]],
-                [-subformulas[right_side], subformulas[cur_formula]],
+                frozenset({-subformulas[cur_formula], -subformulas[left_side], subformulas[right_side]}),
+                frozenset({subformulas[left_side], subformulas[cur_formula]}),
+                frozenset({-subformulas[right_side], subformulas[cur_formula]}),
                 # <=
-                [subformulas[cur_formula], subformulas[left_side], subformulas[right_side]],
-                [subformulas[cur_formula], -subformulas[left_side], -subformulas[right_side]]
-            ]
-        transformed_formula += transformed_subformulas[subformulas[cur_formula]]
+                frozenset({subformulas[cur_formula], subformulas[left_side], subformulas[right_side]}),
+                frozenset({subformulas[cur_formula], -subformulas[left_side], -subformulas[right_side]})
+            }
+        transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
     return subformulas, transformed_subformulas, transformed_formula
 
 
@@ -170,6 +170,8 @@ def preprocessing(cnf_formula):
     [[3, -4]]
     >>> preprocessing([[1, -1, 2], [3, -4]])
     [[3, -4]]
+    >>> preprocessing([[1, 1, 2, 3, 3, -4], [3, -4, 1, 2]])
+    [[, -4]]
     """
     clause_idx = 0
     while clause_idx < len(cnf_formula):
@@ -210,7 +212,7 @@ def preprocessing(cnf_formula):
     return cnf_formula
 
 
-def unit_propagation(clause, assignment):
+def unit_propagation(clause, assignment, level):
     """
     >>> unit_propagation([], {})
     {}
@@ -234,6 +236,8 @@ def unit_propagation(clause, assignment):
     {2: False, 3: False}
     """
     unassigned = []
+    # TODO: maybe better to do this in numpy?
+    #
     for literal in clause:
         if abs(literal) not in assignment:
             if len(unassigned) == 1:
@@ -241,7 +245,11 @@ def unit_propagation(clause, assignment):
             unassigned.append(literal)
 
     literal = unassigned.pop()
-    assignment[abs(literal)] = (literal > 0)
+    assignment[abs(literal)] = {
+        "value": (literal > 0),
+        "clause": clause,
+        "level": level
+    }
     return assignment
 
 
@@ -268,5 +276,11 @@ class SATSolver:
         """
         :return: True if SAT, False otherwise.
         """
+        # BCP
+        for clause in self._formula:
+            # assignment is changed in place
+            # this is OK because we copy it before the recursive call
+            unit_propagation(clause, assignment)
+
 
         return False
