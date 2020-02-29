@@ -1,4 +1,4 @@
-import numpy as np
+from collections import deque
 
 
 def find_closing_bracket(text: str) -> int:
@@ -159,7 +159,7 @@ frozenset({-6, 7}), frozenset({2, -4})})
                 frozenset({subformulas[cur_formula], -subformulas[left_side], -subformulas[right_side]})
             }
         transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
-    return subformulas, transformed_subformulas, frozenset(transformed_formula)
+    return subformulas, transformed_subformulas, transformed_formula
 
 
 def preprocessing(cnf_formula):
@@ -278,15 +278,18 @@ def import_file(filename):
 
 
 class SATSolver:
-    def __init__(self, formula, assignment=None, assignment_by_level=None):
+    def __init__(self, formula, assignment=None, assignment_by_level=None, max_new_clauses=100):
         if assignment is None:
             assignment = dict()
         if assignment_by_level is None:
             assignment_by_level = []
 
         self._formula = formula
+        self._new_clauses = deque()
+        self._max_new_clauses = max_new_clauses
         self._assignment = assignment
         self._assignment_by_level = assignment_by_level
+        self._level = len(self._assignment_by_level)
         self._last_watch_literal = {}                   # A variable -> set(clause) dictionary.
         self._second_last_watch_literal = {}            # A variable -> set(clause) dictionary.
         self._historical_last_watch_literal = {}        # A variable -> set(clause) dictionary.
@@ -299,8 +302,12 @@ class SATSolver:
             for idx, literal in enumerate(clause):
                 if literal not in self._last_watch_literal:
                     self._last_watch_literal[literal] = set()
+                if -literal not in self._last_watch_literal:
+                    self._last_watch_literal[-literal] = set()
                 if literal not in self._second_last_watch_literal:
                     self._second_last_watch_literal[literal] = set()
+                if -literal not in self._second_last_watch_literal:
+                    self._second_last_watch_literal[-literal] = set()
 
                 if idx == (len(clause) - 1):
                     self._last_watch_literal[literal].add(clause)
