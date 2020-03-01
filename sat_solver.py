@@ -1,4 +1,5 @@
 from collections import deque
+from itertools import chain
 
 
 def find_closing_bracket(text: str) -> int:
@@ -289,30 +290,23 @@ class SATSolver:
         self._max_new_clauses = max_new_clauses
         self._assignment = assignment
         self._assignment_by_level = assignment_by_level
+        self._satisfaction_by_level = []
+        self._satisfied_clauses = set()
         self._level = len(self._assignment_by_level)
-        self._last_watch_literal = {}                   # A variable -> set(clause) dictionary.
-        self._second_last_watch_literal = {}            # A variable -> set(clause) dictionary.
-        self._historical_last_watch_literal = {}        # A variable -> set(clause) dictionary.
-                                                        # If the last remaining variable i of clause c was
-                                                        # assigned, then c is in self._last_watch_literal[i]
-        self._historical_second_last_watch_literal = {} # A variable -> set(clause) dictionary.
-                                                        # If the second last remaining variable i of clause c was
-                                                        # assigned, then c is in  self._second_last_watch_literal[k]
+        self._last_assigned_literal = None
+        self._watch_literal_to_clause = {}                   # A literal -> set(clause) dictionary.
+
         for clause in self._formula:
             for idx, literal in enumerate(clause):
-                if literal not in self._last_watch_literal:
-                    self._last_watch_literal[literal] = set()
-                if -literal not in self._last_watch_literal:
-                    self._last_watch_literal[-literal] = set()
-                if literal not in self._second_last_watch_literal:
-                    self._second_last_watch_literal[literal] = set()
-                if -literal not in self._second_last_watch_literal:
-                    self._second_last_watch_literal[-literal] = set()
+                if literal not in self._watch_literal_to_clause:
+                    self._watch_literal_to_clause[literal] = set()
+                if -literal not in self._watch_literal_to_clause:
+                    self._watch_literal_to_clause[-literal] = set()
 
                 if idx == (len(clause) - 1):
-                    self._last_watch_literal[literal].add(clause)
+                    self._watch_literal_to_clause[literal].add(clause)
                 elif idx == (len(clause) - 2):
-                    self._second_last_watch_literal[literal].add(clause)
+                    self._watch_literal_to_clause[literal].add(clause)
 
         # Whenever there is a backjump to level k:
         # - For every index after k-1:
@@ -324,10 +318,15 @@ class SATSolver:
         #           - Add clause to self._second_last_watch_literal[variable]
         #           - Remove clause from self._historical_second_last_watch_literal[variable]
         #       - Remove the variable from self._assignment
+        #   - For every clause that was satisfied on this level:
+        #       - Remove it from self._satisfied_clauses
         #   - Delete the index from self._assignment_by_level
+        #   - Delete the index from self._satisfaction_by_level
 
     def _bcp(self):
-        # Look at the last literal that was assigned:
+        # Look at the last literal that was assigned, assume literal was assigned True:
+        # If the clause is satisfied, nothing to do.
+        # If the assignment satisfies the clause
         # For every clause in self._last_watch_literal[literal]:
         #   - The clause is now satisfied.
         #   - Remove clause from self._last_watch_literal[literal].
@@ -339,14 +338,44 @@ class SATSolver:
         #       - If clause is in self._second_last_watch_literal[l']:
         #          - Add clause to self._historical_second_last_watch_literal[literal]
         #          - Remove clause from self._second_last_watch_literal[l']
-        #   - Else:
+        #   - Elif the clause is not in self._satisfied_clauses:
         #       - The clause is unsatisfied, and it is a conflict clause. Resolve the conflict.
-        pass
+        # For every clause in self._second_last_watch_literal:
+        seen_literals = set()
+        assigned_literals = deque([self._last_assigned_literal])
+        while assigned_literals:
+            cur_literal = assigned_literals.pop()
+            if cur_literal in seen_literals:
+                continue
+            seen_literals.add(cur_literal)
+            assigned_literals.append(-cur_literal)
+            for clause in self._watch_literal_to_clause[cur_literal]:
+                if self._assignment[abs(cur_literal)] == (cur_literal > 0):
+                    self._satisfied_clauses.add(clause)
+                    self._satisfaction_by_level[-1].add(clause)
+                if clause not in self._satisfied_clauses:
+                    unassigned_literals = []
+                    for literal in clause:
+                        if abs(literal) in self._assignment:
+                            continue
+                        unassigned_literals.append(literal)
+                        if clause in self._watch_literal_to_clause[literal]:
+                            continue
+                        self._watch_literal_to_clause[-cur_literal].remove(clause)
+                        self._watch_literal_to_clause[literal].add(clause)
+                    if len(unassigned_literals) == 0:
+                        # Clause is UNSAT, return conflict
+                        return None
+                    if len(unassigned_literals) == 1:
+                        unassigned_literal = unassigned_literals.pop()
+                        self._assignment[abs(unassigned_literal)] = (unassigned_literal > 0)
+                        assigned_literals.append(unassigned_literal)
+        return None
 
     def solve(self, assignment) -> bool:
         """
         :return: True if SAT, False otherwise.
         """
         self._bcp()
-
+        # SHOULD IMPELEMENT VSIDS, ITS EASIER
         return False
