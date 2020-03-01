@@ -279,7 +279,9 @@ def import_file(filename):
 
 
 class SATSolver:
-    def __init__(self, formula, assignment=None, assignment_by_level=None, max_new_clauses=100):
+    def __init__(self, formula=None, assignment=None, assignment_by_level=None, max_new_clauses=100):
+        if formula is None:
+            formula = set()
         if assignment is None:
             assignment = dict()
         if assignment_by_level is None:
@@ -375,27 +377,20 @@ class SATSolver:
             clause = new_clause
 
     def _bcp(self):
-        # Look at the last literal that was assigned, assume literal was assigned True:
-        # If the clause is satisfied, nothing to do.
-        # If the assignment satisfies the clause
-        # For every clause in self._last_watch_literal[literal]:
-        #   - The clause is now satisfied.
-        #   - Remove clause from self._last_watch_literal[literal].
-        #   - Add clause to self._historical_last_watch_literal[literal].
-        # For every clause in self._last_watch_literal[-literal]:
-        #   - If clause has at least one other literal l':
-        #       - Remove clause from self._last_watch_literal[literal].
-        #       - Add clause to self._last_watch_literal[l']
-        #       - If clause is in self._second_last_watch_literal[l']:
-        #          - Add clause to self._historical_second_last_watch_literal[literal]
-        #          - Remove clause from self._second_last_watch_literal[l']
-        #   - Elif the clause is not in self._satisfied_clauses:
-        #       - The clause is unsatisfied, and it is a conflict clause. Resolve the conflict.
-        # For every clause in self._second_last_watch_literal:
+        """
+        >>> solver = SATSolver()
+        >>> solver._bcp() is None
+        True
+        >>> solver = SATSolver(set({frozenset({1})}))
+        >>> solver._bcp() is None
+        True
+        """
         seen_literals = set()
-        assigned_literals = deque([self._last_assigned_literal])
+        assigned_literals = deque()
+        if self._last_assigned_literal:
+            assigned_literals.append(self._last_assigned_literal)
         while assigned_literals:
-            cur_literal = assigned_literals.pop()
+            cur_literal = assigned_literals.popleft()
             if cur_literal in seen_literals:
                 continue
             seen_literals.add(cur_literal)
@@ -415,13 +410,13 @@ class SATSolver:
                         self._watch_literal_to_clause[-cur_literal].remove(clause)
                         self._watch_literal_to_clause[literal].add(clause)
                     if len(unassigned_literals) == 0:
-                        # Clause is UNSAT, return conflict
-                        return None
+                        # Clause is UNSAT, return it as the conflict-clause
+                        return clause
                     if len(unassigned_literals) == 1:
                         unassigned_literal = unassigned_literals.pop()
                         self._assign(unassigned_literal > 0, abs(unassigned_literal), clause)
                         assigned_literals.append(unassigned_literal)
-        return None
+        return None # No conflict-clause
 
     def solve(self, assignment) -> bool:
         """
