@@ -323,6 +323,57 @@ class SATSolver:
         #   - Delete the index from self._assignment_by_level
         #   - Delete the index from self._satisfaction_by_level
 
+    def _assign(self, value, variable, clause):
+        self._assignment[variable] = {
+            "value": value,     # True or False
+            "clause": clause,   # The clause which caused the assignment
+            "level": self._level
+        }
+
+    def _get_assignment(self, variable):
+        return self._assignment[variable]["value"]
+
+    def _get_assignment_level(self, variable):
+        return self._assignment[variable]["level"]
+
+    def _get_assignment_clause(self, variable):
+        return self._assignment[variable]["clause"]
+
+    def _conflict_resolution(self, clause):
+        while True:
+            last_assigned_literal = None
+            previous_max_assignment_level = -1
+            max_assignment_level = -1
+            number_of_max_literals = 0
+            for literal in clause:
+                variable = abs(literal)
+                level = self._get_assignment_level(variable)
+                if level > max_assignment_level:
+                    previous_max_assignment_level = max_assignment_level
+                    max_assignment_level = level
+                    last_assigned_literal = variable
+                    number_of_max_literals = 1
+                elif level == max_assignment_level:
+                    number_of_max_literals += 1
+
+            if number_of_max_literals == 1:
+                return {
+                    "conflict_clause": clause,
+                    "variable": last_assigned_literal,
+                    "value": -self._get_assignment(last_assigned_literal),
+                    "level": previous_max_assignment_level  # The lowest level possible
+                }
+
+            # Resolving the two clauses
+            clause_on_incoming_edge = self._get_assignment_clause(last_assigned_literal)
+            new_clause = set()
+            for literal in chain(clause, clause_on_incoming_edge):
+                if -literal in new_clause:
+                    new_clause.remove(-literal)
+                    continue
+                new_clause.add(literal)
+            clause = new_clause
+
     def _bcp(self):
         # Look at the last literal that was assigned, assume literal was assigned True:
         # If the clause is satisfied, nothing to do.
@@ -350,7 +401,7 @@ class SATSolver:
             seen_literals.add(cur_literal)
             assigned_literals.append(-cur_literal)
             for clause in self._watch_literal_to_clause[cur_literal]:
-                if self._assignment[abs(cur_literal)] == (cur_literal > 0):
+                if self._get_assignment(abs(cur_literal)) == (cur_literal > 0):
                     self._satisfied_clauses.add(clause)
                     self._satisfaction_by_level[-1].add(clause)
                 if clause not in self._satisfied_clauses:
@@ -368,7 +419,7 @@ class SATSolver:
                         return None
                     if len(unassigned_literals) == 1:
                         unassigned_literal = unassigned_literals.pop()
-                        self._assignment[abs(unassigned_literal)] = (unassigned_literal > 0)
+                        self._assign(unassigned_literal > 0, abs(unassigned_literal), clause)
                         assigned_literals.append(unassigned_literal)
         return None
 
