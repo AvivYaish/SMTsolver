@@ -295,14 +295,14 @@ class SATSolver:
         if assignment is None:
             assignment = dict()
         if assignment_by_level is None:
-            assignment_by_level = []
+            assignment_by_level = [list()]
 
         self._formula = formula
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
         self._assignment = assignment
         self._assignment_by_level = assignment_by_level
-        self._satisfaction_by_level = []
+        self._satisfaction_by_level = [list()]
         self._satisfied_clauses = set()
         self._level = len(self._assignment_by_level)
         self._last_assigned_literals = deque()               # a queue of the literals assigned in the last level
@@ -321,7 +321,7 @@ class SATSolver:
                 if idx == (len(clause) - 1):
                     self._watch_literal_to_clause[literal].add(clause)
                     if idx == 0:    # unit clause
-                        self._assign(abs(literal), literal > 0, clause)
+                        self._assign(literal, literal > 0, clause)
                 elif idx == (len(clause) - 2):
                     self._watch_literal_to_clause[literal].add(clause)
 
@@ -340,11 +340,12 @@ class SATSolver:
         #   - Delete the index from self._assignment_by_level
         #   - Delete the index from self._satisfaction_by_level
 
-    def _assign(self, variable, value, clause):
+    def _assign(self, literal, value, clause):
+        variable = abs(literal)
         self._assignment[variable] = {
             "value": value,     # True or False
             "clause": clause,   # The clause which caused the assignment
-            "level": self._level
+            "level": self._level - 1
         }
         self._assignment_by_level[-1].append(variable)
         self._last_assigned_literals.append(variable)
@@ -396,51 +397,82 @@ class SATSolver:
 
     def _bcp(self):
         """
-        # >>> solver = SATSolver()
-        # >>> solver._bcp() is None
-        # True
-        # >>> solver._assignment
-        # {}
+        >>> solver = SATSolver()
+        >>> solver._bcp() is None
+        True
+        >>> solver._assignment
+        {}
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
         >>> solver._bcp() is None
         True
-        >>> solver = SATSolver(set({frozenset({1}), frozenset({1, 2})}))
+        >>> clause2 = frozenset({1, 2})
+        >>> solver = SATSolver(set({clause1, clause2}))
         >>> solver._bcp() is None
         True
-        >>> solver._assignment
-        {1: {"value": True, "clause": clause1, "level": 0}}
+        >>> solver._assignment == {1: {"value": True, "clause": clause1, "level": 0}}
+        True
+        >>> clause3 = frozenset({-1, 2})
+        >>> solver = SATSolver(set({clause1, clause3}))
+        >>> solver._bcp() is None
+        True
+        >>> solver._assignment == {
+        ... 1: {"value": True, "clause": clause1, "level": 0},
+        ... 2: {"value": True, "clause": clause3, "level": 0}}
+        True
+        >>> clause4 = frozenset({-2})
+        >>> solver = SATSolver(set({clause1, clause3, clause4}))
+        >>> solver._bcp() == clause3
+        True
+        >>> clause5 = frozenset({-1, -2})
+        >>> solver = SATSolver(set({clause1, clause3, clause5}))
+        >>> solver._bcp() == clause5
+        True
         """
-        # Avoid going over literals more than once
-        seen_literals = set()
+        seen_literals = set()   # Avoid going over literals more than once
 
         while self._last_assigned_literals:
-            cur_literal = self._last_assigned_literals.popleft()
-            if cur_literal in seen_literals:
+            assigned_literal = self._last_assigned_literals.popleft()
+            if assigned_literal in seen_literals:
                 continue
-            seen_literals.add(cur_literal)
+            seen_literals.add(assigned_literal)
 
-            #
-            for clause in self._watch_literal_to_clause[cur_literal]:
-                if self._get_assignment(abs(cur_literal)) == (cur_literal > 0):
+            # For every clause that assigned_literal is watching:
+            # - If it is satisfied, nothing to do.
+            # - If it is not satisfied yet:
+            #   - If it has 0 unassigned literals, it is UNSAT
+            #   - If it has 1 unassigned literals, assign the correct value to the last literal
+            #   - If it has > 2 unassigned literals, pick one to become the new watch literal
+            for clause in self._watch_literal_to_clause[assigned_literal]:
+                if self._get_assignment(abs(assigned_literal)) == (assigned_literal > 0):
                     self._satisfied_clauses.add(clause)
-                    self._satisfaction_by_level[-1].add(clause)
+                    self._satisfaction_by_level[-1].append(clause)
+
                 if clause not in self._satisfied_clauses:
                     unassigned_literals = []
-                    for literal in clause:
-                        if abs(literal) in self._assignment:
+                    for unassigned_literal in clause:
+                        # If the current literal is assigned,
+                        # it cannot replace the current watch literal
+                        if abs(unassigned_literal) in self._assignment:
                             continue
-                        unassigned_literals.append(literal)
-                        if clause in self._watch_literal_to_clause[literal]:
+                        unassigned_literals.append(unassigned_literal)
+
+                        # If the current literal is already watching the current clause,
+                        # it cannot replace the current watch literal
+                        if clause in self._watch_literal_to_clause[unassigned_literal]:
                             continue
-                        self._watch_literal_to_clause[-cur_literal].remove(clause)
-                        self._watch_literal_to_clause[literal].add(clause)
+                        self._watch_literal_to_clause[-assigned_literal].remove(clause)
+                        self._watch_literal_to_clause[unassigned_literal].add(clause)
+
+                        if len(unassigned_literals) > 1:
+                            break
+
                     if len(unassigned_literals) == 0:
                         # Clause is UNSAT, return it as the conflict-clause
                         return clause
                     if len(unassigned_literals) == 1:
                         unassigned_literal = unassigned_literals.pop()
-                        self._assign(abs(unassigned_literal), unassigned_literal > 0, clause)
+                        self._assign(unassigned_literal, unassigned_literal > 0, clause)
         return None # No conflict-clause
 
     def solve(self, assignment) -> bool:
