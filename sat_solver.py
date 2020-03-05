@@ -280,6 +280,16 @@ def import_file(filename):
 
 class SATSolver:
     def __init__(self, formula=None, assignment=None, assignment_by_level=None, max_new_clauses=100):
+        """
+        >>> clause1 = frozenset({1})
+        >>> solver = SATSolver(set({clause1}))
+        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0}}
+        True
+        >>> clause2 = frozenset({1, 2})
+        >>> solver = SATSolver(set({clause1, clause2}))
+        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0}}
+        True
+        """
         if formula is None:
             formula = set()
         if assignment is None:
@@ -295,9 +305,12 @@ class SATSolver:
         self._satisfaction_by_level = []
         self._satisfied_clauses = set()
         self._level = len(self._assignment_by_level)
-        self._last_assigned_literal = None
+        self._last_assigned_literals = deque()               # a queue of the literals assigned in the last level
         self._watch_literal_to_clause = {}                   # A literal -> set(clause) dictionary.
+        self._unit_clauses = set()
+        self._add_watch_literals()
 
+    def _add_watch_literals(self):
         for clause in self._formula:
             for idx, literal in enumerate(clause):
                 if literal not in self._watch_literal_to_clause:
@@ -307,6 +320,8 @@ class SATSolver:
 
                 if idx == (len(clause) - 1):
                     self._watch_literal_to_clause[literal].add(clause)
+                    if idx == 0:    # unit clause
+                        self._assign(abs(literal), literal > 0, clause)
                 elif idx == (len(clause) - 2):
                     self._watch_literal_to_clause[literal].add(clause)
 
@@ -325,12 +340,15 @@ class SATSolver:
         #   - Delete the index from self._assignment_by_level
         #   - Delete the index from self._satisfaction_by_level
 
-    def _assign(self, value, variable, clause):
+    def _assign(self, variable, value, clause):
         self._assignment[variable] = {
             "value": value,     # True or False
             "clause": clause,   # The clause which caused the assignment
             "level": self._level
         }
+        self._assignment_by_level[-1].append(variable)
+        self._last_assigned_literals.append(variable)
+        self._last_assigned_literals.append(-variable)
 
     def _get_assignment(self, variable):
         return self._assignment[variable]["value"]
@@ -378,23 +396,31 @@ class SATSolver:
 
     def _bcp(self):
         """
-        >>> solver = SATSolver()
+        # >>> solver = SATSolver()
+        # >>> solver._bcp() is None
+        # True
+        # >>> solver._assignment
+        # {}
+        >>> clause1 = frozenset({1})
+        >>> solver = SATSolver(set({clause1}))
         >>> solver._bcp() is None
         True
-        >>> solver = SATSolver(set({frozenset({1})}))
+        >>> solver = SATSolver(set({frozenset({1}), frozenset({1, 2})}))
         >>> solver._bcp() is None
         True
+        >>> solver._assignment
+        {1: {"value": True, "clause": clause1, "level": 0}}
         """
+        # Avoid going over literals more than once
         seen_literals = set()
-        assigned_literals = deque()
-        if self._last_assigned_literal:
-            assigned_literals.append(self._last_assigned_literal)
-        while assigned_literals:
-            cur_literal = assigned_literals.popleft()
+
+        while self._last_assigned_literals:
+            cur_literal = self._last_assigned_literals.popleft()
             if cur_literal in seen_literals:
                 continue
             seen_literals.add(cur_literal)
-            assigned_literals.append(-cur_literal)
+
+            #
             for clause in self._watch_literal_to_clause[cur_literal]:
                 if self._get_assignment(abs(cur_literal)) == (cur_literal > 0):
                     self._satisfied_clauses.add(clause)
@@ -414,8 +440,7 @@ class SATSolver:
                         return clause
                     if len(unassigned_literals) == 1:
                         unassigned_literal = unassigned_literals.pop()
-                        self._assign(unassigned_literal > 0, abs(unassigned_literal), clause)
-                        assigned_literals.append(unassigned_literal)
+                        self._assign(abs(unassigned_literal), unassigned_literal > 0, clause)
         return None # No conflict-clause
 
     def solve(self, assignment) -> bool:
