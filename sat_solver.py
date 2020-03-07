@@ -304,7 +304,7 @@ class SATSolver:
             return True
         return False
 
-    def _assign_watch_literal(self, clause, literal):
+    def _assign_watch_literal(self, clause, literal: int):
         if literal not in self._watch_literal_to_clause:
             self._watch_literal_to_clause[literal] = set()
         self._watch_literal_to_clause[literal].add(clause)
@@ -319,7 +319,7 @@ class SATSolver:
         for literal in unassigned_literals:
             self._assign_watch_literal(clause, literal)
 
-    def _assign(self, literal, value, clause):
+    def _assign(self, literal: int, value: bool, clause):
         variable = abs(literal)
         self._assignment[variable] = {
             "value": value,     # True or False
@@ -331,16 +331,16 @@ class SATSolver:
         self._last_assigned_literals.append(variable)
         self._last_assigned_literals.append(-variable)
 
-    def _get_assignment(self, variable):
+    def _get_assignment(self, variable: int):
         return self._assignment[variable]["value"]
 
-    def _get_assignment_level(self, variable):
+    def _get_assignment_level(self, variable: int):
         return self._assignment[variable]["level"]
 
-    def _get_assignment_idx(self, variable):
+    def _get_assignment_idx(self, variable: int):
         return self._assignment[variable]["idx"]
 
-    def _get_assignment_clause(self, variable):
+    def _get_assignment_clause(self, variable: int):
         return self._assignment[variable]["clause"]
 
     def _conflict_resolution(self, conflict_clause):
@@ -479,12 +479,12 @@ class SATSolver:
                     if self._get_assignment(abs(watch_literal)) == (watch_literal > 0):
                         self._add_satisfied_clause(clause)
                     else:
-                        conflict_clause = self._replace_watch_literal(watch_literal, clause)
+                        conflict_clause = self._replace_watch_literal(clause, watch_literal)
                         if conflict_clause is not None:
                             return conflict_clause
         return None # No conflict-clause
 
-    def _replace_watch_literal(self, watch_literal, clause):
+    def _replace_watch_literal(self, clause, watch_literal: int):
         """
         - If the clause is satisfied, nothing to do.
         - Else, it is not satisfied yet:
@@ -528,7 +528,7 @@ class SATSolver:
             self._assign(unassigned_literal, unassigned_literal > 0, clause)
         return None
 
-    def _add_conflict_clause(self, conflict_clause, watch_literal):
+    def _add_conflict_clause(self, conflict_clause, watch_literal: int):
         if self._max_new_clauses <= 0:
             return
         if len(self._new_clauses) == self._max_new_clauses:
@@ -539,7 +539,7 @@ class SATSolver:
         self._new_clauses.append(conflict_clause)
         self._assign_watch_literal(conflict_clause, watch_literal)
 
-    def _backtrack(self, level):
+    def _backtrack(self, level: int):
         # Whenever there is a backjump to level k:
         # - For every index after k-1:
         #   - For every variable that was assigned on this level:
@@ -559,7 +559,7 @@ class SATSolver:
     def _decide(self):
         pass
 
-    def solve(self, assignment) -> bool:
+    def solve(self) -> bool:
         """
         :return: True if SAT, False otherwise.
         """
