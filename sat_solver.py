@@ -290,8 +290,8 @@ class SATSolver:
         self._create_new_level()
 
         for clause in self._formula:
-            if not self._unit_propagation(clause):
-                self._create_watch_literals(clause)
+            self._unit_propagation(clause)
+            self._create_watch_literals(clause)
 
     def _create_new_level(self):
         self._assignment_by_level.append(list())
@@ -300,9 +300,7 @@ class SATSolver:
     def _unit_propagation(self, clause):
         if len(clause) == 1:
             for literal in clause:
-                self._assign(literal, literal > 0, clause)
-            return True
-        return False
+                self._assign_to_satisfy(clause, literal)
 
     def _assign_watch_literal(self, clause, literal: int):
         if literal not in self._watch_literal_to_clause:
@@ -310,14 +308,12 @@ class SATSolver:
         self._watch_literal_to_clause[literal].add(clause)
 
     def _create_watch_literals(self, clause):
-        unassigned_literals = []
+        count = 0
         for literal in clause:
-            if literal not in self._assignment:
-                unassigned_literals.append(literal)
-                if len(unassigned_literals) > 1:
-                    break
-        for literal in unassigned_literals:
             self._assign_watch_literal(clause, literal)
+            count += 1
+            if count > 1:
+                return
 
     def _assign(self, literal: int, value: bool, clause):
         variable = abs(literal)
@@ -330,6 +326,9 @@ class SATSolver:
         self._assignment_by_level[-1].append(variable)
         self._last_assigned_literals.append(variable)
         self._last_assigned_literals.append(-variable)
+
+    def _assign_to_satisfy(self, clause, literal: int):
+        self._assign(literal, literal > 0, clause)
 
     def _get_assignment(self, variable: int):
         return self._assignment[variable]["value"]
@@ -524,20 +523,22 @@ class SATSolver:
             # Assign the correct value to it. Because it is now watching the clause,
             # and was also added to self._last_assigned_literals, we will later on
             # check if the assignment causes a conflict
-            unassigned_literal = unassigned_literals.pop()
-            self._assign(unassigned_literal, unassigned_literal > 0, clause)
+            self._assign_to_satisfy(clause, unassigned_literals.pop())
         return None
 
-    def _add_conflict_clause(self, conflict_clause, watch_literal: int):
+    def _add_conflict_clause(self, conflict_clause):
         if self._max_new_clauses <= 0:
             return
+
+        # Remove previous conflict clauses, if there are too many
         if len(self._new_clauses) == self._max_new_clauses:
             clause_to_remove = self._new_clauses.popleft()
             for literal in clause_to_remove:
                 if literal in self._watch_literal_to_clause:
                     self._watch_literal_to_clause[literal].discard(clause_to_remove)
+
         self._new_clauses.append(conflict_clause)
-        self._assign_watch_literal(conflict_clause, watch_literal)
+        self._create_watch_literals(conflict_clause)
 
     def _backtrack(self, level: int):
         cur_level = len(self._assignment_by_level) - 1
@@ -563,8 +564,9 @@ class SATSolver:
             if level_to_jump_to == -1:
                 # One of the assignments that satisfy the formula's unit clauses causes a conflict, the formula is UNSAT
                 return False
-            self._add_conflict_clause(conflict_clause, watch_literal)
             self._backtrack(level_to_jump_to)
+            self._add_conflict_clause(conflict_clause, watch_literal)
+            self._assign_to_satisfy(conflict_clause, watch_literal)
             conflict_clause = self._bcp()
 
         # SHOULD IMPELEMENT VSIDS, ITS EASIER
