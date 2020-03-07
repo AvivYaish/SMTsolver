@@ -540,21 +540,15 @@ class SATSolver:
         self._assign_watch_literal(conflict_clause, watch_literal)
 
     def _backtrack(self, level: int):
-        # Whenever there is a backjump to level k:
-        # - For every index after k-1:
-        #   - For every variable that was assigned on this level:
-        #       - For every clause in self._historical_last_watch_literal[variable]:
-        #           - Add clause to self._last_watch_literal[variable]
-        #           - Remove clause from self._historical_last_watch_literal[variable]
-        #       - For every clause in self._historical_second_last_watch_literal[variable]:
-        #           - Add clause to self._second_last_watch_literal[variable]
-        #           - Remove clause from self._historical_second_last_watch_literal[variable]
-        #       - Remove the variable from self._assignment
-        #   - For every clause that was satisfied on this level:
-        #       - Remove it from self._satisfied_clauses
-        #   - Delete the index from self._assignment_by_level
-        #   - Delete the index from self._satisfaction_by_level
-        pass
+        cur_level = len(self._assignment_by_level) - 1
+        while cur_level > level:
+            cur_level -= 1
+            assigned_variables = self._assignment_by_level.pop()
+            satisfied_clauses = self._satisfaction_by_level.pop()
+            for variable in assigned_variables:
+                del self._assignment[variable]
+            for clause in satisfied_clauses:
+                self._satisfied_clauses.remove(clause)
 
     def _decide(self):
         pass
