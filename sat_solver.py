@@ -485,31 +485,30 @@ class SATSolver:
         True
         """
         seen_literals = set()   # Avoid going over literals more than once
-
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
             if (watch_literal in seen_literals) or (watch_literal not in self._watch_literal_to_clause):
                 continue
             seen_literals.add(watch_literal)
 
-            # For every clause that assigned_literal is watching:
-            # - If it is satisfied, nothing to do.
-            # - If it is not satisfied yet:
-            #   - If it has 0 unassigned literals, it is UNSAT
-            #   - If it has 1 unassigned literals, assign the correct value to the last literal
-            #   - If it has > 2 unassigned literals, pick one to become the new watch literal
             for clause in self._watch_literal_to_clause[watch_literal]:
-                if (clause not in self._satisfied_clauses) and \
-                        (self._get_assignment(abs(watch_literal)) == (watch_literal > 0)):
-                    self._add_satisfied_clause(clause)
                 if clause not in self._satisfied_clauses:
-                    conflict_clause = self._replace_watch_literal(watch_literal, clause)
-                    if conflict_clause is not None:
-                        return conflict_clause
-
+                    if self._get_assignment(abs(watch_literal)) == (watch_literal > 0):
+                        self._add_satisfied_clause(clause)
+                    else:
+                        conflict_clause = self._replace_watch_literal(watch_literal, clause)
+                        if conflict_clause is not None:
+                            return conflict_clause
         return None # No conflict-clause
 
     def _replace_watch_literal(self, watch_literal, clause):
+        """
+        - If the clause is satisfied, nothing to do.
+        - Else, it is not satisfied yet:
+          - If it has 0 unassigned literals, it is UNSAT.
+          - If it has 1 unassigned literals, assign the correct value to the last literal.
+          - If it has > 2 unassigned literals, pick one to become the new watch literal.
+        """
         unassigned_literals = []
         for unassigned_literal in clause:
             variable = abs(unassigned_literal)
@@ -517,12 +516,14 @@ class SATSolver:
                 # If the current literal is assigned,
                 # it cannot replace the current watch literal
                 if self._get_assignment(variable) == (unassigned_literal > 0):
-                    # If the current literal satisfies the clause, no need to replace watch literal
+                    # If the current literal satisfies the clause, no need to replace watch_literal
                     self._add_satisfied_clause(clause)
                     return None
                 continue
             unassigned_literals.append(unassigned_literal)
             if (len(unassigned_literals) > 1) and (clause not in self._watch_literal_to_clause[-watch_literal]):
+                # The second condition implies that a new watch literal has replaced watch_literal,
+                # so we can stop searching for one.
                 break
 
             # If the current literal is already watching the clause,
