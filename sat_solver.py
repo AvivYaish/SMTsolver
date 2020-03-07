@@ -240,27 +240,8 @@ def unit_propagation(clause, assignment, level):
     >>> unit_propagation([1, 2, 3, 4], {2: False, 3: False})
     {2: False, 3: False}
     """
-    # TODO: maybe better to do this in numpy?
-    # TODO: 1. change tests to receive frozensets
-    #  2. assignment should receive dictionary that includes clauses and levels
-    #  3. should add a "parent" pointer for each assigned variable
-    unassigned = []
-    for literal in clause:
-        if abs(literal) not in assignment:
-            if len(unassigned) == 1:
-                return assignment
-            unassigned.append(literal)
-
-    if unassigned:
-        literal = unassigned.pop()
-        assignment[abs(literal)] = {
-            "value": (literal > 0),
-            "clause": clause,
-            "level": level
-        }
-
-    # TODO: return if there is a conflict?
-    return None
+    # TODO: add tests to _init
+    pass
 
 
 def import_file(filename):
@@ -405,11 +386,7 @@ class SATSolver:
         >>> solver._watch_literal_to_clause[-7] = set({clause4, clause5})
         >>> solver._watch_literal_to_clause[-8] = set({clause6})
         >>> solver._watch_literal_to_clause[-9] = set({clause6})
-        >>> conflict_clause = solver._bcp()
-        >>> conflict_clause == clause6
-        True
-        >>> resolved_conflict = solver._conflict_resolution(conflict_clause)
-        >>> resolved_conflict == {'conflict_clause': frozenset({-7, -2}), 'variable': 7, 'value': False, 'level_to_jump_to': 2}
+        >>> solver._conflict_resolution(solver._bcp()) == {'conflict_clause': frozenset({-7, -2}), 'variable': 7, 'value': False, 'level_to_jump_to': 2}
         True
         """
         conflict_clause = set(conflict_clause)
@@ -429,8 +406,9 @@ class SATSolver:
                         last_variable, max_idx = variable, idx
 
             if max_count == 1:
-                # The last assigned literal is the only one from the last decision ךקהקך
+                # The last assigned literal is the only one from the last decision level
                 # TODO: make sure the conflict clause will get watch literals and will also get assigned next
+                # TODO: if we need to jump to -1, the formula is UNSAT
                 return {
                     'conflict_clause': frozenset(conflict_clause),
                     'variable': last_variable,                          # The variable to assign next
@@ -462,15 +440,15 @@ class SATSolver:
         >>> solver = SATSolver(set({clause1, clause2}))
         >>> solver._bcp() is None
         True
-        >>> solver._assignment == {1: {"value": True, "clause": clause1, "level": 0}}
+        >>> solver._assignment == {1: {"value": True, "clause": clause1, "level": 0, "idx": 0}}
         True
         >>> clause3 = frozenset({-1, 2})
         >>> solver = SATSolver(set({clause1, clause3}))
         >>> solver._bcp() is None
         True
         >>> solver._assignment == {
-        ... 1: {"value": True, "clause": clause1, "level": 0},
-        ... 2: {"value": True, "clause": clause3, "level": 0}}
+        ... 1: {"value": True, "clause": clause1, "level": 0, "idx": 0},
+        ... 2: {"value": True, "clause": clause3, "level": 0, "idx": 1}}
         True
         >>> clause4 = frozenset({-2})
         >>> solver = SATSolver(set({clause1, clause3, clause4}))
@@ -480,6 +458,31 @@ class SATSolver:
         >>> solver = SATSolver(set({clause1, clause3, clause5}))
         >>> solver._bcp() == clause5
         True
+        >>> clause1 = frozenset({-1, -4, 5})
+        >>> clause2 = frozenset({-4, 6})
+        >>> clause3 = frozenset({-5, -6, 7})
+        >>> clause4 = frozenset({-7, 8})
+        >>> clause5 = frozenset({-2, -7, 9})
+        >>> clause6 = frozenset({-8, -9})
+        >>> clause7 = frozenset({-8, 9})
+        >>> formula = set({clause1, clause2, clause3, clause4, clause5, clause6, clause7})
+        >>> assignment = {
+        ... 1: {"value": True, "clause": None, "level": 1, "idx": 1},
+        ... 2: {"value": True, "clause": None, "level": 2, "idx": 1},
+        ... 3: {"value": True, "clause": None, "level": 3, "idx": 1},
+        ... 4: {"value": True, "clause": None, "level": 4, "idx": 1},
+        ... }
+        >>> solver = SATSolver(formula, assignment=assignment)
+        >>> solver._assignment_by_level = [[], [1], [2], [3], [4]]
+        >>> solver._last_assigned_literals.append(-4)
+        >>> solver._watch_literal_to_clause[-4] = set({clause1, clause2})
+        >>> solver._watch_literal_to_clause[-5] = set({clause3})
+        >>> solver._watch_literal_to_clause[-6] = set({clause3})
+        >>> solver._watch_literal_to_clause[-7] = set({clause4, clause5})
+        >>> solver._watch_literal_to_clause[-8] = set({clause6})
+        >>> solver._watch_literal_to_clause[-9] = set({clause6})
+        >>> solver._bcp() == clause6
+        True
         """
         seen_literals = set()   # Avoid going over literals more than once
 
@@ -488,6 +491,8 @@ class SATSolver:
             if assigned_literal in seen_literals:
                 continue
             seen_literals.add(assigned_literal)
+            if assigned_literal not in self._watch_literal_to_clause:
+                continue
 
             # For every clause that assigned_literal is watching:
             # - If it is satisfied, nothing to do.
