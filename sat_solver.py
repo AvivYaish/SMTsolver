@@ -558,14 +558,14 @@ class SATSolver:
         :return: True if SAT, False otherwise.
         """
         conflict_clause = self._bcp()
-        if conflict_clause is not None:
+        while conflict_clause is not None:
             conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
             if level_to_jump_to == -1:
-                # One of the assignments that satisfy the formula's unit clauses causes a conflict,
-                # so the formula is UNSAT
+                # One of the assignments that satisfy the formula's unit clauses causes a conflict, the formula is UNSAT
                 return False
             self._add_conflict_clause(conflict_clause, watch_literal)
             self._backtrack(level_to_jump_to)
+            conflict_clause = self._bcp()
 
         # SHOULD IMPELEMENT VSIDS, ITS EASIER
         self._decide()
