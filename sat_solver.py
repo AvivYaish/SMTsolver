@@ -374,22 +374,14 @@ class SATSolver:
     def _get_assignment_clause(self, variable):
         return self._assignment[variable]["clause"]
 
-    """
-    >>> clause1 = frozenset({1})
-    >>> clause3 = frozenset({-1, 2})
-    >>> clause5 = frozenset({-1, -2})
-    >>> solver = SATSolver(set({clause1, clause3, clause5}))
-    >>> solver._conflict_resolution(solver._bcp())
-    True
-            ... 5: {"value": True, "clause": clause1, "level": 4},
-        ... 6: {"value": True, "clause": clause2, "level": 4},
-        ... 7: {"value": True, "clause": clause3, "level": 4},
-        ... 8: {"value": True, "clause": clause4, "level": 4},
-        ... 9: {"value": True, "clause": clause5, "level": 4}
-    """
-
     def _conflict_resolution(self, conflict_clause):
         """
+        >>> clause1 = frozenset({1})
+        >>> clause3 = frozenset({-1, 2})
+        >>> clause5 = frozenset({-1, -2})
+        >>> solver = SATSolver(set({clause1, clause3, clause5}))
+        >>> solver._conflict_resolution(solver._bcp()) == {'conflict_clause': frozenset({-1}), 'variable': 1, 'value': False, 'level_to_jump_to': -1}
+        True
         >>> clause1 = frozenset({-1, -4, 5})
         >>> clause2 = frozenset({-4, 6})
         >>> clause3 = frozenset({-5, -6, 7})
@@ -397,13 +389,13 @@ class SATSolver:
         >>> clause5 = frozenset({-2, -7, 9})
         >>> clause6 = frozenset({-8, -9})
         >>> clause7 = frozenset({-8, 9})
+        >>> formula = set({clause1, clause2, clause3, clause4, clause5, clause6, clause7})
         >>> assignment = {
         ... 1: {"value": True, "clause": None, "level": 1, "idx": 1},
         ... 2: {"value": True, "clause": None, "level": 2, "idx": 1},
         ... 3: {"value": True, "clause": None, "level": 3, "idx": 1},
         ... 4: {"value": True, "clause": None, "level": 4, "idx": 1},
         ... }
-        >>> formula = set({clause1, clause2, clause3, clause4, clause5, clause6, clause7})
         >>> solver = SATSolver(formula, assignment=assignment)
         >>> solver._assignment_by_level = [[], [1], [2], [3], [4]]
         >>> solver._last_assigned_literals.append(-4)
@@ -436,19 +428,18 @@ class SATSolver:
                     if idx > max_idx:
                         last_variable, max_idx = variable, idx
 
-            clause_on_incoming_edge = self._get_assignment_clause(last_variable)
             if max_count == 1:
-                # The last assigned literal is the one from the last decision step
+                # The last assigned literal is the only one from the last decision ךקהקך
                 # TODO: make sure the conflict clause will get watch literals and will also get assigned next
                 return {
                     'conflict_clause': frozenset(conflict_clause),
-                    'variable': last_variable,                      # The variable to assign next
-                    'value': not self._get_assignment(last_variable),  # The value to assign to it
-                    'level_to_jump_to': prev_max_level              # The decision level to jump to
+                    'variable': last_variable,                          # The variable to assign next
+                    'value': not self._get_assignment(last_variable),   # The value to assign to it
+                    'level_to_jump_to': prev_max_level                  # The decision level to jump to
                 }
 
             # Resolve the conflict clause with the clause on the incoming edge
-            conflict_clause |= clause_on_incoming_edge
+            conflict_clause |= self._get_assignment_clause(last_variable)
             conflict_clause.remove(last_variable)
             conflict_clause.remove(-last_variable)
 
