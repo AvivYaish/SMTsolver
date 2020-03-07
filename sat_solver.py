@@ -283,11 +283,11 @@ class SATSolver:
         """
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
-        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0}}
+        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
         True
         >>> clause2 = frozenset({1, 2})
         >>> solver = SATSolver(set({clause1, clause2}))
-        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0}}
+        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
         True
         """
         if formula is None:
@@ -295,22 +295,26 @@ class SATSolver:
         if assignment is None:
             assignment = dict()
         if assignment_by_level is None:
-            assignment_by_level = [list()]
+            assignment_by_level = []
 
         self._formula = formula
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
         self._assignment = assignment
         self._assignment_by_level = assignment_by_level
-        self._satisfaction_by_level = [list()]
+        self._satisfaction_by_level = []
         self._satisfied_clauses = set()
-        self._level = len(self._assignment_by_level)
         self._last_assigned_literals = deque()               # a queue of the literals assigned in the last level
         self._watch_literal_to_clause = {}                   # A literal -> set(clause) dictionary.
+        self._create_new_level()
 
         for clause in self._formula:
             if not self._unit_propagation(clause):
                 self._add_watch_literals(clause)
+
+    def _create_new_level(self):
+        self._assignment_by_level.append(list())
+        self._satisfaction_by_level.append(list())
 
     def _unit_propagation(self, clause):
         if len(clause) == 1:
@@ -351,7 +355,8 @@ class SATSolver:
         self._assignment[variable] = {
             "value": value,     # True or False
             "clause": clause,   # The clause which caused the assignment
-            "level": self._level - 1
+            "level": len(self._assignment_by_level) - 1,
+            "idx": len(self._assignment_by_level[-1])   # Defines an assignment order in the same level
         }
         self._assignment_by_level[-1].append(variable)
         self._last_assigned_literals.append(variable)
@@ -362,6 +367,9 @@ class SATSolver:
 
     def _get_assignment_level(self, variable):
         return self._assignment[variable]["level"]
+
+    def _get_assignment_idx(self, variable):
+        return self._assignment[variable]["idx"]
 
     def _get_assignment_clause(self, variable):
         return self._assignment[variable]["clause"]
@@ -380,7 +388,7 @@ class SATSolver:
         ... 9: {"value": True, "clause": clause5, "level": 4}
     """
 
-    def _conflict_resolution(self, clause):
+    def _conflict_resolution(self, conflict_clause):
         """
         >>> clause1 = frozenset({-1, -4, 5})
         >>> clause2 = frozenset({-4, 6})
@@ -390,13 +398,14 @@ class SATSolver:
         >>> clause6 = frozenset({-8, -9})
         >>> clause7 = frozenset({-8, 9})
         >>> assignment = {
-        ... 1: {"value": True, "clause": frozenset(), "level": 1},
-        ... 2: {"value": True, "clause": frozenset(), "level": 2},
-        ... 3: {"value": True, "clause": frozenset(), "level": 3},
-        ... 4: {"value": True, "clause": frozenset(), "level": 4},
+        ... 1: {"value": True, "clause": None, "level": 1, "idx": 1},
+        ... 2: {"value": True, "clause": None, "level": 2, "idx": 1},
+        ... 3: {"value": True, "clause": None, "level": 3, "idx": 1},
+        ... 4: {"value": True, "clause": None, "level": 4, "idx": 1},
         ... }
-        >>> solver = SATSolver(set({clause1, clause2, clause3, clause4, clause5, clause6, clause7}), assignment=assignment)
-        >>> solver._level = 5
+        >>> formula = set({clause1, clause2, clause3, clause4, clause5, clause6, clause7})
+        >>> solver = SATSolver(formula, assignment=assignment)
+        >>> solver._assignment_by_level = [[], [1], [2], [3], [4]]
         >>> solver._last_assigned_literals.append(-4)
         >>> solver._watch_literal_to_clause[-4] = set({clause1, clause2})
         >>> solver._watch_literal_to_clause[-5] = set({clause3})
@@ -404,44 +413,48 @@ class SATSolver:
         >>> solver._watch_literal_to_clause[-7] = set({clause4, clause5})
         >>> solver._watch_literal_to_clause[-8] = set({clause6})
         >>> solver._watch_literal_to_clause[-9] = set({clause6})
-        >>> solver._bcp() == clause6
+        >>> conflict_clause = solver._bcp()
+        >>> conflict_clause == clause6
         True
-        >>> solver._conflict_resolution(solver._bcp())
+        >>> resolved_conflict = solver._conflict_resolution(conflict_clause)
+        >>> resolved_conflict == {'conflict_clause': frozenset({-7, -2}), 'variable': 7, 'value': False, 'level_to_jump_to': 2}
         True
         """
+        conflict_clause = set(conflict_clause)
         while True:
-            last_assigned_literal = None
-            previous_max_assignment_level = -1
-            max_assignment_level = -1
-            number_of_max_literals = 0
-            for literal in clause:
+            last_variable, prev_max_level, max_level, max_idx, max_count = None, -1, -1, -1, 0
+            for literal in conflict_clause:
                 variable = abs(literal)
-                level = self._get_assignment_level(variable)
-                if level > max_assignment_level:
-                    previous_max_assignment_level = max_assignment_level
-                    max_assignment_level = level
-                    last_assigned_literal = variable
-                    number_of_max_literals = 1
-                elif level == max_assignment_level:
-                    number_of_max_literals += 1
+                level, idx = self._get_assignment_level(variable), self._get_assignment_idx(variable)
+                if level > max_level:
+                    prev_max_level = max_level
+                    max_level, max_idx = level, -1
+                elif level > prev_max_level:
+                    prev_max_level = level
+                if level == max_level:
+                    max_count += 1
+                    if idx > max_idx:
+                        last_variable, max_idx = variable, idx
 
-            if number_of_max_literals == 1:
+            clause_on_incoming_edge = self._get_assignment_clause(last_variable)
+            if max_count == 1:
+                # The last assigned literal is the one from the last decision step
+                # TODO: make sure the conflict clause will get watch literals and will also get assigned next
                 return {
-                    "conflict_clause": clause,
-                    "variable": last_assigned_literal,
-                    "value": -self._get_assignment(last_assigned_literal),
-                    "level": previous_max_assignment_level  # The lowest level possible
+                    'conflict_clause': frozenset(conflict_clause),
+                    'variable': last_variable,                      # The variable to assign next
+                    'value': not self._get_assignment(last_variable),  # The value to assign to it
+                    'level_to_jump_to': prev_max_level              # The decision level to jump to
                 }
 
-            # Resolving the two clauses
-            clause_on_incoming_edge = self._get_assignment_clause(last_assigned_literal)
-            new_clause = set()
-            for literal in chain(clause, clause_on_incoming_edge):
-                if -literal in new_clause:
-                    new_clause.remove(-literal)
-                else:
-                    new_clause.add(literal)
-            clause = new_clause
+            # Resolve the conflict clause with the clause on the incoming edge
+            conflict_clause |= clause_on_incoming_edge
+            conflict_clause.remove(last_variable)
+            conflict_clause.remove(-last_variable)
+
+    def _add_satisfied_clause(self, clause):
+        self._satisfied_clauses.add(clause)
+        self._satisfaction_by_level[-1].append(clause)
 
     def _bcp(self):
         """
@@ -493,8 +506,7 @@ class SATSolver:
             #   - If it has > 2 unassigned literals, pick one to become the new watch literal
             for clause in self._watch_literal_to_clause[assigned_literal]:
                 if self._get_assignment(abs(assigned_literal)) == (assigned_literal > 0):
-                    self._satisfied_clauses.add(clause)
-                    self._satisfaction_by_level[-1].append(clause)
+                    self._add_satisfied_clause(clause)
 
                 if clause not in self._satisfied_clauses:
                     unassigned_literals = []
