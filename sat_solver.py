@@ -316,21 +316,6 @@ class SATSolver:
             elif idx == (len(clause) - 2):
                 self._watch_literal_to_clause[literal].add(clause)
 
-        # Whenever there is a backjump to level k:
-        # - For every index after k-1:
-        #   - For every variable that was assigned on this level:
-        #       - For every clause in self._historical_last_watch_literal[variable]:
-        #           - Add clause to self._last_watch_literal[variable]
-        #           - Remove clause from self._historical_last_watch_literal[variable]
-        #       - For every clause in self._historical_second_last_watch_literal[variable]:
-        #           - Add clause to self._second_last_watch_literal[variable]
-        #           - Remove clause from self._historical_second_last_watch_literal[variable]
-        #       - Remove the variable from self._assignment
-        #   - For every clause that was satisfied on this level:
-        #       - Remove it from self._satisfied_clauses
-        #   - Delete the index from self._assignment_by_level
-        #   - Delete the index from self._satisfaction_by_level
-
     def _assign(self, literal, value, clause):
         variable = abs(literal)
         self._assignment[variable] = {
@@ -407,8 +392,6 @@ class SATSolver:
 
             if max_count == 1:
                 # The last assigned literal is the only one from the last decision level
-                # TODO: make sure the conflict clause will get watch literals and will also get assigned next
-                # TODO: if we need to jump to -1, the formula is UNSAT
                 return {
                     'conflict_clause': frozenset(conflict_clause),
                     'variable': last_variable,                          # The variable to assign next
@@ -544,10 +527,36 @@ class SATSolver:
             self._assign(unassigned_literal, unassigned_literal > 0, clause)
         return None
 
+    def _backtrack(self, conflict_clause):
+        # Whenever there is a backjump to level k:
+        # - For every index after k-1:
+        #   - For every variable that was assigned on this level:
+        #       - For every clause in self._historical_last_watch_literal[variable]:
+        #           - Add clause to self._last_watch_literal[variable]
+        #           - Remove clause from self._historical_last_watch_literal[variable]
+        #       - For every clause in self._historical_second_last_watch_literal[variable]:
+        #           - Add clause to self._second_last_watch_literal[variable]
+        #           - Remove clause from self._historical_second_last_watch_literal[variable]
+        #       - Remove the variable from self._assignment
+        #   - For every clause that was satisfied on this level:
+        #       - Remove it from self._satisfied_clauses
+        #   - Delete the index from self._assignment_by_level
+        #   - Delete the index from self._satisfaction_by_level
+        pass
+
+    def _decide(self):
+        pass
+
     def solve(self, assignment) -> bool:
         """
         :return: True if SAT, False otherwise.
         """
-        self._bcp()
+        conflict_clause = self._bcp()
+        if conflict_clause is not None:
+            # TODO: make sure the new conflict clause will get watch literals and will also get assigned next
+            # TODO: if we need to jump to -1, the formula is UNSAT
+            self._backtrack(conflict_clause)
+
         # SHOULD IMPELEMENT VSIDS, ITS EASIER
+        self._decide()
         return False
