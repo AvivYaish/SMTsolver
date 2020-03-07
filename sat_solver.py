@@ -307,23 +307,29 @@ class SATSolver:
         self._level = len(self._assignment_by_level)
         self._last_assigned_literals = deque()               # a queue of the literals assigned in the last level
         self._watch_literal_to_clause = {}                   # A literal -> set(clause) dictionary.
-        self._unit_clauses = set()
-        self._add_watch_literals()
 
-    def _add_watch_literals(self):
         for clause in self._formula:
-            for idx, literal in enumerate(clause):
-                if literal not in self._watch_literal_to_clause:
-                    self._watch_literal_to_clause[literal] = set()
-                if -literal not in self._watch_literal_to_clause:
-                    self._watch_literal_to_clause[-literal] = set()
+            if not self._unit_propagation(clause):
+                self._add_watch_literals(clause)
 
-                if idx == (len(clause) - 1):
-                    self._watch_literal_to_clause[literal].add(clause)
-                    if idx == 0:    # unit clause
-                        self._assign(literal, literal > 0, clause)
-                elif idx == (len(clause) - 2):
-                    self._watch_literal_to_clause[literal].add(clause)
+    def _unit_propagation(self, clause):
+        if len(clause) == 1:
+            for literal in clause:
+                self._assign(literal, literal > 0, clause)
+            return True
+        return False
+
+    def _add_watch_literals(self, clause):
+        for idx, literal in enumerate(clause):
+            if literal not in self._watch_literal_to_clause:
+                self._watch_literal_to_clause[literal] = set()
+            if -literal not in self._watch_literal_to_clause:
+                self._watch_literal_to_clause[-literal] = set()
+
+            if idx == (len(clause) - 1):
+                self._watch_literal_to_clause[literal].add(clause)
+            elif idx == (len(clause) - 2):
+                self._watch_literal_to_clause[literal].add(clause)
 
         # Whenever there is a backjump to level k:
         # - For every index after k-1:
@@ -360,7 +366,49 @@ class SATSolver:
     def _get_assignment_clause(self, variable):
         return self._assignment[variable]["clause"]
 
+    """
+    >>> clause1 = frozenset({1})
+    >>> clause3 = frozenset({-1, 2})
+    >>> clause5 = frozenset({-1, -2})
+    >>> solver = SATSolver(set({clause1, clause3, clause5}))
+    >>> solver._conflict_resolution(solver._bcp())
+    True
+            ... 5: {"value": True, "clause": clause1, "level": 4},
+        ... 6: {"value": True, "clause": clause2, "level": 4},
+        ... 7: {"value": True, "clause": clause3, "level": 4},
+        ... 8: {"value": True, "clause": clause4, "level": 4},
+        ... 9: {"value": True, "clause": clause5, "level": 4}
+    """
+
     def _conflict_resolution(self, clause):
+        """
+        >>> clause1 = frozenset({-1, -4, 5})
+        >>> clause2 = frozenset({-4, 6})
+        >>> clause3 = frozenset({-5, -6, 7})
+        >>> clause4 = frozenset({-7, 8})
+        >>> clause5 = frozenset({-2, -7, 9})
+        >>> clause6 = frozenset({-8, -9})
+        >>> clause7 = frozenset({-8, 9})
+        >>> assignment = {
+        ... 1: {"value": True, "clause": frozenset(), "level": 1},
+        ... 2: {"value": True, "clause": frozenset(), "level": 2},
+        ... 3: {"value": True, "clause": frozenset(), "level": 3},
+        ... 4: {"value": True, "clause": frozenset(), "level": 4},
+        ... }
+        >>> solver = SATSolver(set({clause1, clause2, clause3, clause4, clause5, clause6, clause7}), assignment=assignment)
+        >>> solver._level = 5
+        >>> solver._last_assigned_literals.append(-4)
+        >>> solver._watch_literal_to_clause[-4] = set({clause1, clause2})
+        >>> solver._watch_literal_to_clause[-5] = set({clause3})
+        >>> solver._watch_literal_to_clause[-6] = set({clause3})
+        >>> solver._watch_literal_to_clause[-7] = set({clause4, clause5})
+        >>> solver._watch_literal_to_clause[-8] = set({clause6})
+        >>> solver._watch_literal_to_clause[-9] = set({clause6})
+        >>> solver._bcp() == clause6
+        True
+        >>> solver._conflict_resolution(solver._bcp())
+        True
+        """
         while True:
             last_assigned_literal = None
             previous_max_assignment_level = -1
@@ -391,8 +439,8 @@ class SATSolver:
             for literal in chain(clause, clause_on_incoming_edge):
                 if -literal in new_clause:
                     new_clause.remove(-literal)
-                    continue
-                new_clause.add(literal)
+                else:
+                    new_clause.add(literal)
             clause = new_clause
 
     def _bcp(self):
@@ -453,7 +501,11 @@ class SATSolver:
                     for unassigned_literal in clause:
                         # If the current literal is assigned,
                         # it cannot replace the current watch literal
-                        if abs(unassigned_literal) in self._assignment:
+                        variable = abs(unassigned_literal)
+                        if variable in self._assignment:
+                            if self._get_assignment(variable) == (unassigned_literal > 0):
+                                self._satisfied_clauses.add(clause)
+                                break
                             continue
                         unassigned_literals.append(unassigned_literal)
 
@@ -466,7 +518,8 @@ class SATSolver:
 
                         if len(unassigned_literals) > 1:
                             break
-
+                    if clause in self._satisfied_clauses:
+                        continue
                     if len(unassigned_literals) == 0:
                         # Clause is UNSAT, return it as the conflict-clause
                         return clause
