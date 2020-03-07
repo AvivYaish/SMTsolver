@@ -487,10 +487,10 @@ class SATSolver:
         seen_literals = set()   # Avoid going over literals more than once
 
         while self._last_assigned_literals:
-            assigned_literal = self._last_assigned_literals.popleft()
-            if (assigned_literal in seen_literals) or (assigned_literal not in self._watch_literal_to_clause):
+            watch_literal = self._last_assigned_literals.popleft()
+            if (watch_literal in seen_literals) or (watch_literal not in self._watch_literal_to_clause):
                 continue
-            seen_literals.add(assigned_literal)
+            seen_literals.add(watch_literal)
 
             # For every clause that assigned_literal is watching:
             # - If it is satisfied, nothing to do.
@@ -498,50 +498,50 @@ class SATSolver:
             #   - If it has 0 unassigned literals, it is UNSAT
             #   - If it has 1 unassigned literals, assign the correct value to the last literal
             #   - If it has > 2 unassigned literals, pick one to become the new watch literal
-            for clause in self._watch_literal_to_clause[assigned_literal]:
+            for clause in self._watch_literal_to_clause[watch_literal]:
                 if (clause not in self._satisfied_clauses) and \
-                        (self._get_assignment(abs(assigned_literal)) == (assigned_literal > 0)):
+                        (self._get_assignment(abs(watch_literal)) == (watch_literal > 0)):
                     self._add_satisfied_clause(clause)
-                if clause in self._satisfied_clauses:
-                    continue
+                if clause not in self._satisfied_clauses:
+                    conflict_clause = self._replace_watch_literal(watch_literal, clause)
+                    if conflict_clause is not None:
+                        return conflict_clause
 
-                unassigned_literals = []
-                for unassigned_literal in clause:
-                    # If the current literal is assigned,
-                    # it cannot replace the current watch literal
-                    variable = abs(unassigned_literal)
-                    if variable in self._assignment:
-                        if self._get_assignment(variable) == (unassigned_literal > 0):
-                            # If the current literal satisfies the clause, nothing to do
-                            self._add_satisfied_clause(clause)
-                            break
-                        continue
-                    unassigned_literals.append(unassigned_literal)
-
-                    # If the current literal is already watching the current clause,
-                    # it cannot replace the current watch literal
-                    if clause in self._watch_literal_to_clause[unassigned_literal]:
-                        continue
-                    self._watch_literal_to_clause[-assigned_literal].remove(clause)
-                    self._watch_literal_to_clause[unassigned_literal].add(clause)
-
-                    if len(unassigned_literals) > 1:
-                        break
-
-                if clause in self._satisfied_clauses:
-                    # The clause is satisfied, nothing to do
-                    continue
-                if len(unassigned_literals) == 0:
-                    # Clause is UNSAT, return it as the conflict-clause
-                    return clause
-                if len(unassigned_literals) == 1:
-                    # The clause is still not satisfied, and has only one unassigned literal.
-                    # Assign the correct value to it. Because it is now watching the clause,
-                    # and was also added to self._last_assigned_literals, we will later on
-                    # check if the assignment causes a conflict
-                    unassigned_literal = unassigned_literals.pop()
-                    self._assign(unassigned_literal, unassigned_literal > 0, clause)
         return None # No conflict-clause
+
+    def _replace_watch_literal(self, watch_literal, clause):
+        unassigned_literals = []
+        for unassigned_literal in clause:
+            variable = abs(unassigned_literal)
+            if variable in self._assignment:
+                # If the current literal is assigned,
+                # it cannot replace the current watch literal
+                if self._get_assignment(variable) == (unassigned_literal > 0):
+                    # If the current literal satisfies the clause, no need to replace watch literal
+                    self._add_satisfied_clause(clause)
+                    return None
+                continue
+            unassigned_literals.append(unassigned_literal)
+            if (len(unassigned_literals) > 1) and (clause not in self._watch_literal_to_clause[-watch_literal]):
+                break
+
+            # If the current literal is already watching the clause,
+            # it cannot replace the watch literal
+            if clause not in self._watch_literal_to_clause[unassigned_literal]:
+                self._watch_literal_to_clause[-watch_literal].remove(clause)
+                self._watch_literal_to_clause[unassigned_literal].add(clause)
+
+        if len(unassigned_literals) == 0:
+            # Clause is UNSAT, return it as the conflict-clause
+            return clause
+        if len(unassigned_literals) == 1:
+            # The clause is still not satisfied, and has only one unassigned literal.
+            # Assign the correct value to it. Because it is now watching the clause,
+            # and was also added to self._last_assigned_literals, we will later on
+            # check if the assignment causes a conflict
+            unassigned_literal = unassigned_literals.pop()
+            self._assign(unassigned_literal, unassigned_literal > 0, clause)
+        return None
 
     def solve(self, assignment) -> bool:
         """
