@@ -528,6 +528,17 @@ class SATSolver:
             self._assign(unassigned_literal, unassigned_literal > 0, clause)
         return None
 
+    def _add_conflict_clause(self, conflict_clause, watch_literal):
+        if self._max_new_clauses <= 0:
+            return
+        if len(self._new_clauses) == self._max_new_clauses:
+            clause_to_remove = self._new_clauses.popleft()
+            for literal in clause_to_remove:
+                if literal in self._watch_literal_to_clause:
+                    self._watch_literal_to_clause[literal].discard(clause_to_remove)
+        self._new_clauses.append(conflict_clause)
+        self._assign_watch_literal(conflict_clause, watch_literal)
+
     def _backtrack(self, level):
         # Whenever there is a backjump to level k:
         # - For every index after k-1:
@@ -555,8 +566,11 @@ class SATSolver:
         conflict_clause = self._bcp()
         if conflict_clause is not None:
             conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
-            self._assign_watch_literal(conflict_clause, watch_literal)
-            # TODO: if we need to jump to -1, the formula is UNSAT
+            if level_to_jump_to == -1:
+                # One of the assignments that satisfy the formula's unit clauses causes a conflict,
+                # so the formula is UNSAT
+                return False
+            self._add_conflict_clause(conflict_clause, watch_literal)
             self._backtrack(level_to_jump_to)
 
         # SHOULD IMPELEMENT VSIDS, ITS EASIER
