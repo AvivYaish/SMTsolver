@@ -310,7 +310,7 @@ class SATSolver:
         >>> clause3 = frozenset({-1, 2})
         >>> clause5 = frozenset({-1, -2})
         >>> solver = SATSolver(set({clause1, clause3, clause5}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._conflict_resolution(solver._bcp()) == (frozenset({-1}), -1, -1)
         True
         >>> clause1 = frozenset({-1, -4, 5})
@@ -337,7 +337,7 @@ class SATSolver:
         >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
         >>> solver._literal_to_watched_clause[-8] = set({clause6})
         >>> solver._literal_to_watched_clause[-9] = set({clause6})
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._conflict_resolution(solver._bcp()) == (frozenset({-7, -2}), -7, 2)
         True
         """
@@ -371,26 +371,26 @@ class SATSolver:
     def _bcp(self):
         """
         >>> solver = SATSolver()
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._bcp() is None
         True
         >>> solver._assignment
         {}
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._bcp() is None
         True
         >>> clause2 = frozenset({1, 2})
         >>> solver = SATSolver(set({clause1, clause2}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._bcp() is None
         True
         >>> solver._assignment == {1: {"value": True, "clause": clause1, "level": 0, "idx": 0}}
         True
         >>> clause3 = frozenset({-1, 2})
         >>> solver = SATSolver(set({clause1, clause3}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._bcp() is None
         True
         >>> solver._assignment == {
@@ -399,12 +399,12 @@ class SATSolver:
         True
         >>> clause4 = frozenset({-2})
         >>> solver = SATSolver(set({clause1, clause3, clause4}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._bcp() == clause3
         True
         >>> clause5 = frozenset({-1, -2})
         >>> solver = SATSolver(set({clause1, clause3, clause5}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._bcp() == clause5
         True
         >>> clause1 = frozenset({-1, -4, 5})
@@ -431,7 +431,7 @@ class SATSolver:
         >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
         >>> solver._literal_to_watched_clause[-8] = set({clause6})
         >>> solver._literal_to_watched_clause[-9] = set({clause6})
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._bcp() == clause6
         True
         """
@@ -530,16 +530,16 @@ class SATSolver:
         self._assignment_by_level.append(list())
         self._satisfaction_by_level.append(list())
 
-    def _unit_propagation(self):
+    def _unit_clauses(self):
         """
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
         True
         >>> clause2 = frozenset({1, 2})
         >>> solver = SATSolver(set({clause1, clause2}))
-        >>> solver._unit_propagation()
+        >>> solver._unit_clauses()
         >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
         True
         """
@@ -603,7 +603,7 @@ class SATSolver:
 
         :return: True if SAT, False otherwise.
         """
-        self._unit_propagation()
+        self._unit_clauses()
         while True:
             # Iterative BCP
             conflict_clause = self._bcp()
@@ -616,8 +616,8 @@ class SATSolver:
                 self._add_conflict_clause(conflict_clause, watch_literal)
                 conflict_clause = self._bcp()
 
+            # If all clauses are satisfied, we are done
             if self._formula.issubset(self._satisfied_clauses):
-                # If all clauses are satisfied, we are done
                 return True
 
             self._decide()
