@@ -144,21 +144,21 @@ class TestSATSolver:
         assert SATSolver().solve()
 
         clause1 = frozenset({1})
-        assert SATSolver(set({clause1})).solve()
+        assert SATSolver({clause1}).solve()
 
         clause2 = frozenset({-1})
-        assert not SATSolver(set({clause1, clause2})).solve()
+        assert not SATSolver({clause1, clause2}).solve()
 
         clause3 = frozenset({1, 2})
-        assert SATSolver(set({clause1, clause3})).solve()
+        assert SATSolver({clause1, clause3}).solve()
 
         clause4 = frozenset({-1, 2})
-        assert SATSolver(set({clause1, clause4})).solve()
+        assert SATSolver({clause1, clause4}).solve()
 
         clause5 = frozenset({-1, 2, -2})
-        assert SATSolver(set({clause1, clause5})).solve()
+        assert SATSolver({clause1, clause5}).solve()
 
-        assert SATSolver(set({clause1, clause3, clause4, clause5})).solve()
+        assert SATSolver({clause1, clause3, clause4, clause5}).solve()
 
         clause1 = frozenset({-1, -4, 5})
         clause2 = frozenset({-4, 6})
@@ -169,7 +169,6 @@ class TestSATSolver:
         clause7 = frozenset({-8, 9})
         solver = SATSolver({clause1, clause2, clause3, clause4, clause5, clause6, clause7})
         assert solver.solve()
-
         assert solver.get_assignment() == {4: False, 6: False, 7: False, 8: False, 9: True}
 
         clause1 = frozenset({5, -1, 3})
