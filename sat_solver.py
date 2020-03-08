@@ -295,14 +295,8 @@ class SATSolver:
             self._unassigned_vsids_count[literal] = self._assigned_vsids_count[literal]
             del self._assigned_vsids_count[literal]
 
-    def _get_assignment_level(self, variable: int):
-        return self._assignment[variable]["level"]
-
-    def _get_assignment_idx(self, variable: int):
-        return self._assignment[variable]["idx"]
-
-    def _get_assignment_clause(self, variable: int):
-        return self._assignment[variable]["clause"]
+    def get_assignment(self):
+        return {variable: self._assignment[variable]["value"] for variable in self._assignment}
 
     def _conflict_resolution(self, conflict_clause):
         """
@@ -346,7 +340,7 @@ class SATSolver:
             last_literal, prev_max_level, max_level, max_idx, max_count = None, -1, -1, -1, 0
             for literal in conflict_clause:
                 variable = abs(literal)
-                level, idx = self._get_assignment_level(variable), self._get_assignment_idx(variable)
+                level, idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
                 if level > max_level:
                     prev_max_level = max_level
                     max_level, max_idx, max_count = level, -1, 0
@@ -364,7 +358,7 @@ class SATSolver:
                 return frozenset(conflict_clause), last_literal, prev_max_level
 
             # Resolve the conflict clause with the clause on the incoming edge
-            conflict_clause |= self._get_assignment_clause(abs(last_literal))
+            conflict_clause |= self._assignment[abs(last_literal)]["clause"]
             conflict_clause.remove(last_literal)
             conflict_clause.remove(-last_literal)
 
@@ -522,9 +516,6 @@ class SATSolver:
         literal, count = self._unassigned_vsids_count.most_common(1).pop()
         self._create_new_level()
         self._assign(None, literal)
-
-    def get_assignment(self):
-        return {variable: self._assignment[variable]["value"] for variable in self._assignment}
 
     def _create_new_level(self):
         self._assignment_by_level.append(list())
