@@ -250,9 +250,7 @@ class SATSolver:
 
         self._create_new_level()
         for clause in self._formula:
-            for literal in clause:
-                self._add_literal(literal)
-                self._literal_to_clause[literal].add(clause)
+            self._add_literals(clause)
         for clause in self._formula:
             self._add_clause(clause)
 
@@ -302,10 +300,15 @@ class SATSolver:
             preprocessed_formula.append(clause)
         return frozenset(preprocessed_formula)
 
-    def _add_literal(self, literal):
+    def _add_literal(self, clause, literal):
         if literal not in self._literal_to_clause:
             self._literal_to_clause[literal] = set()
             self._literal_to_watched_clause[literal] = set()
+        self._literal_to_clause[literal].add(clause)
+
+    def _add_literals(self, clause):
+        for literal in clause:
+            self._add_literal(clause, literal)
 
     def _add_clause(self, clause):
         self._unassigned_vsids_count.update(clause)
@@ -349,31 +352,30 @@ class SATSolver:
         if -variable in self._literal_to_clause:
             self._last_assigned_literals.append(-variable)
 
-        if value:
+        for literal in [variable, -variable]:
+            if literal in self._unassigned_vsids_count:
+                self._assigned_vsids_count[literal] = self._unassigned_vsids_count[literal]
+                del self._unassigned_vsids_count[literal]
+
+        # Keep data structures related to satisfied clauses up to date
+        if (variable > 0) == value:
             literal = variable
         else:
             literal = -variable
-        self._assigned_vsids_count[literal] = self._unassigned_vsids_count[literal]
-        del self._unassigned_vsids_count[literal]
-
-        # Keep data structures related to satisfied clauses up to date
-        if not ((variable > 0) == value):
-            variable = -variable
-        self._satisfied_clauses |= self._literal_to_clause[variable]
-        self._satisfaction_by_level[-1].extend(self._literal_to_clause[variable])
+        self._satisfaction_by_level[-1].extend(self._literal_to_clause[literal] - self._satisfied_clauses)
+        self._satisfied_clauses |= self._literal_to_clause[literal]
         return True
 
     def _assign_to_satisfy(self, clause, literal: int):
         return self._assign(abs(literal), literal > 0, clause)
 
     def _unassign(self, variable):
-        if self._assignment[variable]:
-            literal = variable
-        else:
-            literal = -variable
         del self._assignment[variable]
-        self._unassigned_vsids_count[literal] = self._assigned_vsids_count[literal]
-        del self._assigned_vsids_count[literal]
+
+        for literal in [variable, -variable]:
+            if literal in self._assigned_vsids_count:
+                self._unassigned_vsids_count[literal] = self._assigned_vsids_count[literal]
+                del self._assigned_vsids_count[literal]
 
     def _get_assignment(self, variable: int):
         return self._assignment[variable]["value"]
@@ -422,9 +424,15 @@ class SATSolver:
         True
         """
         conflict_clause = set(conflict_clause)
+        last_decision_literal = self._assignment_by_level[-1][0]
+        if not self._get_assignment(last_decision_literal):
+            last_decision_literal = -last_decision_literal
+        seen_negation_last_decision_literal = False
         while True:
             last_literal, last_variable, prev_max_level, max_level, max_idx, max_count = None, None, -1, -1, -1, 0
             for literal in conflict_clause:
+                if literal == -last_decision_literal:
+                    seen_negation_last_decision_literal = True
                 variable = abs(literal)
                 level, idx = self._get_assignment_level(variable), self._get_assignment_idx(variable)
                 if level > max_level:
@@ -510,15 +518,15 @@ class SATSolver:
         seen_literals = set()   # Avoid going over literals more than once
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
-            if (watch_literal in seen_literals) or (watch_literal not in self._literal_to_watched_clause):
+            if (watch_literal in seen_literals) or (watch_literal not in self._literal_to_watched_clause) or \
+                    (self._get_assignment(abs(watch_literal)) == (watch_literal > 0)):
                 continue
             seen_literals.add(watch_literal)
 
-            for clause in self._literal_to_watched_clause[watch_literal].copy():
-                if clause not in self._satisfied_clauses:
-                    conflict_clause = self._replace_watch_literal(clause, watch_literal)
-                    if conflict_clause is not None:
-                        return conflict_clause
+            for clause in (self._literal_to_watched_clause[watch_literal] - self._satisfied_clauses).copy():
+                conflict_clause = self._replace_watch_literal(clause, watch_literal)
+                if conflict_clause is not None:
+                    return conflict_clause
         return None # No conflict-clause
 
     def _replace_watch_literal(self, clause, watch_literal: int):
@@ -569,13 +577,17 @@ class SATSolver:
                     self._literal_to_watched_clause[literal].discard(clause_to_remove)
 
         self._new_clauses.append(conflict_clause)
+        self._add_literals(conflict_clause)
         self._add_clause(conflict_clause)
         self._assign_to_satisfy(conflict_clause, literal_to_assign)
 
     def _backtrack(self, level: int):
-        while len(self._assignment_by_level) >= level:
-            map(self._unassign, self._assignment_by_level.pop())
-            map(self._satisfied_clauses.remove, self._satisfaction_by_level.pop())
+        self._last_assigned_literals = deque()
+        while len(self._assignment_by_level) > level + 1:
+            for variable in self._assignment_by_level.pop():
+                self._unassign(variable)
+            for clause in self._satisfaction_by_level.pop():
+                self._satisfied_clauses.remove(clause)
 
     def _decide(self) -> int:
         """
@@ -666,8 +678,9 @@ class SATSolver:
         self._create_new_level()
         decision_level = len(self._satisfaction_by_level)
         literal_to_assign = self._decide()
-        if (not self._assign_to_satisfy(None, literal_to_assign)) or (not self.solve()):
-            self._backtrack(decision_level)
-            return False
+        self._assign_to_satisfy(None, literal_to_assign)
 
-        return True
+        if self.solve():
+            return True
+        self._backtrack(decision_level)
+        return False
