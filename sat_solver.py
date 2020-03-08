@@ -497,7 +497,7 @@ class SATSolver:
                 continue
             seen_literals.add(watch_literal)
 
-            for clause in (self._literal_to_watched_clause[watch_literal] - self._satisfied_clauses).copy():
+            for clause in (self._literal_to_watched_clause[watch_literal] - self._satisfied_clauses):
                 conflict_clause = self._replace_watch_literal(clause, watch_literal)
                 if conflict_clause is not None:
                     return conflict_clause
