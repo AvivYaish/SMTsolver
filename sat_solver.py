@@ -249,13 +249,15 @@ class SATSolver:
         self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
 
         self._create_new_level()
-        # First, create data structures for every literal, then create the data structures for every clause
-        # The order is important, because _add_clause performs unit propagation and relies on the data structures
-        # to already exist for *all* clauses
-        for clause in self._formula:
-            self._add_literals(clause)
+        # First, create data structures for every literal and clause, and then perform unit propagation.
+        # The order is important, because propagation relies on the data structures to already exist for *all* clauses.
+        unit_clauses = []
         for clause in self._formula:
             self._add_clause(clause)
+            if len(clause) == 1:
+                unit_clauses.append(clause)
+        for clause in unit_clauses:
+            self._unit_propagation(clause)
 
     @staticmethod
     def _preprocessing(cnf_formula):
@@ -303,46 +305,33 @@ class SATSolver:
             preprocessed_formula.append(clause)
         return frozenset(preprocessed_formula)
 
-    def _add_literal(self, clause, literal):
-        if literal not in self._literal_to_clause:
-            self._literal_to_clause[literal] = set()
-            self._literal_to_watched_clause[literal] = set()
-            self._unassigned_vsids_count[literal] = 0
-        self._literal_to_clause[literal].add(clause)
-
-    def _add_literals(self, clause):
-        for literal in clause:
-            self._add_literal(clause, literal)
-
     def _add_clause(self, clause):
-        for literal in clause:
+        for idx, literal in enumerate(clause):
+            if literal not in self._literal_to_clause:
+                self._literal_to_clause[literal] = set()
+                self._literal_to_watched_clause[literal] = set()
+            if (literal not in self._unassigned_vsids_count) and (literal not in self._assigned_vsids_count):
+                self._unassigned_vsids_count[literal] = 0
+
+            self._literal_to_clause[literal].add(clause)
+            if idx <= 1:
+                self._assign_watch_literal(clause, literal)
             if literal in self._unassigned_vsids_count:
                 self._unassigned_vsids_count[literal] += 1
             elif literal in self._assigned_vsids_count:
                 self._assigned_vsids_count[literal] += 1
-        self._unit_propagation(clause)
-        self._create_watch_literals(clause)
 
     def _create_new_level(self):
         self._assignment_by_level.append(list())
         self._satisfaction_by_level.append(list())
 
     def _unit_propagation(self, clause):
-        if len(clause) == 1:
-            for literal in clause:
-                if abs(literal) not in self._assignment:
-                    self._assign_to_satisfy(clause, literal)
+        for literal in clause:
+            if abs(literal) not in self._assignment:
+                self._assign_to_satisfy(clause, literal)
 
     def _assign_watch_literal(self, clause, literal: int):
         self._literal_to_watched_clause[literal].add(clause)
-
-    def _create_watch_literals(self, clause):
-        count = 0
-        for literal in clause:
-            self._assign_watch_literal(clause, literal)
-            count += 1
-            if count > 1:
-                return
 
     def _assign(self, variable: int, value: bool, clause):
         self._assignment[variable] = {
@@ -572,7 +561,6 @@ class SATSolver:
                     self._literal_to_watched_clause[literal].discard(clause_to_remove)
 
         self._new_clauses.append(conflict_clause)
-        self._add_literals(conflict_clause)
         self._add_clause(conflict_clause)
         self._assign_to_satisfy(conflict_clause, literal_to_assign)
 
