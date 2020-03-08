@@ -260,7 +260,7 @@ def import_file(filename):
 
 
 class SATSolver:
-    def __init__(self, formula=None, assignment=None, assignment_by_level=None, max_new_clauses=100):
+    def __init__(self, formula=None, assignment=None, assignment_by_level=None, max_new_clauses=float('inf')):
         """
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
@@ -284,14 +284,25 @@ class SATSolver:
         self._assignment = assignment
         self._assignment_by_level = assignment_by_level
         self._satisfaction_by_level = []
+        self._literal_to_clause = {}
+        self._vsids_count = {}
         self._satisfied_clauses = set()
         self._last_assigned_literals = deque()               # a queue of the literals assigned in the last level
         self._watch_literal_to_clause = {}                   # A literal -> set(clause) dictionary.
-        self._create_new_level()
 
+        self._create_new_level()
         for clause in self._formula:
-            self._unit_propagation(clause)
-            self._create_watch_literals(clause)
+            self._add_clause(clause)
+
+    def _add_clause(self, clause):
+        self._unit_propagation(clause)
+        self._create_watch_literals(clause)
+        for literal in clause:
+            if literal not in self._literal_to_clause:
+                self._literal_to_clause[literal] = set()
+                self._vsids_count[literal] = 0
+            self._literal_to_clause[literal].add(clause)
+            self._vsids_count[literal] += 1
 
     def _create_new_level(self):
         self._assignment_by_level.append(list())
@@ -538,18 +549,18 @@ class SATSolver:
                     self._watch_literal_to_clause[literal].discard(clause_to_remove)
 
         self._new_clauses.append(conflict_clause)
-        self._create_watch_literals(conflict_clause)
+        self._add_clause(conflict_clause)
 
     def _backtrack(self, level: int):
-        cur_level = len(self._assignment_by_level) - 1
-        while cur_level > level:
-            cur_level -= 1
+        cur_level = len(self._assignment_by_level)
+        while cur_level >= level:
             assigned_variables = self._assignment_by_level.pop()
             satisfied_clauses = self._satisfaction_by_level.pop()
             for variable in assigned_variables:
                 del self._assignment[variable]
             for clause in satisfied_clauses:
                 self._satisfied_clauses.remove(clause)
+            cur_level -= 1
 
     def _decide(self):
         pass
@@ -565,7 +576,7 @@ class SATSolver:
                 # One of the assignments that satisfy the formula's unit clauses causes a conflict, the formula is UNSAT
                 return False
             self._backtrack(level_to_jump_to)
-            self._add_conflict_clause(conflict_clause, watch_literal)
+            self._add_conflict_clause(conflict_clause)
             self._assign_to_satisfy(conflict_clause, watch_literal)
             conflict_clause = self._bcp()
 
