@@ -328,41 +328,31 @@ class SATSolver:
     def _unit_propagation(self, clause):
         for literal in clause:
             if abs(literal) not in self._assignment:
-                self._assign_to_satisfy(clause, literal)
+                self._assign(clause, literal)
 
     def _assign_watch_literal(self, clause, literal: int):
         self._literal_to_watched_clause[literal].add(clause)
 
-    def _assign(self, variable: int, value: bool, clause):
+    def _assign(self, clause, literal: int):
+        variable = abs(literal)
         self._assignment[variable] = {
-            "value": value,     # True or False
-            "clause": clause,   # The clause which caused the assignment
+            "value": literal > 0,   # True or False
+            "clause": clause,       # The clause which caused the assignment
             "level": len(self._assignment_by_level) - 1,
             "idx": len(self._assignment_by_level[-1])   # Defines an assignment order in the same level
         }
 
-        # Keep data structures related to variable assignment up to date
-        self._assignment_by_level[-1].append(variable)
-        self._last_assigned_literals.append(variable)
-        if -variable in self._literal_to_clause:
-            self._last_assigned_literals.append(-variable)
-
-        # Keep VSIDS data structures up to date
-        for literal in [variable, -variable]:
-            self._assigned_vsids_count[literal] = self._unassigned_vsids_count[literal]
-            del self._unassigned_vsids_count[literal]
-
         # Keep data structures related to satisfied clauses up to date
-        if (variable > 0) == value:
-            literal = variable
-        else:
-            literal = -variable
         newly_satisfied_clauses = self._literal_to_clause[literal] - self._satisfied_clauses
         self._satisfaction_by_level[-1].extend(newly_satisfied_clauses)
         self._satisfied_clauses |= newly_satisfied_clauses
 
-    def _assign_to_satisfy(self, clause, literal: int):
-        self._assign(abs(literal), literal > 0, clause)
+        # Keep data structures related to variable assignment up to date
+        self._assignment_by_level[-1].append(variable)
+        for cur_sign in [variable, -variable]:
+            self._last_assigned_literals.append(cur_sign)
+            self._assigned_vsids_count[cur_sign] = self._unassigned_vsids_count[cur_sign]
+            del self._unassigned_vsids_count[cur_sign]
 
     def _unassign(self, variable):
         del self._assignment[variable]
@@ -546,7 +536,7 @@ class SATSolver:
             # Assign the correct value to it. Because it is now watching the clause,
             # and was also added to self._last_assigned_literals, we will later on
             # check if the assignment causes a conflict
-            self._assign_to_satisfy(clause, unassigned_literals.pop())
+            self._assign(clause, unassigned_literals.pop())
         return None
 
     def _add_conflict_clause(self, conflict_clause, literal_to_assign: int):
@@ -562,7 +552,7 @@ class SATSolver:
 
         self._new_clauses.append(conflict_clause)
         self._add_clause(conflict_clause)
-        self._assign_to_satisfy(conflict_clause, literal_to_assign)
+        self._assign(conflict_clause, literal_to_assign)
 
     def _backtrack(self, level: int):
         self._last_assigned_literals = deque()
@@ -661,4 +651,4 @@ class SATSolver:
 
             self._create_new_level()
             literal_to_assign = self._decide()
-            self._assign_to_satisfy(None, literal_to_assign)
+            self._assign(None, literal_to_assign)
