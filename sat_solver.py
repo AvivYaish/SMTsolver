@@ -343,13 +343,18 @@ class SATSolver:
             "level": len(self._assignment_by_level) - 1,
             "idx": len(self._assignment_by_level[-1])   # Defines an assignment order in the same level
         }
+
+        # Keep data structures related to variable assignment up to date
         self._assignment_by_level[-1].append(variable)
         self._last_assigned_literals.append(literal)
-        self._last_assigned_literals.append(-literal)
+        if -literal in self._literals:
+            self._last_assigned_literals.append(-literal)
 
+        # Keep data structures related to satisfied clauses up to date
         if not ((literal > 0) == value):
             literal = -literal
         self._satisfied_clauses |= self._literal_to_clause[literal]
+        self._satisfaction_by_level[-1].extend(self._literal_to_clause[literal])
 
     def _assign_to_satisfy(self, clause, literal: int):
         self._assign(literal, literal > 0, clause)
@@ -493,7 +498,7 @@ class SATSolver:
         seen_literals = set()   # Avoid going over literals more than once
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
-            if (watch_literal in seen_literals) or (watch_literal not in self._literals):
+            if watch_literal in seen_literals:
                 continue
             seen_literals.add(watch_literal)
 
