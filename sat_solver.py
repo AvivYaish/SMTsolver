@@ -258,14 +258,11 @@ class SATSolver:
 
             self._literal_to_clause[literal].add(clause)
             if idx <= 1:
-                self._assign_watch_literal(clause, literal)
+                self._literal_to_watched_clause[literal].add(clause)
             if literal in self._unassigned_vsids_count:
                 self._unassigned_vsids_count[literal] += 1
             elif literal in self._assigned_vsids_count:
                 self._assigned_vsids_count[literal] += 1
-
-    def _assign_watch_literal(self, clause, literal: int):
-        self._literal_to_watched_clause[literal].add(clause)
 
     def _assign(self, clause, literal: int):
         variable = abs(literal)
@@ -284,16 +281,17 @@ class SATSolver:
         # Keep data structures related to variable assignment up to date
         self._assignment_by_level[-1].append(variable)
         for cur_sign in [variable, -variable]:
-            self._last_assigned_literals.append(cur_sign)
-            self._assigned_vsids_count[cur_sign] = self._unassigned_vsids_count[cur_sign]
-            del self._unassigned_vsids_count[cur_sign]
+            if cur_sign in self._literal_to_clause:
+                self._last_assigned_literals.append(cur_sign)
+                self._assigned_vsids_count[cur_sign] = self._unassigned_vsids_count[cur_sign]
+                del self._unassigned_vsids_count[cur_sign]
 
     def _unassign(self, variable):
         del self._assignment[variable]
-
-        for literal in [variable, -variable]:
-            self._unassigned_vsids_count[literal] = self._assigned_vsids_count[literal]
-            del self._assigned_vsids_count[literal]
+        for cur_sign in [variable, -variable]:
+            if cur_sign in self._literal_to_clause:
+                self._unassigned_vsids_count[cur_sign] = self._assigned_vsids_count[cur_sign]
+                del self._assigned_vsids_count[cur_sign]
 
     def get_assignment(self):
         return {variable: self._assignment[variable]["value"] for variable in self._assignment}
@@ -304,7 +302,7 @@ class SATSolver:
         >>> clause3 = frozenset({-1, 2})
         >>> clause5 = frozenset({-1, -2})
         >>> solver = SATSolver(set({clause1, clause3, clause5}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._conflict_resolution(solver._bcp()) == (frozenset({-1}), -1, -1)
         True
         >>> clause1 = frozenset({-1, -4, 5})
@@ -331,7 +329,7 @@ class SATSolver:
         >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
         >>> solver._literal_to_watched_clause[-8] = set({clause6})
         >>> solver._literal_to_watched_clause[-9] = set({clause6})
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._conflict_resolution(solver._bcp()) == (frozenset({-7, -2}), -7, 2)
         True
         """
@@ -365,26 +363,26 @@ class SATSolver:
     def _bcp(self):
         """
         >>> solver = SATSolver()
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._bcp() is None
         True
         >>> solver._assignment
         {}
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._bcp() is None
         True
         >>> clause2 = frozenset({1, 2})
         >>> solver = SATSolver(set({clause1, clause2}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._bcp() is None
         True
         >>> solver._assignment == {1: {"value": True, "clause": clause1, "level": 0, "idx": 0}}
         True
         >>> clause3 = frozenset({-1, 2})
         >>> solver = SATSolver(set({clause1, clause3}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._bcp() is None
         True
         >>> solver._assignment == {
@@ -393,12 +391,12 @@ class SATSolver:
         True
         >>> clause4 = frozenset({-2})
         >>> solver = SATSolver(set({clause1, clause3, clause4}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._bcp() == clause3
         True
         >>> clause5 = frozenset({-1, -2})
         >>> solver = SATSolver(set({clause1, clause3, clause5}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._bcp() == clause5
         True
         >>> clause1 = frozenset({-1, -4, 5})
@@ -425,17 +423,12 @@ class SATSolver:
         >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
         >>> solver._literal_to_watched_clause[-8] = set({clause6})
         >>> solver._literal_to_watched_clause[-9] = set({clause6})
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._bcp() == clause6
         True
         """
-        seen_literals = set()   # Avoid going over literals more than once
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
-            if (watch_literal in seen_literals) or (watch_literal not in self._literal_to_watched_clause):
-                continue
-            seen_literals.add(watch_literal)
-
             for clause in (self._literal_to_watched_clause[watch_literal] - self._satisfied_clauses):
                 conflict_clause = self._replace_watch_literal(clause, watch_literal)
                 if conflict_clause is not None:
@@ -465,7 +458,7 @@ class SATSolver:
             if clause not in self._literal_to_watched_clause[unassigned_literal]:
                 # If the current literal is already watching the clause, it cannot replace the watch literal
                 self._literal_to_watched_clause[watch_literal].remove(clause)
-                self._assign_watch_literal(clause, unassigned_literal)
+                self._literal_to_watched_clause[unassigned_literal].add(clause)
 
         if len(unassigned_literals) == 0:
             # Clause is UNSAT, return it as the conflict-clause
@@ -502,9 +495,6 @@ class SATSolver:
                 self._satisfied_clauses.remove(clause)
 
     def _decide(self):
-        """
-
-        """
         # Maintain data structures related to VSIDS
         self._decision_counter += 1
         if self._decision_counter >= self._halving_period:
@@ -513,28 +503,28 @@ class SATSolver:
             for literal in self._assigned_vsids_count:
                 self._assigned_vsids_count[literal] /= 2
 
+        self._create_new_decision_level()
         literal, count = self._unassigned_vsids_count.most_common(1).pop()
-        self._create_new_level()
         self._assign(None, literal)
 
-    def _create_new_level(self):
+    def _create_new_decision_level(self):
         self._assignment_by_level.append(list())
         self._satisfaction_by_level.append(list())
 
-    def _unit_clauses(self):
+    def _satisfy_unit_clauses(self):
         """
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
         True
         >>> clause2 = frozenset({1, 2})
         >>> solver = SATSolver(set({clause1, clause2}))
-        >>> solver._unit_clauses()
+        >>> solver._satisfy_unit_clauses()
         >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
         True
         """
-        self._create_new_level()
+        self._create_new_decision_level()
         for clause in self._formula:
             if len(clause) == 1:
                 for literal in clause:
@@ -594,7 +584,7 @@ class SATSolver:
 
         :return: True if SAT, False otherwise.
         """
-        self._unit_clauses()
+        self._satisfy_unit_clauses()
         while True:
             # Iterative BCP
             conflict_clause = self._bcp()
