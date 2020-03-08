@@ -162,41 +162,6 @@ frozenset({-6, 7}), frozenset({2, -4})})
     return subformulas, transformed_subformulas, transformed_formula
 
 
-def unit_propagation(clause, assignment, level):
-    """
-    >>> unit_propagation(frozenset({}), {}, 0)
-    {}
-    >>> unit_propagation(frozenset({1}), {}, 0)
-    {1: {'value': True, 'clause': frozenset({1}), 'level': 0}}
-    >>> unit_propagation(frozenset({-1}), {}, 0)
-    {1: {'value': False, 'clause': frozenset({-1}), 'level': 0}}
-    >>> unit_propagation(frozenset({-1}), {1: {'value': True, 'clause': frozenset({1}), 'level': 0}}, 0)
-    {1: {'value': True, 'clause': frozenset({1}), 'level': 0}}
-    >>> unit_propagation(frozenset({-1}), {1: {'value': False, 'clause': frozenset({1}), 'level': 0}}, 0)
-    {1: {'value': False, 'clause': frozenset({1}), 'level': 0}}
-    >>> unit_propagation(frozenset({-1}), {1: {'value': False, 'clause': frozenset({1}), 'level': 0}}, 1)
-    {1: {'value': False, 'clause': frozenset({1}), 'level': 0}}
-    >>> unit_propagation(frozenset({1, 2, 3, 4}),
-    ... {1: {'value': False, 'clause': frozenset({1, 2, 3, 4}), 'level': 0},
-    ... 2: {'value': False, 'clause': frozenset({1, 2, 3, 4}), 'level': 0},
-    ... 3: {'value': False, 'clause': frozenset({1, 2, 3, 4}), 'level': 0}}, 0)
-    {1: {'value': False, 'clause': frozenset({1, 2, 3, 4}), 'level': 0}, \
-2: {'value': False, 'clause': frozenset({1, 2, 3, 4}), 'level': 0}, \
-3: {'value': False, 'clause': frozenset({1, 2, 3, 4}), 'level': 0}, \
-4: {'value': True, 'clause': frozenset({1, 2, 3, 4}), 'level': 0}}
-    >>> unit_propagation([1, 2, 3, 4], {2: False, 3: False, 4: False})
-    {2: False, 3: False, 4: False, 1: True}
-    >>> unit_propagation([1, 2, 3, -4], {1: False, 2: False, 3: False})
-    {1: False, 2: False, 3: False, 4: False}
-    >>> unit_propagation([-1, 2, 3, 4], {2: False, 3: False, 4: False})
-    {2: False, 3: False, 4: False, 1: False}
-    >>> unit_propagation([1, 2, 3, 4], {2: False, 3: False})
-    {2: False, 3: False}
-    """
-    # TODO: add tests to _init
-    pass
-
-
 def import_file(filename):
     variables = {}
     with open(filename, 'r') as f:
@@ -213,29 +178,15 @@ def import_file(filename):
 
 
 class SATSolver:
-    def __init__(self, formula=None, assignment=None, assignment_by_level=None, max_new_clauses=float('inf'), halving_period=100):
-        """
-        >>> clause1 = frozenset({1})
-        >>> solver = SATSolver(set({clause1}))
-        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
-        True
-        >>> clause2 = frozenset({1, 2})
-        >>> solver = SATSolver(set({clause1, clause2}))
-        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
-        True
-        """
+    def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=100):
         if formula is None:
             formula = set()
-        if assignment is None:
-            assignment = dict()
-        if assignment_by_level is None:
-            assignment_by_level = []
 
         self._formula = SATSolver._preprocessing(formula)
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
-        self._assignment = assignment
-        self._assignment_by_level = assignment_by_level
+        self._assignment = dict()
+        self._assignment_by_level = []
         self._satisfaction_by_level = []
         self._literal_to_clause = {}
         self._satisfied_clauses = set()
@@ -248,16 +199,8 @@ class SATSolver:
         self._decision_counter = 0             # Count how many decisions have been made
         self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
 
-        self._create_new_level()
-        # First, create data structures for every literal and clause, and then perform unit propagation.
-        # The order is important, because propagation relies on the data structures to already exist for *all* clauses.
-        unit_clauses = []
         for clause in self._formula:
             self._add_clause(clause)
-            if len(clause) == 1:
-                unit_clauses.append(clause)
-        for clause in unit_clauses:
-            self._unit_propagation(clause)
 
     @staticmethod
     def _preprocessing(cnf_formula):
@@ -321,15 +264,6 @@ class SATSolver:
             elif literal in self._assigned_vsids_count:
                 self._assigned_vsids_count[literal] += 1
 
-    def _create_new_level(self):
-        self._assignment_by_level.append(list())
-        self._satisfaction_by_level.append(list())
-
-    def _unit_propagation(self, clause):
-        for literal in clause:
-            if abs(literal) not in self._assignment:
-                self._assign(clause, literal)
-
     def _assign_watch_literal(self, clause, literal: int):
         self._literal_to_watched_clause[literal].add(clause)
 
@@ -376,6 +310,7 @@ class SATSolver:
         >>> clause3 = frozenset({-1, 2})
         >>> clause5 = frozenset({-1, -2})
         >>> solver = SATSolver(set({clause1, clause3, clause5}))
+        >>> solver._unit_propagation()
         >>> solver._conflict_resolution(solver._bcp()) == (frozenset({-1}), -1, -1)
         True
         >>> clause1 = frozenset({-1, -4, 5})
@@ -392,7 +327,8 @@ class SATSolver:
         ... 3: {"value": True, "clause": None, "level": 3, "idx": 1},
         ... 4: {"value": True, "clause": None, "level": 4, "idx": 1},
         ... }
-        >>> solver = SATSolver(formula, assignment=assignment)
+        >>> solver = SATSolver(formula)
+        >>> solver._assignment = assignment
         >>> solver._assignment_by_level = [[], [1], [2], [3], [4]]
         >>> solver._last_assigned_literals.append(-4)
         >>> solver._literal_to_watched_clause[-4] = set({clause1, clause2})
@@ -401,6 +337,7 @@ class SATSolver:
         >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
         >>> solver._literal_to_watched_clause[-8] = set({clause6})
         >>> solver._literal_to_watched_clause[-9] = set({clause6})
+        >>> solver._unit_propagation()
         >>> solver._conflict_resolution(solver._bcp()) == (frozenset({-7, -2}), -7, 2)
         True
         """
@@ -434,22 +371,26 @@ class SATSolver:
     def _bcp(self):
         """
         >>> solver = SATSolver()
+        >>> solver._unit_propagation()
         >>> solver._bcp() is None
         True
         >>> solver._assignment
         {}
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
+        >>> solver._unit_propagation()
         >>> solver._bcp() is None
         True
         >>> clause2 = frozenset({1, 2})
         >>> solver = SATSolver(set({clause1, clause2}))
+        >>> solver._unit_propagation()
         >>> solver._bcp() is None
         True
         >>> solver._assignment == {1: {"value": True, "clause": clause1, "level": 0, "idx": 0}}
         True
         >>> clause3 = frozenset({-1, 2})
         >>> solver = SATSolver(set({clause1, clause3}))
+        >>> solver._unit_propagation()
         >>> solver._bcp() is None
         True
         >>> solver._assignment == {
@@ -458,10 +399,12 @@ class SATSolver:
         True
         >>> clause4 = frozenset({-2})
         >>> solver = SATSolver(set({clause1, clause3, clause4}))
+        >>> solver._unit_propagation()
         >>> solver._bcp() == clause3
         True
         >>> clause5 = frozenset({-1, -2})
         >>> solver = SATSolver(set({clause1, clause3, clause5}))
+        >>> solver._unit_propagation()
         >>> solver._bcp() == clause5
         True
         >>> clause1 = frozenset({-1, -4, 5})
@@ -478,7 +421,8 @@ class SATSolver:
         ... 3: {"value": True, "clause": None, "level": 3, "idx": 1},
         ... 4: {"value": True, "clause": None, "level": 4, "idx": 1},
         ... }
-        >>> solver = SATSolver(formula, assignment=assignment)
+        >>> solver = SATSolver(formula)
+        >>> solver._assignment = assignment
         >>> solver._assignment_by_level = [[], [1], [2], [3], [4]]
         >>> solver._last_assigned_literals.append(-4)
         >>> solver._literal_to_watched_clause[-4] = set({clause1, clause2})
@@ -487,6 +431,7 @@ class SATSolver:
         >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
         >>> solver._literal_to_watched_clause[-8] = set({clause6})
         >>> solver._literal_to_watched_clause[-9] = set({clause6})
+        >>> solver._unit_propagation()
         >>> solver._bcp() == clause6
         True
         """
@@ -562,7 +507,7 @@ class SATSolver:
             for clause in self._satisfaction_by_level.pop():
                 self._satisfied_clauses.remove(clause)
 
-    def _decide(self) -> int:
+    def _decide(self):
         """
 
         """
@@ -575,10 +520,35 @@ class SATSolver:
                 self._assigned_vsids_count[literal] /= 2
 
         literal, count = self._unassigned_vsids_count.most_common(1).pop()
-        return literal
+        self._create_new_level()
+        self._assign(None, literal)
 
     def get_assignment(self):
         return {variable: self._assignment[variable]["value"] for variable in self._assignment}
+
+    def _create_new_level(self):
+        self._assignment_by_level.append(list())
+        self._satisfaction_by_level.append(list())
+
+    def _unit_propagation(self):
+        """
+        >>> clause1 = frozenset({1})
+        >>> solver = SATSolver(set({clause1}))
+        >>> solver._unit_propagation()
+        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
+        True
+        >>> clause2 = frozenset({1, 2})
+        >>> solver = SATSolver(set({clause1, clause2}))
+        >>> solver._unit_propagation()
+        >>> solver._assignment == {1: {'value': True, 'clause': clause1, 'level': 0, 'idx': 0}}
+        True
+        """
+        self._create_new_level()
+        for clause in self._formula:
+            if len(clause) == 1:
+                for literal in clause:
+                    if abs(literal) not in self._assignment:
+                        self._assign(clause, literal)
 
     def solve(self) -> bool:
         """
@@ -633,13 +603,14 @@ class SATSolver:
 
         :return: True if SAT, False otherwise.
         """
+        self._unit_propagation()
         while True:
             # Iterative BCP
             conflict_clause = self._bcp()
             while conflict_clause is not None:
                 conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
                 if level_to_jump_to == -1:
-                    # One of the assignments that satisfy the formula's unit clauses causes a conflict, the formula is UNSAT
+                    # An assignment that satisfies the formula's unit clauses causes a conflict, the formula is UNSAT
                     return False
                 self._backtrack(level_to_jump_to)
                 self._add_conflict_clause(conflict_clause, watch_literal)
@@ -649,6 +620,4 @@ class SATSolver:
                 # If all clauses are satisfied, we are done
                 return True
 
-            self._create_new_level()
-            literal_to_assign = self._decide()
-            self._assign(None, literal_to_assign)
+            self._decide()
