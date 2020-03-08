@@ -244,7 +244,7 @@ class SATSolver:
 
         # VSIDS related fields
         self._unassigned_vsids_count = Counter()
-        self._assigned_vsids_count = Counter()
+        self._assigned_vsids_count = {}
         self._decision_counter = 0             # Count how many decisions have been made
         self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
 
@@ -349,6 +349,13 @@ class SATSolver:
         if -variable in self._literal_to_clause:
             self._last_assigned_literals.append(-variable)
 
+        if value:
+            literal = variable
+        else:
+            literal = -variable
+        self._assigned_vsids_count[literal] = self._unassigned_vsids_count[literal]
+        del self._unassigned_vsids_count[literal]
+
         # Keep data structures related to satisfied clauses up to date
         if not ((variable > 0) == value):
             variable = -variable
@@ -357,6 +364,15 @@ class SATSolver:
 
     def _assign_to_satisfy(self, clause, literal: int):
         self._assign(abs(literal), literal > 0, clause)
+
+    def _unassign(self, variable):
+        if self._assignment[variable]:
+            literal = variable
+        else:
+            literal = -variable
+        del self._assignment[variable]
+        self._unassigned_vsids_count[literal] = self._assigned_vsids_count[literal]
+        del self._assigned_vsids_count[literal]
 
     def _get_assignment(self, variable: int):
         return self._assignment[variable]["value"]
@@ -412,7 +428,7 @@ class SATSolver:
                 level, idx = self._get_assignment_level(variable), self._get_assignment_idx(variable)
                 if level > max_level:
                     prev_max_level = max_level
-                    max_level, max_idx = level, -1
+                    max_level, max_idx, max_count = level, -1, 0
                 elif level > prev_max_level:
                     prev_max_level = level
                 if level == max_level:
@@ -493,7 +509,7 @@ class SATSolver:
         seen_literals = set()   # Avoid going over literals more than once
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
-            if watch_literal in seen_literals:
+            if (watch_literal in seen_literals) or (watch_literal not in self._literal_to_watched_clause):
                 continue
             seen_literals.add(watch_literal)
 
@@ -555,15 +571,9 @@ class SATSolver:
         self._assign_to_satisfy(conflict_clause, literal_to_assign)
 
     def _backtrack(self, level: int):
-        cur_level = len(self._assignment_by_level)
-        while cur_level >= level:
-            assigned_variables = self._assignment_by_level.pop()
-            satisfied_clauses = self._satisfaction_by_level.pop()
-            for variable in assigned_variables:
-                del self._assignment[variable]
-            for clause in satisfied_clauses:
-                self._satisfied_clauses.remove(clause)
-            cur_level -= 1
+        while len(self._assignment_by_level) >= level:
+            map(self._unassign, self._assignment_by_level.pop())
+            map(self._satisfied_clauses.remove, self._satisfaction_by_level.pop())
 
     def _decide(self) -> int:
         """
@@ -578,8 +588,10 @@ class SATSolver:
                 self._assigned_vsids_count[literal] /= 2
 
         literal, count = self._unassigned_vsids_count.most_common(1).pop()
-        self._assigned_vsids_count[literal] = count
         return literal
+
+    def get_assignment(self):
+        return {variable: self._get_assignment(variable) for variable in self._assignment}
 
     def solve(self) -> bool:
         """
@@ -600,6 +612,37 @@ class SATSolver:
         >>> clause5 = frozenset({-1, 2, -2})
         >>> SATSolver(set({clause1, clause5})).solve()
         True
+        >>> SATSolver(set({clause1, clause3, clause4, clause5})).solve()
+        True
+        >>> clause1 = frozenset({-1, -4, 5})
+        >>> clause2 = frozenset({-4, 6})
+        >>> clause3 = frozenset({-5, -6, 7})
+        >>> clause4 = frozenset({-7, 8})
+        >>> clause5 = frozenset({-2, -7, 9})
+        >>> clause6 = frozenset({-8, -9})
+        >>> clause7 = frozenset({-8, 9})
+        >>> solver = SATSolver(set({clause1, clause2, clause3, clause4, clause5, clause6, clause7}))
+        >>> solver.solve()
+        True
+        >>> assignment = solver.get_assignment()
+        >>> assignment[4]
+        False
+        >>> assignment[6]
+        False
+        >>> assignment[7]
+        False
+        >>> assignment[8]
+        False
+        >>> assignment[9]
+        True
+        >>> clause1 = frozenset({5, -1, 3})
+        >>> clause2 = frozenset({-1, -5})
+        >>> clause3 = frozenset({-3, -4})
+        >>> clause4 = frozenset({1, 4})
+        >>> clause5 = frozenset({1, -4})
+        >>> clause6 = frozenset({-1, 5})
+        >>> SATSolver(set({clause1, clause2, clause3, clause4, clause5, clause6})).solve()
+        False
 
         :return: True if SAT, False otherwise.
         """
