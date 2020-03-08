@@ -1,5 +1,4 @@
-from collections import deque
-from itertools import chain
+from collections import deque, Counter
 
 
 def find_closing_bracket(text: str) -> int:
@@ -279,7 +278,6 @@ class SATSolver:
             assignment_by_level = []
 
         self._formula = formula
-        self._literals = set()
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
         self._assignment = assignment
@@ -291,22 +289,21 @@ class SATSolver:
         self._watch_literal_to_clause = {}                   # A literal -> set(clause) dictionary.
 
         # VSIDS related fields
-        self._vsids_count = {}
-        self._decision_counter = 0              # Count how many decisions have been made
-        self._halving_period = halving_period  # The time period after which all vsids counters are halved
+        self._vsids_count = Counter()
+        self._decision_counter = 0             # Count how many decisions have been made
+        self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
 
         self._create_new_level()
         for clause in self._formula:
+            self._vsids_count.update(clause)
             for literal in clause:
                 self._add_literal(literal)
                 self._literal_to_clause[literal].add(clause)
-                self._vsids_count[literal] += 1
         for clause in self._formula:
             self._add_clause(clause)
 
     def _add_literal(self, literal):
-        if literal not in self._literals:
-            self._literals.add(literal)
+        if literal not in self._literal_to_clause:
             self._watch_literal_to_clause[literal] = set()
             self._literal_to_clause[literal] = set()
             self._vsids_count[literal] = 0
@@ -347,7 +344,7 @@ class SATSolver:
         # Keep data structures related to variable assignment up to date
         self._assignment_by_level[-1].append(variable)
         self._last_assigned_literals.append(literal)
-        if -literal in self._literals:
+        if -literal in self._literal_to_clause:
             self._last_assigned_literals.append(-literal)
 
         # Keep data structures related to satisfied clauses up to date
@@ -431,10 +428,6 @@ class SATSolver:
             conflict_clause |= self._get_assignment_clause(last_variable)
             conflict_clause.remove(last_variable)
             conflict_clause.remove(-last_variable)
-
-    def _add_satisfied_clause(self, clause):
-        self._satisfied_clauses.add(clause)
-        self._satisfaction_by_level[-1].append(clause)
 
     def _bcp(self):
         """
@@ -544,7 +537,7 @@ class SATSolver:
             self._assign_to_satisfy(clause, unassigned_literals.pop())
         return None
 
-    def _add_conflict_clause(self, conflict_clause):
+    def _add_conflict_clause(self, conflict_clause, literal_to_assign):
         if self._max_new_clauses <= 0:
             return
 
@@ -557,6 +550,7 @@ class SATSolver:
 
         self._new_clauses.append(conflict_clause)
         self._add_clause(conflict_clause)
+        self._assign_to_satisfy(conflict_clause, literal_to_assign)
 
     def _backtrack(self, level: int):
         cur_level = len(self._assignment_by_level)
@@ -570,16 +564,21 @@ class SATSolver:
             cur_level -= 1
 
     def _decide(self):
+        # Maintain data structures related to VSIDS
         self._decision_counter += 1
         if self._decision_counter >= self._halving_period:
             for literal in self._vsids_count:
                 self._vsids_count[literal] /= 2
-        pass
+
+
+
+        return literal
 
     def solve(self) -> bool:
         """
         :return: True if SAT, False otherwise.
         """
+        # Iterative BCP
         conflict_clause = self._bcp()
         while conflict_clause is not None:
             conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
@@ -587,10 +586,12 @@ class SATSolver:
                 # One of the assignments that satisfy the formula's unit clauses causes a conflict, the formula is UNSAT
                 return False
             self._backtrack(level_to_jump_to)
-            self._add_conflict_clause(conflict_clause)
-            self._assign_to_satisfy(conflict_clause, watch_literal)
+            self._add_conflict_clause(conflict_clause, watch_literal)
             conflict_clause = self._bcp()
 
-        # SHOULD IMPELEMENT VSIDS, ITS EASIER
-        self._decide()
+        if self._satisfied_clauses == self._formula:
+            # If all clauses are satisfied, we are done
+            return True
+
+        literal_to_assign = self._decide()
         return False
