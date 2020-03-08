@@ -304,6 +304,7 @@ class SATSolver:
         if literal not in self._literal_to_clause:
             self._literal_to_clause[literal] = set()
             self._literal_to_watched_clause[literal] = set()
+            self._unassigned_vsids_count[literal] = 0
         self._literal_to_clause[literal].add(clause)
 
     def _add_literals(self, clause):
@@ -311,7 +312,11 @@ class SATSolver:
             self._add_literal(clause, literal)
 
     def _add_clause(self, clause):
-        self._unassigned_vsids_count.update(clause)
+        for literal in clause:
+            if literal in self._unassigned_vsids_count:
+                self._unassigned_vsids_count[literal] += 1
+            elif literal in self._assigned_vsids_count:
+                self._assigned_vsids_count[literal] += 1
         self._unit_propagation(clause)
         self._create_watch_literals(clause)
 
@@ -322,7 +327,8 @@ class SATSolver:
     def _unit_propagation(self, clause):
         if len(clause) == 1:
             for literal in clause:
-                self._assign_to_satisfy(clause, literal)
+                if abs(literal) not in self._assignment:
+                    self._assign_to_satisfy(clause, literal)
 
     def _assign_watch_literal(self, clause, literal: int):
         self._literal_to_watched_clause[literal].add(clause)
@@ -336,9 +342,6 @@ class SATSolver:
                 return
 
     def _assign(self, variable: int, value: bool, clause) -> bool:
-        if variable in self._assignment:
-            return self._assignment[variable] == value
-
         self._assignment[variable] = {
             "value": value,     # True or False
             "clause": clause,   # The clause which caused the assignment
@@ -425,14 +428,9 @@ class SATSolver:
         """
         conflict_clause = set(conflict_clause)
         last_decision_literal = self._assignment_by_level[-1][0]
-        if not self._get_assignment(last_decision_literal):
-            last_decision_literal = -last_decision_literal
-        seen_negation_last_decision_literal = False
         while True:
             last_literal, last_variable, prev_max_level, max_level, max_idx, max_count = None, None, -1, -1, -1, 0
             for literal in conflict_clause:
-                if literal == -last_decision_literal:
-                    seen_negation_last_decision_literal = True
                 variable = abs(literal)
                 level, idx = self._get_assignment_level(variable), self._get_assignment_idx(variable)
                 if level > max_level:
@@ -660,27 +658,22 @@ class SATSolver:
 
         :return: True if SAT, False otherwise.
         """
-        # Iterative BCP
-        conflict_clause = self._bcp()
-        while conflict_clause is not None:
-            conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
-            if level_to_jump_to == -1:
-                # One of the assignments that satisfy the formula's unit clauses causes a conflict, the formula is UNSAT
-                return False
-            self._backtrack(level_to_jump_to)
-            self._add_conflict_clause(conflict_clause, watch_literal)
+        while True:
+            # Iterative BCP
             conflict_clause = self._bcp()
+            while conflict_clause is not None:
+                conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
+                if level_to_jump_to == -1:
+                    # One of the assignments that satisfy the formula's unit clauses causes a conflict, the formula is UNSAT
+                    return False
+                self._backtrack(level_to_jump_to)
+                self._add_conflict_clause(conflict_clause, watch_literal)
+                conflict_clause = self._bcp()
 
-        if self._formula.issubset(self._satisfied_clauses):
-            # If all clauses are satisfied, we are done
-            return True
+            if self._formula.issubset(self._satisfied_clauses):
+                # If all clauses are satisfied, we are done
+                return True
 
-        self._create_new_level()
-        decision_level = len(self._satisfaction_by_level)
-        literal_to_assign = self._decide()
-        self._assign_to_satisfy(None, literal_to_assign)
-
-        if self.solve():
-            return True
-        self._backtrack(decision_level)
-        return False
+            self._create_new_level()
+            literal_to_assign = self._decide()
+            self._assign_to_satisfy(None, literal_to_assign)
