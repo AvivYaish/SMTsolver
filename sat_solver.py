@@ -162,52 +162,6 @@ frozenset({-6, 7}), frozenset({2, -4})})
     return subformulas, transformed_subformulas, transformed_formula
 
 
-def preprocessing(cnf_formula):
-    """
-    :param cnf_formula: a formula, in CNF.
-    :return: processed formula.
-    >>> preprocessing(frozenset({frozenset({})}))
-    frozenset()
-    >>> preprocessing(frozenset({frozenset({1})}))
-    frozenset({frozenset({1})})
-    >>> preprocessing(frozenset({frozenset({1}), frozenset({2})}))
-    frozenset({frozenset({2}), frozenset({1})})
-    >>> preprocessing(frozenset({frozenset({2, 1}), frozenset({3, 4})}))
-    frozenset({frozenset({3, 4}), frozenset({1, 2})})
-    >>> preprocessing(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})}))
-    frozenset({frozenset({3, 4}), frozenset({1, 2})})
-    >>> preprocessing(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})}))
-    frozenset({frozenset({3, 4})})
-    >>> preprocessing(frozenset({frozenset({1, -1}), frozenset({3, -4})}))
-    frozenset({frozenset({3, -4})})
-    >>> preprocessing(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})}))
-    frozenset({frozenset({3, -4})})
-    >>> preprocessing(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})}))
-    frozenset({frozenset({3, -4})})
-    >>> preprocessing(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})}))
-    frozenset({frozenset({3, -4})})
-    >>> preprocessing(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})}))
-    frozenset({frozenset({1, 2, 3, -4})})
-    """
-    preprocessed_formula = []
-    for clause in cnf_formula:
-        trivial_clause = False
-        for literal in clause:
-            if -literal in clause:
-                # Remove trivial clauses
-                # If the same variable appears twice with
-                # different signs in the same clause
-                trivial_clause = True
-                break
-
-        if trivial_clause or (len(clause) == 0):
-            # Remove empty clauses
-            continue
-
-        preprocessed_formula.append(clause)
-    return frozenset(preprocessed_formula)
-
-
 def unit_propagation(clause, assignment, level):
     """
     >>> unit_propagation(frozenset({}), {}, 0)
@@ -277,7 +231,7 @@ class SATSolver:
         if assignment_by_level is None:
             assignment_by_level = []
 
-        self._formula = formula
+        self._formula = SATSolver._preprocessing(formula)
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
         self._assignment = assignment
@@ -301,6 +255,52 @@ class SATSolver:
                 self._literal_to_clause[literal].add(clause)
         for clause in self._formula:
             self._add_clause(clause)
+
+    @staticmethod
+    def _preprocessing(cnf_formula):
+        """
+        :param cnf_formula: a formula, in CNF.
+        :return: processed formula.
+        >>> SATSolver._preprocessing(frozenset({frozenset({})}))
+        frozenset()
+        >>> SATSolver._preprocessing(frozenset({frozenset({1})}))
+        frozenset({frozenset({1})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({1}), frozenset({2})}))
+        frozenset({frozenset({2}), frozenset({1})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({2, 1}), frozenset({3, 4})}))
+        frozenset({frozenset({3, 4}), frozenset({1, 2})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})}))
+        frozenset({frozenset({3, 4}), frozenset({1, 2})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})}))
+        frozenset({frozenset({3, 4})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({1, -1}), frozenset({3, -4})}))
+        frozenset({frozenset({3, -4})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})}))
+        frozenset({frozenset({3, -4})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})}))
+        frozenset({frozenset({3, -4})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})}))
+        frozenset({frozenset({3, -4})})
+        >>> SATSolver._preprocessing(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})}))
+        frozenset({frozenset({1, 2, 3, -4})})
+        """
+        preprocessed_formula = []
+        for clause in cnf_formula:
+            trivial_clause = False
+            for literal in clause:
+                if -literal in clause:
+                    # Remove trivial clauses
+                    # If the same variable appears twice with
+                    # different signs in the same clause
+                    trivial_clause = True
+                    break
+
+            if trivial_clause or (len(clause) == 0):
+                # Remove empty clauses
+                continue
+
+            preprocessed_formula.append(clause)
+        return frozenset(preprocessed_formula)
 
     def _add_literal(self, literal):
         if literal not in self._literal_to_clause:
@@ -332,8 +332,10 @@ class SATSolver:
             if count > 1:
                 return
 
-    def _assign(self, literal: int, value: bool, clause):
-        variable = abs(literal)
+    def _assign(self, variable: int, value: bool, clause):
+        if variable in self._assignment:
+            return
+
         self._assignment[variable] = {
             "value": value,     # True or False
             "clause": clause,   # The clause which caused the assignment
@@ -343,18 +345,18 @@ class SATSolver:
 
         # Keep data structures related to variable assignment up to date
         self._assignment_by_level[-1].append(variable)
-        self._last_assigned_literals.append(literal)
-        if -literal in self._literal_to_clause:
-            self._last_assigned_literals.append(-literal)
+        self._last_assigned_literals.append(variable)
+        if -variable in self._literal_to_clause:
+            self._last_assigned_literals.append(-variable)
 
         # Keep data structures related to satisfied clauses up to date
-        if not ((literal > 0) == value):
-            literal = -literal
-        self._satisfied_clauses |= self._literal_to_clause[literal]
-        self._satisfaction_by_level[-1].extend(self._literal_to_clause[literal])
+        if not ((variable > 0) == value):
+            variable = -variable
+        self._satisfied_clauses |= self._literal_to_clause[variable]
+        self._satisfaction_by_level[-1].extend(self._literal_to_clause[variable])
 
     def _assign_to_satisfy(self, clause, literal: int):
-        self._assign(literal, literal > 0, clause)
+        self._assign(abs(literal), literal > 0, clause)
 
     def _get_assignment(self, variable: int):
         return self._assignment[variable]["value"]
@@ -393,12 +395,12 @@ class SATSolver:
         >>> solver = SATSolver(formula, assignment=assignment)
         >>> solver._assignment_by_level = [[], [1], [2], [3], [4]]
         >>> solver._last_assigned_literals.append(-4)
-        >>> solver._watch_literal_to_clause[-4] = set({clause1, clause2})
-        >>> solver._watch_literal_to_clause[-5] = set({clause3})
-        >>> solver._watch_literal_to_clause[-6] = set({clause3})
-        >>> solver._watch_literal_to_clause[-7] = set({clause4, clause5})
-        >>> solver._watch_literal_to_clause[-8] = set({clause6})
-        >>> solver._watch_literal_to_clause[-9] = set({clause6})
+        >>> solver._literal_to_watched_clause[-4] = set({clause1, clause2})
+        >>> solver._literal_to_watched_clause[-5] = set({clause3})
+        >>> solver._literal_to_watched_clause[-6] = set({clause3})
+        >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
+        >>> solver._literal_to_watched_clause[-8] = set({clause6})
+        >>> solver._literal_to_watched_clause[-9] = set({clause6})
         >>> solver._conflict_resolution(solver._bcp()) == (frozenset({-7, -2}), -7, 2)
         True
         """
@@ -479,12 +481,12 @@ class SATSolver:
         >>> solver = SATSolver(formula, assignment=assignment)
         >>> solver._assignment_by_level = [[], [1], [2], [3], [4]]
         >>> solver._last_assigned_literals.append(-4)
-        >>> solver._watch_literal_to_clause[-4] = set({clause1, clause2})
-        >>> solver._watch_literal_to_clause[-5] = set({clause3})
-        >>> solver._watch_literal_to_clause[-6] = set({clause3})
-        >>> solver._watch_literal_to_clause[-7] = set({clause4, clause5})
-        >>> solver._watch_literal_to_clause[-8] = set({clause6})
-        >>> solver._watch_literal_to_clause[-9] = set({clause6})
+        >>> solver._literal_to_watched_clause[-4] = set({clause1, clause2})
+        >>> solver._literal_to_watched_clause[-5] = set({clause3})
+        >>> solver._literal_to_watched_clause[-6] = set({clause3})
+        >>> solver._literal_to_watched_clause[-7] = set({clause4, clause5})
+        >>> solver._literal_to_watched_clause[-8] = set({clause6})
+        >>> solver._literal_to_watched_clause[-9] = set({clause6})
         >>> solver._bcp() == clause6
         True
         """
@@ -581,6 +583,24 @@ class SATSolver:
 
     def solve(self) -> bool:
         """
+        >>> SATSolver().solve()
+        True
+        >>> clause1 = frozenset({1})
+        >>> SATSolver(set({clause1})).solve()
+        True
+        >>> clause2 = frozenset({-1})
+        >>> SATSolver(set({clause1, clause2})).solve()
+        False
+        >>> clause3 = frozenset({1, 2})
+        >>> SATSolver(set({clause1, clause3})).solve()
+        True
+        >>> clause4 = frozenset({-1, 2})
+        >>> SATSolver(set({clause1, clause4})).solve()
+        True
+        >>> clause5 = frozenset({-1, 2, -2})
+        >>> SATSolver(set({clause1, clause5})).solve()
+        True
+
         :return: True if SAT, False otherwise.
         """
         # Iterative BCP
