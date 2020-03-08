@@ -406,7 +406,7 @@ class SATSolver:
         """
         conflict_clause = set(conflict_clause)
         while True:
-            last_literal, last_variable, prev_max_level, max_level, max_idx, max_count = None, None, -1, -1, -1, 0
+            last_literal, prev_max_level, max_level, max_idx, max_count = None, -1, -1, -1, 0
             for literal in conflict_clause:
                 variable = abs(literal)
                 level, idx = self._get_assignment_level(variable), self._get_assignment_idx(variable)
@@ -418,7 +418,7 @@ class SATSolver:
                 if level == max_level:
                     max_count += 1
                     if idx > max_idx:
-                        last_literal, last_variable, max_idx = literal, variable, idx
+                        last_literal, max_idx = literal, idx
 
             if max_count == 1:
                 # The last assigned literal is the only one from the last decision level
@@ -427,9 +427,9 @@ class SATSolver:
                 return frozenset(conflict_clause), last_literal, prev_max_level
 
             # Resolve the conflict clause with the clause on the incoming edge
-            conflict_clause |= self._get_assignment_clause(last_variable)
-            conflict_clause.remove(last_variable)
-            conflict_clause.remove(-last_variable)
+            conflict_clause |= self._get_assignment_clause(abs(last_literal))
+            conflict_clause.remove(last_literal)
+            conflict_clause.remove(-last_literal)
 
     def _bcp(self):
         """
