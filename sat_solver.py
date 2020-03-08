@@ -671,7 +671,7 @@ class SATSolver:
             self._add_conflict_clause(conflict_clause, watch_literal)
             conflict_clause = self._bcp()
 
-        if self._satisfied_clauses == self._formula:
+        if self._formula.issubset(self._satisfied_clauses):
             # If all clauses are satisfied, we are done
             return True
 
