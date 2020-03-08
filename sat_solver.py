@@ -260,7 +260,7 @@ def import_file(filename):
 
 
 class SATSolver:
-    def __init__(self, formula=None, assignment=None, assignment_by_level=None, max_new_clauses=float('inf')):
+    def __init__(self, formula=None, assignment=None, assignment_by_level=None, max_new_clauses=float('inf'), halving_period=100):
         """
         >>> clause1 = frozenset({1})
         >>> solver = SATSolver(set({clause1}))
@@ -279,30 +279,41 @@ class SATSolver:
             assignment_by_level = []
 
         self._formula = formula
+        self._literals = set()
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
         self._assignment = assignment
         self._assignment_by_level = assignment_by_level
         self._satisfaction_by_level = []
         self._literal_to_clause = {}
-        self._vsids_count = {}
         self._satisfied_clauses = set()
         self._last_assigned_literals = deque()               # a queue of the literals assigned in the last level
         self._watch_literal_to_clause = {}                   # A literal -> set(clause) dictionary.
 
+        # VSIDS related fields
+        self._vsids_count = {}
+        self._decision_counter = 0              # Count how many decisions have been made
+        self._halving_period = halving_period  # The time period after which all vsids counters are halved
+
         self._create_new_level()
         for clause in self._formula:
+            for literal in clause:
+                self._add_literal(literal)
+                self._literal_to_clause[literal].add(clause)
+                self._vsids_count[literal] += 1
+        for clause in self._formula:
             self._add_clause(clause)
+
+    def _add_literal(self, literal):
+        if literal not in self._literals:
+            self._literals.add(literal)
+            self._watch_literal_to_clause[literal] = set()
+            self._literal_to_clause[literal] = set()
+            self._vsids_count[literal] = 0
 
     def _add_clause(self, clause):
         self._unit_propagation(clause)
         self._create_watch_literals(clause)
-        for literal in clause:
-            if literal not in self._literal_to_clause:
-                self._literal_to_clause[literal] = set()
-                self._vsids_count[literal] = 0
-            self._literal_to_clause[literal].add(clause)
-            self._vsids_count[literal] += 1
 
     def _create_new_level(self):
         self._assignment_by_level.append(list())
@@ -314,8 +325,6 @@ class SATSolver:
                 self._assign_to_satisfy(clause, literal)
 
     def _assign_watch_literal(self, clause, literal: int):
-        if literal not in self._watch_literal_to_clause:
-            self._watch_literal_to_clause[literal] = set()
         self._watch_literal_to_clause[literal].add(clause)
 
     def _create_watch_literals(self, clause):
@@ -335,8 +344,12 @@ class SATSolver:
             "idx": len(self._assignment_by_level[-1])   # Defines an assignment order in the same level
         }
         self._assignment_by_level[-1].append(variable)
-        self._last_assigned_literals.append(variable)
-        self._last_assigned_literals.append(-variable)
+        self._last_assigned_literals.append(literal)
+        self._last_assigned_literals.append(-literal)
+
+        if not ((literal > 0) == value):
+            literal = -literal
+        self._satisfied_clauses |= self._literal_to_clause[literal]
 
     def _assign_to_satisfy(self, clause, literal: int):
         self._assign(literal, literal > 0, clause)
@@ -480,18 +493,15 @@ class SATSolver:
         seen_literals = set()   # Avoid going over literals more than once
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
-            if (watch_literal in seen_literals) or (watch_literal not in self._watch_literal_to_clause):
+            if (watch_literal in seen_literals) or (watch_literal not in self._literals):
                 continue
             seen_literals.add(watch_literal)
 
             for clause in self._watch_literal_to_clause[watch_literal].copy():
                 if clause not in self._satisfied_clauses:
-                    if self._get_assignment(abs(watch_literal)) == (watch_literal > 0):
-                        self._add_satisfied_clause(clause)
-                    else:
-                        conflict_clause = self._replace_watch_literal(clause, watch_literal)
-                        if conflict_clause is not None:
-                            return conflict_clause
+                    conflict_clause = self._replace_watch_literal(clause, watch_literal)
+                    if conflict_clause is not None:
+                        return conflict_clause
         return None # No conflict-clause
 
     def _replace_watch_literal(self, clause, watch_literal: int):
@@ -506,23 +516,15 @@ class SATSolver:
         for unassigned_literal in clause:
             variable = abs(unassigned_literal)
             if variable in self._assignment:
-                # If the current literal is assigned,
-                # it cannot replace the current watch literal
-                if self._get_assignment(variable) == (unassigned_literal > 0):
-                    # If the current literal satisfies the clause, no need to replace watch_literal
-                    self._add_satisfied_clause(clause)
-                    return None
+                # If the current literal is assigned, it cannot replace the current watch literal
                 continue
             unassigned_literals.append(unassigned_literal)
             if (len(unassigned_literals) > 1) and (clause not in self._watch_literal_to_clause[-watch_literal]):
-                # The second condition implies that a new watch literal has replaced watch_literal,
-                # so we can stop searching for one.
+                # The second condition implies we replaced the watch_literal and can stop searching for one.
                 break
 
-            # If the current literal is already watching the clause,
-            # it cannot replace the watch literal
-            if (unassigned_literal not in self._watch_literal_to_clause) or \
-                    (clause not in self._watch_literal_to_clause[unassigned_literal]):
+            if clause not in self._watch_literal_to_clause[unassigned_literal]:
+                # If the current literal is already watching the clause, it cannot replace the watch literal
                 self._watch_literal_to_clause[watch_literal].remove(clause)
                 self._assign_watch_literal(clause, unassigned_literal)
 
@@ -563,6 +565,10 @@ class SATSolver:
             cur_level -= 1
 
     def _decide(self):
+        self._decision_counter += 1
+        if self._decision_counter >= self._halving_period:
+            for literal in self._vsids_count:
+                self._vsids_count[literal] /= 2
         pass
 
     def solve(self) -> bool:
