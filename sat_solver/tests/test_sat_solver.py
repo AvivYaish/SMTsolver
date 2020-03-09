@@ -9,10 +9,23 @@ class TestSATSolver:
     @staticmethod
     def test_prepare_formula():
         assert SATSolver._prepare_formula('         ') == ''
+        assert SATSolver._prepare_formula('(((a)))') == 'a'
         assert SATSolver._prepare_formula('   and    a     b    ') == 'and a b'
         assert SATSolver._prepare_formula('   (   and a b     )     ') == 'and a b'
         assert SATSolver._prepare_formula('(and (a) (b))') == 'and (a) (b)'
         assert SATSolver._prepare_formula('and (a) (b)') == 'and (a) (b)'
+        assert SATSolver._prepare_formula('(((and (a) (b))))') == 'and (a) (b)'
+
+    @staticmethod
+    def test_parse_formula():
+        assert SATSolver._parse_formula("not (=> (not (and p q)) (not r))") == \
+               ["not", ["=>", ["not", ["and", ["p"], ["q"]]], ["not", ["r"]]]]
+        assert SATSolver._parse_formula("not (=> (not (and pq78 q)) (not r))") == \
+               ["not", ["=>", ["not", ["and", ["pq78"], ["q"]]], ["not", ["r"]]]]
+        assert SATSolver._parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
+               ["not", ["=>", ["not", ["and", ["p"], ["q"]]], ["not", ["r"]]]]
+        assert SATSolver._parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
+               ["not", ["=>", ["not", ["and", ["p"], ["not", ["r"]]]], ["not", ["r"]]]]
 
     @staticmethod
     def test_tseitin_transform():
@@ -304,13 +317,16 @@ class TestSATSolver:
     @staticmethod
     def test_coloring_advanced():
         # for i in range(1, 200, 50):
-        i = 5000
+        i = 750
         # When colors are 1 ... 100:
         # Variables:  4600 , clauses:  236646
         # Ran in 17s
         # When colors are 1 ... 500:
         # Variables:  23000 , clauses:  5783046
         # Ran in 9m 31s
+        # When colors are 1 ... 750:
+        # Variables:  34500 , clauses:  12987046
+        # Ran in 39m
         colors = list(range(1, i + 1))
         edges = [
             (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),

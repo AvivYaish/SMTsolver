@@ -47,9 +47,40 @@ class SATSolver:
         :return: a "cleaned" up formula, ready for parsing.
         """
         formula = ' '.join(formula.split()).strip()
-        if formula and (formula[0] == "(") and (SATSolver._find_closing_bracket(formula) == len(formula)):
-            return formula[1:-1].strip()
+        while formula and (formula[0] == "(") and (SATSolver._find_closing_bracket(formula) == len(formula)):
+            formula = formula[1:-1].strip()
         return formula
+
+    @staticmethod
+    def _parse_formula(formula: str):
+        cur_formula = SATSolver._prepare_formula(formula)
+        if not cur_formula:
+            return None
+        split_cur_formula = cur_formula.split(None, 1)
+
+        # Base case, only one variable
+        if len(split_cur_formula) == 1:
+            variable = split_cur_formula.pop()
+            return [variable]
+
+        right_side = split_cur_formula.pop()
+        operator = split_cur_formula.pop()
+        if operator not in {"not", "and", "or", "=>", "<=>"}:
+            raise ValueError('"' + operator + '" is not a supported operator.')
+
+        if operator == "not":
+            return [operator, SATSolver._parse_formula(right_side)]
+
+        # Boolean operator
+        if right_side and (right_side[0] == "("):
+            # If the first parameter of the operator is enclosed in brackets, split the first and second parameters
+            # according to the location of the closing bracket.
+            closing_idx = SATSolver._find_closing_bracket(right_side)
+            left_side = SATSolver._prepare_formula(right_side[:closing_idx])
+            right_side = SATSolver._prepare_formula(right_side[closing_idx:])
+        else:
+            left_side, right_side = right_side.split()
+        return [operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)]
 
     @staticmethod
     def _tseitin_tranform(formula: str):
