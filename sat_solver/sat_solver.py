@@ -61,7 +61,7 @@ class SATSolver:
         # Base case, only one variable
         if len(split_cur_formula) == 1:
             variable = split_cur_formula.pop()
-            return [variable]
+            return variable
 
         right_side = split_cur_formula.pop()
         operator = split_cur_formula.pop()
@@ -69,7 +69,7 @@ class SATSolver:
             raise ValueError('"' + operator + '" is not a supported operator.')
 
         if operator == "not":
-            return [operator, SATSolver._parse_formula(right_side)]
+            return operator, SATSolver._parse_formula(right_side)
 
         # Boolean operator
         if right_side and (right_side[0] == "("):
@@ -80,20 +80,16 @@ class SATSolver:
             right_side = SATSolver._prepare_formula(right_side[closing_idx:])
         else:
             left_side, right_side = right_side.split()
-        return [operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)]
+        return operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)
 
     @staticmethod
-    def _tseitin_tranform(formula: str):
-        # TODO: this both parses and does the transform, should split to 2 functions
-        # TODO: if there is not not, should erase both nots
-        # TODO: if there is and formula1 formula1, should replace with formula1
-        # TODO: same for or
-        formula_list = [formula]
+    def _tseitin_tranform(parsed_formula):
+        formula_list = [parsed_formula]
         subformulas = {}
         transformed_subformulas = {}
         transformed_formula = set()
         while formula_list:
-            cur_formula = SATSolver._prepare_formula(formula_list.pop())
+            cur_formula = formula_list.pop()
             if not cur_formula:
                 continue
 
@@ -101,18 +97,15 @@ class SATSolver:
                 # + 1 to avoid getting zeros (-0=0)
                 subformulas[cur_formula] = len(subformulas) + 1
 
-            split_cur_formula = cur_formula.split(None, 1)
-
             # Base case, only one variable
-            if len(split_cur_formula) == 1:
+            if len(cur_formula) == 1:
                 continue
 
-            operator = split_cur_formula[0]
-            right_side = split_cur_formula[1]
+            operator = cur_formula[0]
+            right_side = cur_formula[1]
             if operator not in {"not", "and", "or", "=>", "<=>"}:
                 continue
 
-            right_side = SATSolver._prepare_formula(right_side)
             if operator == "not":
                 if right_side not in subformulas:
                     subformulas[right_side] = len(subformulas) + 1
@@ -127,52 +120,44 @@ class SATSolver:
                 continue
 
             # Boolean operator
-            if right_side and (right_side[0] == "("):
-                closing_idx = SATSolver._find_closing_bracket(right_side)
-                left_side = SATSolver._prepare_formula(right_side[:closing_idx])
-                right_side = SATSolver._prepare_formula(right_side[closing_idx:])
-            else:
-                left_side, right_side = right_side.split()
-            # TODO: Note, this creates redundant variables for
-            #  things like (and (not (r)) (not r)): we'll get
-            #  a variable for not (r) and not r,
-            #  because we're looking at the actual text
-            formula_list.append(left_side)
-            formula_list.append(right_side)
+            left_parameter = right_side
+            right_parameter = cur_formula[2]
+            formula_list.append(left_parameter)
+            formula_list.append(right_parameter)
 
-            if left_side not in subformulas:
-                subformulas[left_side] = len(subformulas) + 1
-            if right_side not in subformulas:
-                subformulas[right_side] = len(subformulas) + 1
+            if left_parameter not in subformulas:
+                subformulas[left_parameter] = len(subformulas) + 1
+            if right_parameter not in subformulas:
+                subformulas[right_parameter] = len(subformulas) + 1
 
             if operator == "and":
                 transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], subformulas[left_side]}),
-                    frozenset({-subformulas[cur_formula], subformulas[right_side]}),
-                    frozenset({-subformulas[left_side], -subformulas[right_side], subformulas[cur_formula]}),
+                    frozenset({-subformulas[cur_formula], subformulas[left_parameter]}),
+                    frozenset({-subformulas[cur_formula], subformulas[right_parameter]}),
+                    frozenset({-subformulas[left_parameter], -subformulas[right_parameter], subformulas[cur_formula]}),
                 }
             elif operator == "or":
                 transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], subformulas[left_side], subformulas[right_side]}),
-                    frozenset({-subformulas[left_side], subformulas[cur_formula]}),
-                    frozenset({-subformulas[right_side], subformulas[cur_formula]})
+                    frozenset({-subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({-subformulas[left_parameter], subformulas[cur_formula]}),
+                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
                 }
             elif operator == "=>":
                 transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], -subformulas[left_side], subformulas[right_side]}),
-                    frozenset({subformulas[left_side], subformulas[cur_formula]}),
-                    frozenset({-subformulas[right_side], subformulas[cur_formula]})
+                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({subformulas[left_parameter], subformulas[cur_formula]}),
+                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
                 }
             elif operator == "<=>":
                 # TODO: add tests for this
                 transformed_subformulas[subformulas[cur_formula]] = {
                     # =>
-                    frozenset({-subformulas[cur_formula], -subformulas[left_side], subformulas[right_side]}),
-                    frozenset({subformulas[left_side], subformulas[cur_formula]}),
-                    frozenset({-subformulas[right_side], subformulas[cur_formula]}),
+                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({subformulas[left_parameter], subformulas[cur_formula]}),
+                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]}),
                     # <=
-                    frozenset({subformulas[cur_formula], subformulas[left_side], subformulas[right_side]}),
-                    frozenset({subformulas[cur_formula], -subformulas[left_side], -subformulas[right_side]})
+                    frozenset({subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]})
                 }
             transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
         return subformulas, transformed_subformulas, transformed_formula

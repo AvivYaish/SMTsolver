@@ -19,45 +19,46 @@ class TestSATSolver:
     @staticmethod
     def test_parse_formula():
         assert SATSolver._parse_formula("not (=> (not (and p q)) (not r))") == \
-               ["not", ["=>", ["not", ["and", ["p"], ["q"]]], ["not", ["r"]]]]
+               ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
         assert SATSolver._parse_formula("not (=> (not (and pq78 q)) (not r))") == \
-               ["not", ["=>", ["not", ["and", ["pq78"], ["q"]]], ["not", ["r"]]]]
+               ("not", ("=>", ("not", ("and", ("pq78"), ("q"))), ("not", ("r"))))
         assert SATSolver._parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
-               ["not", ["=>", ["not", ["and", ["p"], ["q"]]], ["not", ["r"]]]]
+               ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
         assert SATSolver._parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
-               ["not", ["=>", ["not", ["and", ["p"], ["not", ["r"]]]], ["not", ["r"]]]]
+               ("not", ("=>", ("not", ("and", ("p"), ("not", ("r")))), ("not", ("r"))))
 
     @staticmethod
     def test_tseitin_transform():
-        assert SATSolver._tseitin_tranform("not (=> (not (and p q)) (not r))") == (
-            {'not (=> (not (and p q)) (not r))': 1,
-             '=> (not (and p q)) (not r)': 2,
-             'not (and p q)': 3,
-             'not r': 4,
-             'r': 5,
-             'and p q': 6,
-             'p': 7,
-             'q': 8},
-            {1: {frozenset({-1, -2}), frozenset({1, 2})},
-             2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
-             4: {frozenset({-5, -4}), frozenset({4, 5})}, 3: {frozenset({-6, -3}), frozenset({3, 6})},
-             6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}},
-            {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}),
-             frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}),
-             frozenset({-6, 7}), frozenset({2, -4})}
-        )
-        assert SATSolver._tseitin_tranform("not (=> (not (and pq78 q)) (not r))") == (
-            {'not (=> (not (and pq78 q)) (not r))': 1, '=> (not (and pq78 q)) (not r)': 2, 'not (and pq78 q)': 3,
-                'not r': 4,
-                'r': 5, 'and pq78 q': 6, 'pq78': 7, 'q': 8},
-               {1: {frozenset({-1, -2}), frozenset({1, 2})},
-                2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
-                4: {frozenset({-5, -4}), frozenset({4, 5})}, 3: {frozenset({-6, -3}), frozenset({3, 6})},
-                6: {frozenset({8, -6}),
-                    frozenset({-8, -7, 6}), frozenset({-6, 7})}},
-               {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}),
-                frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}),
-                frozenset({-6, 7}), frozenset({2, -4})})
+        assert SATSolver._tseitin_tranform(SATSolver._parse_formula("not (=> (not (and p q)) (not r))")) == ({'p': 7,
+              'q': 8, 'r': 5,
+              ('=>', ('not', ('and', 'p', 'q')), ('not', 'r')): 2,
+              ('and', 'p', 'q'): 6,
+              ('not', 'r'): 4,
+              ('not', ('=>', ('not', ('and', 'p', 'q')), ('not', 'r'))): 1,
+              ('not', ('and', 'p', 'q')): 3},
+             {1: {frozenset({-1, -2}), frozenset({1, 2})},
+              2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
+              3: {frozenset({-6, -3}), frozenset({3, 6})},
+              4: {frozenset({-5, -4}), frozenset({4, 5})},
+              6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}},
+             {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}),
+              frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}),
+              frozenset({-6, 7}), frozenset({2, -4})})
+        assert SATSolver._tseitin_tranform(SATSolver._parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
+               ({'pq78': 7, 'q': 8, 'r': 5,
+              ('=>', ('not', ('and', 'pq78', 'q')), ('not', 'r')): 2,
+              ('and', 'pq78', 'q'): 6,
+              ('not', 'r'): 4,
+              ('not', ('=>', ('not', ('and', 'pq78', 'q')), ('not', 'r'))): 1,
+              ('not', ('and', 'pq78', 'q')): 3},
+             {1: {frozenset({-1, -2}), frozenset({1, 2})},
+              2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
+              3: {frozenset({-6, -3}), frozenset({3, 6})},
+              4: {frozenset({-5, -4}), frozenset({4, 5})},
+              6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}},
+             {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}),
+              frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}),
+              frozenset({-6, 7}), frozenset({2, -4})})
 
     @staticmethod
     def test_preprocessing():
