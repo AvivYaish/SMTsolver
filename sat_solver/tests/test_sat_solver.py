@@ -1,9 +1,51 @@
 import pytest
 from sat_solver.sat_solver import SATSolver
+from itertools import combinations
+from scipy.special import comb
 
 
 class TestSATSolver:
     
+    @staticmethod
+    def test_prepare_formula():
+        assert SATSolver._prepare_formula('         ') == ''
+        assert SATSolver._prepare_formula('   and    a     b    ') == 'and a b'
+        assert SATSolver._prepare_formula('   (   and a b     )     ') == 'and a b'
+        assert SATSolver._prepare_formula('(and (a) (b))') == 'and (a) (b)'
+        assert SATSolver._prepare_formula('and (a) (b)') == 'and (a) (b)'
+
+    @staticmethod
+    def test_tseitin_transform():
+        assert SATSolver._tseitin_tranform("not (=> (not (and p q)) (not r))") == (
+            {'not (=> (not (and p q)) (not r))': 1,
+             '=> (not (and p q)) (not r)': 2,
+             'not (and p q)': 3,
+             'not r': 4,
+             'r': 5,
+             'and p q': 6,
+             'p': 7,
+             'q': 8},
+            {1: {frozenset({-1, -2}), frozenset({1, 2})},
+             2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
+             4: {frozenset({-5, -4}), frozenset({4, 5})}, 3: {frozenset({-6, -3}), frozenset({3, 6})},
+             6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}},
+            {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}),
+             frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}),
+             frozenset({-6, 7}), frozenset({2, -4})}
+        )
+        assert SATSolver._tseitin_tranform("not (=> (not (and pq78 q)) (not r))") == (
+            {'not (=> (not (and pq78 q)) (not r))': 1, '=> (not (and pq78 q)) (not r)': 2, 'not (and pq78 q)': 3,
+                'not r': 4,
+                'r': 5, 'and pq78 q': 6, 'pq78': 7, 'q': 8},
+               {1: {frozenset({-1, -2}), frozenset({1, 2})},
+                2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
+                4: {frozenset({-5, -4}), frozenset({4, 5})}, 3: {frozenset({-6, -3}), frozenset({3, 6})},
+                6: {frozenset({8, -6}),
+                    frozenset({-8, -7, 6}), frozenset({-6, 7})}},
+               {frozenset({2, 3}), frozenset({1, 2}), frozenset({-8, -7, 6}), frozenset({4, 5}), frozenset({-6, -3}),
+                frozenset({3, 6}), frozenset({4, -3, -2}), frozenset({-1, -2}), frozenset({8, -6}), frozenset({-5, -4}),
+                frozenset({-6, 7}), frozenset({2, -4})})
+
     @staticmethod
     def test_preprocessing():
         assert SATSolver._preprocessing(frozenset({frozenset({})})) == frozenset()
@@ -178,3 +220,204 @@ class TestSATSolver:
         clause5 = frozenset({1, -4})
         clause6 = frozenset({-1, 5})
         assert not SATSolver({clause1, clause2, clause3, clause4, clause5, clause6}).solve()
+
+    @staticmethod
+    def test_coloring_basic():
+        # When colors are 1 ... 300:
+        # Variables:  3588 , clauses:  543594
+        # Ran in 16.648s
+        # When colors are 1 ... 500:
+        # Variables:  5988 , clauses:  1505994
+        # Ran in 49.422s
+        for i in range(1, 11):
+            colors = list(range(1, i + 1))
+            edges = [
+                (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),
+                (2, 3), (2, 4), (2, 5), (2, 6),
+                (3, 6), (3, 10), (3, 12),
+                (4, 5), (4, 7), (4, 9),
+                (5, 6), (5, 7), (5, 8),
+                (6, 8), (6, 10),
+                (7, 8), (7, 9), (7, 11),
+                (8, 10), (8, 11),
+                (9, 11), (9, 12),
+                (10, 11), (10, 12),
+                (11, 12)
+            ]
+
+            vertices = set()
+            for edge in edges:
+                v1, v2 = edge
+                vertices.add(v1)
+                vertices.add(v2)
+
+            # For every vertex v and color c there is a variable V_{v,c}.
+            # Assume they are ordered, first by vertex then by color.
+            # The variable corresponding to V_{v,c} is ((v-1)*len(colors) + c)
+            # So: 1 is V_{1,1}, 2 is V_{1,2}, ..., c is V_{1,c}, c+1 is V_{2,1}, etc'
+
+            vertices_are_colored = [
+                (
+                    frozenset({
+                        ((v - 1) * len(colors) + c)
+                        for c in colors
+                    })
+                )
+                for v in vertices
+            ]
+
+            one_color_per_vertex = list([
+                (
+                    list(
+                        frozenset({(-((v - 1) * len(colors) + c1)),
+                                   (-((v - 1) * len(colors) + c2))})
+                        for c1, c2 in combinations(colors, 2)
+                    )
+                )
+                for v in vertices
+            ])
+            one_color_per_vertex = [item for sublist in one_color_per_vertex for item in sublist]
+
+            different_colors_per_edge = list([
+                (
+                    list(
+                        frozenset({(-((v - 1) * len(colors) + c)),
+                                   (-((u - 1) * len(colors) + c))})
+                        for c in colors
+                    )
+                )
+                for v, u in edges
+            ])
+            different_colors_per_edge = [item for sublist in different_colors_per_edge for item in sublist]
+
+            all_clauses = []
+            all_clauses.extend(vertices_are_colored)
+            all_clauses.extend(one_color_per_vertex)
+            all_clauses.extend(different_colors_per_edge)
+            all_clauses = frozenset(clause for clause in all_clauses)
+
+            if i < 4:
+                assert not SATSolver(all_clauses).solve()
+            else:
+                assert SATSolver(all_clauses).solve()
+
+    @staticmethod
+    def test_coloring_advanced():
+        # for i in range(1, 200, 50):
+        i = 5000
+        # When colors are 1 ... 100:
+        # Variables:  4600 , clauses:  236646
+        # Ran in 17s
+        # When colors are 1 ... 500:
+        # Variables:  23000 , clauses:  5783046
+        # Ran in 9m 31s
+        colors = list(range(1, i + 1))
+        edges = [
+            (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),
+            (2, 3), (2, 4), (2, 5), (2, 6),
+            (3, 6), (3, 10), (3, 12),
+            (4, 5), (4, 7), (4, 9),
+            (5, 6), (5, 7), (5, 8),
+            (6, 8), (6, 10),
+            (7, 8), (7, 9), (7, 11),
+            (8, 10), (8, 11),
+            (9, 11), (9, 12),
+            (10, 11), (10, 12),
+            (11, 12),
+            (13, 1), (13, 2), (13, 3), (13, 4), (13, 4), (13, 5), (13, 6), (13, 7), (13, 8), (13, 9),
+            (14, 10), (14, 11), (14, 12), (14, 13),
+            (15, 5),
+            (16, 10), (16, 2),
+            (17, 15),
+            (18, 8), (18, 11),
+            (19, 3),
+            (20, 7),
+            (21, 11),
+            (22, 16),
+            (23, 15), (23, 22),
+            (24, 20), (24, 19), (24, 21),
+            (25, 9), (25, 11), (25, 17),
+            (26, 21), (26, 17),
+            (27, 22),
+            (28, 27),
+            (29, 28),
+            (30, 29),
+            (31, 30),
+            (32, 31),
+            (33, 32),
+            (34, 33),
+            (35, 34),
+            (36, 35),
+            (37, 36),
+            (38, 37),
+            (39, 38),
+            (40, 39),
+            (41, 40),
+            (42, 41),
+            (43, 42),
+            (44, 43),
+            (45, 44),
+            (46, 45), (46, 44), (46, 43), (46, 42), (46, 41), (46, 40),
+        ]
+        vertices = set()
+        for edge in edges:
+            v1, v2 = edge
+            vertices.add(v1)
+            vertices.add(v2)
+
+        variables = len(colors) * len(vertices)
+        clause_count = 0
+        clause_count += len(vertices)
+        clause_count += len(vertices) * int(comb(len(colors), 2))
+        clause_count += len(edges) * len(colors)
+        print("Variables: ", variables, ", clauses: ", clause_count)
+
+        # For every vertex v and color c there is a variable V_{v,c}.
+        # Assume they are ordered, first by vertex then by color.
+        # The variable corresponding to V_{v,c} is ((v-1)*len(colors) + c)
+        # So: 1 is V_{1,1}, 2 is V_{1,2}, ..., c is V_{1,c}, c+1 is V_{2,1}, etc'
+
+        vertices_are_colored = [
+            (
+                frozenset({
+                    ((v - 1) * len(colors) + c)
+                    for c in colors
+                })
+            )
+            for v in vertices
+        ]
+
+        one_color_per_vertex = list([
+            (
+                list(
+                    frozenset({(-((v - 1) * len(colors) + c1)),
+                               (-((v - 1) * len(colors) + c2))})
+                    for c1, c2 in combinations(colors, 2)
+                )
+            )
+            for v in vertices
+        ])
+        one_color_per_vertex = [item for sublist in one_color_per_vertex for item in sublist]
+
+        different_colors_per_edge = list([
+            (
+                list(
+                    frozenset({(-((v - 1) * len(colors) + c)),
+                               (-((u - 1) * len(colors) + c))})
+                    for c in colors
+                )
+            )
+            for v, u in edges
+        ])
+        different_colors_per_edge = [item for sublist in different_colors_per_edge for item in sublist]
+
+        all_clauses = []
+        all_clauses.extend(vertices_are_colored)
+        all_clauses.extend(one_color_per_vertex)
+        all_clauses.extend(different_colors_per_edge)
+        all_clauses = frozenset(clause for clause in all_clauses)
+
+        if i < 4:
+            assert not SATSolver(all_clauses).solve()
+        else:
+            assert SATSolver(all_clauses).solve()
