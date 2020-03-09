@@ -5,7 +5,7 @@ from scipy.special import comb
 
 
 class TestSATSolver:
-    
+
     @staticmethod
     def test_prepare_formula():
         assert SATSolver._prepare_formula('         ') == ''
@@ -82,7 +82,7 @@ class TestSATSolver:
                frozenset({frozenset({3, -4})})
         assert SATSolver._preprocessing(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})})) == \
                frozenset({frozenset({1, 2, 3, -4})})
-    
+
     @staticmethod
     def test_satisfy_unit_clauses():
         clause1 = frozenset({1})
@@ -158,7 +158,7 @@ class TestSATSolver:
         solver._literal_to_watched_clause[-9] = {clause6}
         solver._satisfy_unit_clauses()
         assert solver._bcp() == clause6
-        
+
     @staticmethod
     def test_conflict_resolution():
         clause1 = frozenset({1})
@@ -318,7 +318,7 @@ class TestSATSolver:
     @staticmethod
     def test_coloring_advanced():
         # for i in range(1, 200, 50):
-        i = 750
+        i = 10
         # When colors are 1 ... 100:
         # Variables:  4600 , clauses:  236646
         # Ran in 17s

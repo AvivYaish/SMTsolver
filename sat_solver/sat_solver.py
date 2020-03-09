@@ -20,9 +20,7 @@ class SATSolver:
     @staticmethod
     def _find_closing_bracket(text: str) -> int:
         """
-        Examples:
-
-        :return: the index of t
+        :return: the index of the ')' bracket that closes the very first (left-most) '(' bracket.
         """
         flag = False
         counter = 0
@@ -53,6 +51,9 @@ class SATSolver:
 
     @staticmethod
     def _parse_formula(formula: str):
+        """
+        :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it.
+        """
         cur_formula = SATSolver._prepare_formula(formula)
         if not cur_formula:
             return None
@@ -211,6 +212,9 @@ class SATSolver:
             self._add_clause(clause)
 
     def _add_clause(self, clause):
+        """
+        Initialize all clause data structures for the given clause.
+        """
         for idx, literal in enumerate(clause):
             if literal not in self._literal_to_clause:
                 self._literal_to_clause[literal] = set()
@@ -227,12 +231,15 @@ class SATSolver:
                 self._assigned_vsids_count[literal] += 1
 
     def _assign(self, clause, literal: int):
+        """
+        Assigns a satisfying value to the given literal.
+        """
         variable = abs(literal)
         self._assignment[variable] = {
-            "value": literal > 0,   # True or False
-            "clause": clause,       # The clause which caused the assignment
-            "level": len(self._assignment_by_level) - 1,
-            "idx": len(self._assignment_by_level[-1])   # Defines an assignment order in the same level
+            "value": literal > 0,                           # Satisfy the literal
+            "clause": clause,                               # The clause which caused the assignment
+            "level": len(self._assignment_by_level) - 1,    # The decision level of the assignment
+            "idx": len(self._assignment_by_level[-1])       # Defines an assignment order in the same level
         }
 
         # Keep data structures related to satisfied clauses up to date
@@ -249,6 +256,9 @@ class SATSolver:
                 del self._unassigned_vsids_count[cur_sign]
 
     def _unassign(self, variable):
+        """
+        Unassigns the given variable.
+        """
         del self._assignment[variable]
         for cur_sign in [variable, -variable]:
             if cur_sign in self._literal_to_clause:
@@ -256,9 +266,15 @@ class SATSolver:
                 del self._assigned_vsids_count[cur_sign]
 
     def get_assignment(self):
+        """
+        Returns the current assignment (variable-value pairs only).
+        """
         return {variable: self._assignment[variable]["value"] for variable in self._assignment}
 
     def _conflict_resolution(self, conflict_clause):
+        """
+        Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
+        """
         conflict_clause = set(conflict_clause)
         while True:
             last_literal, prev_max_level, max_level, max_idx, max_count = None, -1, -1, -1, 0
@@ -287,13 +303,18 @@ class SATSolver:
             conflict_clause.remove(-last_literal)
 
     def _bcp(self):
+        """
+        Performs BCP, as triggered by the last assigned literals. If new literals are assigned as part of the BCP,
+        the BCP continues using them. The BCP uses watch literals.
+        :return: None, if there is no conflict. If there is one, the conflict clause is returned.
+        """
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
             for clause in (self._literal_to_watched_clause[watch_literal] - self._satisfied_clauses):
                 conflict_clause = self._replace_watch_literal(clause, watch_literal)
                 if conflict_clause is not None:
                     return conflict_clause
-        return None # No conflict-clause
+        return None  # No conflict-clause
 
     def _replace_watch_literal(self, clause, watch_literal: int):
         """
@@ -332,6 +353,9 @@ class SATSolver:
         return None
 
     def _add_conflict_clause(self, conflict_clause, literal_to_assign: int):
+        """
+        Adds a conflict clause to the formula.
+        """
         if self._max_new_clauses <= 0:
             return
 
@@ -347,6 +371,9 @@ class SATSolver:
         self._assign(conflict_clause, literal_to_assign)
 
     def _backtrack(self, level: int):
+        """
+        Non-chronological backtracking.
+        """
         self._last_assigned_literals = deque()
         while len(self._assignment_by_level) > level + 1:
             for variable in self._assignment_by_level.pop():
@@ -355,6 +382,9 @@ class SATSolver:
                 self._satisfied_clauses.remove(clause)
 
     def _decide(self):
+        """
+        Decides which literal to assign next, using the VSIDS decision heuristic.
+        """
         # Maintain data structures related to VSIDS
         self._decision_counter += 1
         if self._decision_counter >= self._halving_period:
