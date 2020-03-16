@@ -65,7 +65,7 @@ class SATSolver:
             return variable
 
         right_side = split_cur_formula.pop()
-        operator = split_cur_formula.pop()
+        operator = split_cur_formula.pop().lower()
         if operator not in {"not", "and", "or", "=>", "<=>"}:
             raise ValueError('"' + operator + '" is not a supported operator.')
 
@@ -84,7 +84,7 @@ class SATSolver:
         return operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)
 
     @staticmethod
-    def _tseitin_tranform(parsed_formula):
+    def _tseitin_transform(parsed_formula):
         formula_list = [parsed_formula]
         subformulas = {}
         transformed_subformulas = {}
@@ -150,7 +150,6 @@ class SATSolver:
                     frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
                 }
             elif operator == "<=>":
-                # TODO: add tests for this
                 transformed_subformulas[subformulas[cur_formula]] = {
                     # =>
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
@@ -161,6 +160,7 @@ class SATSolver:
                     frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]})
                 }
             transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
+        transformed_formula.add(frozenset({1}))  # Always need to satisfy the entire formula
         return subformulas, transformed_subformulas, transformed_formula
 
     @staticmethod
@@ -187,7 +187,11 @@ class SATSolver:
             preprocessed_formula.append(clause)
         return frozenset(preprocessed_formula)
 
-    def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=100):
+    @staticmethod
+    def convert_string_formula(formula: str):
+        return SATSolver._tseitin_transform(SATSolver._parse_formula(formula))[2]
+
+    def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000):
         if formula is None:
             formula = set()
 
