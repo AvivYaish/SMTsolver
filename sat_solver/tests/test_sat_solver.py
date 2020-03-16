@@ -302,29 +302,24 @@ class TestSATSolver:
         # When colors are 1 ... 500:
         # Variables:  5988 , clauses:  1505994
         # Ran in 49.422s
+        edges = [
+            (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),
+            (2, 3), (2, 4), (2, 5), (2, 6),
+            (3, 6), (3, 10), (3, 12),
+            (4, 5), (4, 7), (4, 9),
+            (5, 6), (5, 7), (5, 8),
+            (6, 8), (6, 10),
+            (7, 8), (7, 9), (7, 11),
+            (8, 10), (8, 11),
+            (9, 11), (9, 12),
+            (10, 11), (10, 12),
+            (11, 12)
+        ]
         for color_num in range(1, 11):
-            edges = [
-                (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),
-                (2, 3), (2, 4), (2, 5), (2, 6),
-                (3, 6), (3, 10), (3, 12),
-                (4, 5), (4, 7), (4, 9),
-                (5, 6), (5, 7), (5, 8),
-                (6, 8), (6, 10),
-                (7, 8), (7, 9), (7, 11),
-                (8, 10), (8, 11),
-                (9, 11), (9, 12),
-                (10, 11), (10, 12),
-                (11, 12)
-            ]
-
-            formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
-            if color_num < 4:
-                assert not SATSolver(formula).solve()
-            else:
-                assert SATSolver(formula).solve()
+            assert SATSolver(TestSATSolver.generate_coloring_clauses(color_num, edges)).solve() == (color_num >= 4)
 
     @staticmethod
-    def test_coloring_medium():
+    def test_coloring_many_edges():
         # When colors are 1 ... 100:
         # Variables:  4600 , clauses:  236646
         # Ran in 17s
@@ -334,7 +329,7 @@ class TestSATSolver:
         # When colors are 1 ... 750:
         # Variables:  34500 , clauses:  12987046
         # Ran in 39m
-        color_num = 35
+        color_num = 50
         edges = [
             (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),
             (2, 3), (2, 4), (2, 5), (2, 6),
@@ -385,8 +380,8 @@ class TestSATSolver:
         assert SATSolver(TestSATSolver.generate_coloring_clauses(color_num, edges)).solve()
 
     @staticmethod
-    def test_coloring_advanced():
-        color_num = 5
-        edges = [(v1, v2) for v1, v2 in combinations(list(range(1, color_num + 2)), 2)]
+    def test_coloring_clique():
+        color_num = 50
+        edges = list(combinations(list(range(1, color_num + 2)), 2))
         assert not SATSolver(TestSATSolver.generate_coloring_clauses(color_num, edges)).solve()
 
