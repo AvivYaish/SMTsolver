@@ -84,6 +84,43 @@ class SATSolver:
         return operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)
 
     @staticmethod
+    def _simplify(parsed_formula):
+        if not parsed_formula:
+            return "True"
+
+        # Base case, only one variable/boolean value
+        if len(parsed_formula) == 1:
+            return parsed_formula
+
+        operator = parsed_formula[0]
+        right_side = SATSolver._simplify(parsed_formula[1])
+
+        if operator == "not":
+            if right_side == "false":
+                return "true"
+            elif right_side == "true":
+                return "false"
+            return operator, right_side
+
+        # Boolean operator
+        left_parameter = right_side
+        right_parameter = SATSolver._simplify(parsed_formula[2])
+
+        if left_parameter == right_parameter:
+            if (operator == "=>") or (operator == "<=>"):
+                return "true"
+            return left_parameter
+        else:
+            if (operator == "or") and ((left_parameter == "true") or (right_parameter == "true")):
+                return "true"
+            if operator == "and":
+                if left_parameter == "true":
+                    return right_parameter
+                if right_parameter == "true":
+                    return left_parameter
+        return operator, left_parameter, right_parameter
+
+    @staticmethod
     def _tseitin_transform(parsed_formula):
         formula_list = [parsed_formula]
         subformulas = {}
@@ -186,7 +223,12 @@ class SATSolver:
 
     @staticmethod
     def convert_string_formula(formula: str):
-        return SATSolver._tseitin_transform(SATSolver._parse_formula(formula))[2]
+        simplified_formula = SATSolver._simplify(SATSolver._parse_formula(formula))
+        if simplified_formula == "true":
+            return frozenset({})
+        elif simplified_formula == "false":
+            return frozenset({frozenset({1}), frozenset({-1})})
+        return SATSolver._tseitin_transform(simplified_formula)[2]
 
     def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000):
         if formula is None:

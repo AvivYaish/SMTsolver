@@ -431,16 +431,63 @@ class TestSATSolver:
         formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
         assert not SATSolver(formula, halving_period=10000).solve()
 
-    # @staticmethod
-    # @pytest.mark.parametrize("color_num", list(range(21, 22)))
-    # def test_coloring_clique_colorable(color_num: int):
-    #     edges = list(combinations(list(range(1, color_num + 1)), 2))
-    #     formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
-    #     assert SATSolver(formula, halving_period=float('inf')).solve()
+    @staticmethod
+    @pytest.mark.parametrize("color_num", list(range(21, 22)))
+    def test_coloring_clique_colorable(color_num: int):
+        edges = list(combinations(list(range(1, color_num + 1)), 2))
+        formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
+        assert SATSolver(formula, halving_period=float('inf')).solve()
+
+    @staticmethod
+    def test_does_not_work():
+        """
+        FAILED [  6%]Is sat?  True
+Z3:		 0.03494668006896973
+Our:	 0.0009925365447998047
+Z3 formula:  Or(Or(Or(2 == Not(2), 2 == 2), 1 == Not(1)),
+   Implies(Not(2), 2))
+Text formula:  or (or (or (<=> (2) (not 2)) (<=> (2) (2))) (<=> (1) (not 1))) (=> (not 2) (2))
+Text formula, parsed:  ('or', ('or', ('or', ('<=>', '2', ('not', '2')), ('<=>', '2', '2')), ('<=>', '1', ('not', '1'))), ('=>', ('not', '2'), '2'))
+Tseitin:  ({('or', ('or', ('or', ('<=>', '2', ('not', '2')), ('<=>', '2', '2')), ('<=>', '1', ('not', '1'))), ('=>', ('not', '2'), '2')): 1, ('or', ('or', ('<=>', '2', ('not', '2')), ('<=>', '2', '2')), ('<=>', '1', ('not', '1'))): 2, ('=>', ('not', '2'), '2'): 3, ('not', '2'): 4, '2': 5, ('or', ('<=>', '2', ('not', '2')), ('<=>', '2', '2')): 6, ('<=>', '1', ('not', '1')): 7, '1': 8, ('not', '1'): 9, ('<=>', '2', ('not', '2')): 10, ('<=>', '2', '2'): 11}, {1: {frozenset({2, 3, -1}), frozenset({1, -3}), frozenset({1, -2})}, 3: {frozenset({3, 4}), frozenset({3, -5}), frozenset({5, -4, -3})}, 4: {frozenset({-5, -4}), frozenset({4, 5})}, 2: {frozenset({-6, 2}), frozenset({-7, 2}), frozenset({7, -2, 6})}, 7: {frozenset({8, -7, -9}), frozenset({-8, -7, 9}), frozenset({-8, -9, 7}), frozenset({8, 9, 7})}, 9: {frozenset({8, 9}), frozenset({-8, -9})}, 6: {frozenset({11, -6, 10}), frozenset({-10, 6}), frozenset({-11, 6})}, 11: {frozenset({11, 5}), frozenset({11, -5}), frozenset({5, -5, -11})}, 10: {frozenset({-4, 5, -10}), frozenset({10, -5, -4}), frozenset({-5, 4, -10}), frozenset({10, 4, 5})}}, {frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({7, -2, 6}), frozenset({-10, 6}), frozenset({-4, 5, -10}), frozenset({5, -5, -11}), frozenset({4, 5}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({8, -7, -9}), frozenset({-8, -7, 9}), frozenset({11, -6, 10}), frozenset({1}), frozenset({10, 4, 5}), frozenset({-8, -9, 7}), frozenset({-5, 4, -10}), frozenset({-11, 6}), frozenset({3, 4}), frozenset({-6, 2}), frozenset({-7, 2}), frozenset({11, 5}), frozenset({1, -2}), frozenset({8, 9}), frozenset({-5, -4}), frozenset({-8, -9}), frozenset({11, -5}), frozenset({8, 9, 7}), frozenset({10, -5, -4})})
+Our formula:  {frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({7, -2, 6}), frozenset({-10, 6}), frozenset({-4, 5, -10}), frozenset({5, -5, -11}), frozenset({4, 5}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({8, -7, -9}), frozenset({-8, -7, 9}), frozenset({11, -6, 10}), frozenset({1}), frozenset({10, 4, 5}), frozenset({-8, -9, 7}), frozenset({-5, 4, -10}), frozenset({-11, 6}), frozenset({3, 4}), frozenset({-6, 2}), frozenset({-7, 2}), frozenset({11, 5}), frozenset({1, -2}), frozenset({8, 9}), frozenset({-5, -4}), frozenset({-8, -9}), frozenset({11, -5}), frozenset({8, 9, 7}), frozenset({10, -5, -4})}
+SAT
+Z3:  []
+        """
+        formula1 = "or (or ( or ( <= > (2)(not 2)) (<= > (2)(2))) (<= > (1)(not 1))) (= > ( not 2)(2))" # SAT, []
+
+        """
+        FAILED [ 12%]Is sat?  True
+Z3:		 0.05485796928405762
+Our:	 0.0
+Z3 formula:  Or(Or(Or(Not(1) == 1, Or(2, Not(1) == 1)),
+      Or(2, Not(1) == 1) == Or(2, Not(1) == 1)),
+   Implies(2, Or(2, Not(1) == 1) == Or(2, Not(1) == 1)))
+Text formula:  or (or (or (<=> (not 1) (1)) (or (2) (<=> (not 1) (1)))) (<=> (or (2) (<=> (not 1) (1))) (or (2) (<=> (not 1) (1))))) (=> (2) (<=> (or (2) (<=> (not 1) (1))) (or (2) (<=> (not 1) (1)))))
+Text formula, parsed:  ('or', ('or', ('or', ('<=>', ('not', '1'), '1'), ('or', '2', ('<=>', ('not', '1'), '1'))), ('<=>', ('or', '2', ('<=>', ('not', '1'), '1')), ('or', '2', ('<=>', ('not', '1'), '1')))), ('=>', '2', ('<=>', ('or', '2', ('<=>', ('not', '1'), '1')), ('or', '2', ('<=>', ('not', '1'), '1')))))
+Tseitin:  ({('or', ('or', ('or', ('<=>', ('not', '1'), '1'), ('or', '2', ('<=>', ('not', '1'), '1'))), ('<=>', ('or', '2', ('<=>', ('not', '1'), '1')), ('or', '2', ('<=>', ('not', '1'), '1')))), ('=>', '2', ('<=>', ('or', '2', ('<=>', ('not', '1'), '1')), ('or', '2', ('<=>', ('not', '1'), '1'))))): 1, ('or', ('or', ('<=>', ('not', '1'), '1'), ('or', '2', ('<=>', ('not', '1'), '1'))), ('<=>', ('or', '2', ('<=>', ('not', '1'), '1')), ('or', '2', ('<=>', ('not', '1'), '1')))): 2, ('=>', '2', ('<=>', ('or', '2', ('<=>', ('not', '1'), '1')), ('or', '2', ('<=>', ('not', '1'), '1')))): 3, '2': 4, ('<=>', ('or', '2', ('<=>', ('not', '1'), '1')), ('or', '2', ('<=>', ('not', '1'), '1'))): 5, ('or', '2', ('<=>', ('not', '1'), '1')): 6, ('<=>', ('not', '1'), '1'): 7, ('not', '1'): 8, '1': 9, ('or', ('<=>', ('not', '1'), '1'), ('or', '2', ('<=>', ('not', '1'), '1'))): 10}, {1: {frozenset({2, 3, -1}), frozenset({1, -3}), frozenset({1, -2})}, 3: {frozenset({3, 4}), frozenset({3, -5}), frozenset({5, -4, -3})}, 5: {frozenset({-6, 5}), frozenset({5, 6}), frozenset({-6, -5, 6})}, 6: {frozenset({-6, 4, 7}), frozenset({-7, 6}), frozenset({-4, 6})}, 7: {frozenset({8, -7, -9}), frozenset({-8, -7, 9}), frozenset({-8, -9, 7}), frozenset({8, 9, 7})}, 8: {frozenset({8, 9}), frozenset({-8, -9})}, 2: {frozenset({10, 5, -2}), frozenset({2, -10}), frozenset({2, -5})}, 10: {frozenset({-6, 10}), frozenset({6, -10, 7}), frozenset({-7, 10})}}, {frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({-6, 4, 7}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({8, -7, -9}), frozenset({2, -10}), frozenset({6, -10, 7}), frozenset({10, 5, -2}), frozenset({-8, -7, 9}), frozenset({-6, 10}), frozenset({1}), frozenset({-6, 5}), frozenset({2, -5}), frozenset({-8, -9, 7}), frozenset({-7, 6}), frozenset({-7, 10}), frozenset({3, 4}), frozenset({1, -2}), frozenset({8, 9}), frozenset({-4, 6}), frozenset({-8, -9}), frozenset({5, 6}), frozenset({-6, -5, 6}), frozenset({8, 9, 7})})
+Our formula:  {frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({-6, 4, 7}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({8, -7, -9}), frozenset({2, -10}), frozenset({6, -10, 7}), frozenset({10, 5, -2}), frozenset({-8, -7, 9}), frozenset({-6, 10}), frozenset({1}), frozenset({-6, 5}), frozenset({2, -5}), frozenset({-8, -9, 7}), frozenset({-7, 6}), frozenset({-7, 10}), frozenset({3, 4}), frozenset({1, -2}), frozenset({8, 9}), frozenset({-4, 6}), frozenset({-8, -9}), frozenset({5, 6}), frozenset({-6, -5, 6}), frozenset({8, 9, 7})}
+SAT
+Z3:  []
+        """
+        formula2 = "or (or (or (<=> (not 1) (1)) (or (2) (<=> (not 1) (1)))) (<=> (or (2) (<=> (not 1) (1))) (or (2) (<=> (not 1) (1))))) (=> (2) (<=> (or (2) (<=> (not 1) (1))) (or (2) (<=> (not 1) (1)))))" # SAT, []
+
+        """
+        FAILED [ 37%]Is sat?  True
+Z3:		 0.017919301986694336
+Our:	 0.0
+Z3 formula:  Or(Or(Or(Not(Not(2)), 1 == Not(1)), Not(Not(2))),
+   Or(Not(1), 1 == Not(1)))
+Text formula:  or (or (or (not (not 2)) (<=> (1) (not 1))) (not (not 2))) (or (not 1) (<=> (1) (not 1)))
+Text formula, parsed:  ('or', ('or', ('or', ('not', ('not', '2')), ('<=>', '1', ('not', '1'))), ('not', ('not', '2'))), ('or', ('not', '1'), ('<=>', '1', ('not', '1'))))
+Tseitin:  ({('or', ('or', ('or', ('not', ('not', '2')), ('<=>', '1', ('not', '1'))), ('not', ('not', '2'))), ('or', ('not', '1'), ('<=>', '1', ('not', '1')))): 1, ('or', ('or', ('not', ('not', '2')), ('<=>', '1', ('not', '1'))), ('not', ('not', '2'))): 2, ('or', ('not', '1'), ('<=>', '1', ('not', '1'))): 3, ('not', '1'): 4, ('<=>', '1', ('not', '1')): 5, '1': 6, ('or', ('not', ('not', '2')), ('<=>', '1', ('not', '1'))): 7, ('not', ('not', '2')): 8, ('not', '2'): 9, '2': 10}, {1: {frozenset({2, 3, -1}), frozenset({1, -3}), frozenset({1, -2})}, 3: {frozenset({3, -5}), frozenset({3, -4}), frozenset({5, 4, -3})}, 5: {frozenset({-5, -4, 6}), frozenset({4, 5, 6}), frozenset({-6, -5, 4}), frozenset({-6, -4, 5})}, 4: {frozenset({-6, -4}), frozenset({4, 6})}, 2: {frozenset({-8, 2}), frozenset({-7, 2}), frozenset({8, -2, 7})}, 8: {frozenset({8, 9}), frozenset({-8, -9})}, 9: {frozenset({9, 10}), frozenset({-10, -9})}, 7: {frozenset({8, -7, 5}), frozenset({-8, 7}), frozenset({-5, 7})}}, {frozenset({-8, 2}), frozenset({8, -7, 5}), frozenset({5, 4, -3}), frozenset({1, -3}), frozenset({4, 6}), frozenset({-8, 7}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({-6, -4}), frozenset({-5, 7}), frozenset({1}), frozenset({4, 5, 6}), frozenset({-5, -4, 6}), frozenset({-7, 2}), frozenset({1, -2}), frozenset({9, 10}), frozenset({-10, -9}), frozenset({8, 9}), frozenset({-6, -5, 4}), frozenset({3, -4}), frozenset({-8, -9}), frozenset({-6, -4, 5}), frozenset({8, -2, 7})})
+Our formula:  {frozenset({-8, 2}), frozenset({8, -7, 5}), frozenset({5, 4, -3}), frozenset({1, -3}), frozenset({4, 6}), frozenset({-8, 7}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({-6, -4}), frozenset({-5, 7}), frozenset({1}), frozenset({4, 5, 6}), frozenset({-5, -4, 6}), frozenset({-7, 2}), frozenset({1, -2}), frozenset({9, 10}), frozenset({-10, -9}), frozenset({8, 9}), frozenset({-6, -5, 4}), frozenset({3, -4}), frozenset({-8, -9}), frozenset({-6, -4, 5}), frozenset({8, -2, 7})}
+SAT
+Z3:  [2 = False, 1 = False]
+        """
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_parser",
-                             [(variable_num, variable_num, True) for variable_num in list(range(1, 10))] * 50
+                             [(variable_num, 2 * variable_num, True) for variable_num in list(range(1, 3))] * 500
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(2000, 2005))]
                              )
