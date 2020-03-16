@@ -316,9 +316,8 @@ class TestSATSolver:
                 assert SATSolver(all_clauses).solve()
 
     @staticmethod
-    def test_coloring_advanced():
-        # for i in range(1, 200, 50):
-        i = 10
+    def test_coloring_medium():
+        i = 35
         # When colors are 1 ... 100:
         # Variables:  4600 , clauses:  236646
         # Ran in 17s
@@ -376,11 +375,20 @@ class TestSATSolver:
             (45, 44),
             (46, 45), (46, 44), (46, 43), (46, 42), (46, 41), (46, 40),
         ]
+
         vertices = set()
         for edge in edges:
             v1, v2 = edge
             vertices.add(v1)
             vertices.add(v2)
+
+        print()
+        print("EDGES")
+        print(edges)
+
+        print()
+        print("VERTICES")
+        print(vertices)
 
         variables = len(colors) * len(vertices)
         clause_count = 0
@@ -403,6 +411,7 @@ class TestSATSolver:
             )
             for v in vertices
         ]
+        print(vertices_are_colored)
 
         one_color_per_vertex = list([
             (
@@ -415,6 +424,7 @@ class TestSATSolver:
             for v in vertices
         ])
         one_color_per_vertex = [item for sublist in one_color_per_vertex for item in sublist]
+        print(one_color_per_vertex)
 
         different_colors_per_edge = list([
             (
@@ -427,14 +437,151 @@ class TestSATSolver:
             for v, u in edges
         ])
         different_colors_per_edge = [item for sublist in different_colors_per_edge for item in sublist]
+        print(different_colors_per_edge)
 
         all_clauses = []
         all_clauses.extend(vertices_are_colored)
         all_clauses.extend(one_color_per_vertex)
         all_clauses.extend(different_colors_per_edge)
         all_clauses = frozenset(clause for clause in all_clauses)
+        print(all_clauses)
 
-        if i < 4:
-            assert not SATSolver(all_clauses).solve()
-        else:
-            assert SATSolver(all_clauses).solve()
+        assert SATSolver(all_clauses).solve()
+
+    @staticmethod
+    def test_coloring_advanced():
+        # for i in range(1, 200, 50):
+        i = 5
+        # When colors are 1 ... 100:
+        # Variables:  4600 , clauses:  236646
+        # Ran in 17s
+        # When colors are 1 ... 500:
+        # Variables:  23000 , clauses:  5783046
+        # Ran in 9m 31s
+        # When colors are 1 ... 750:
+        # Variables:  34500 , clauses:  12987046
+        # Ran in 39m
+        colors = list(range(1, i + 1))
+        # edges = [
+        #     (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),
+        #     (2, 3), (2, 4), (2, 5), (2, 6),
+        #     (3, 6), (3, 10), (3, 12),
+        #     (4, 5), (4, 7), (4, 9),
+        #     (5, 6), (5, 7), (5, 8),
+        #     (6, 8), (6, 10),
+        #     (7, 8), (7, 9), (7, 11),
+        #     (8, 10), (8, 11),
+        #     (9, 11), (9, 12),
+        #     (10, 11), (10, 12),
+        #     (11, 12),
+        #     (13, 1), (13, 2), (13, 3), (13, 4), (13, 4), (13, 5), (13, 6), (13, 7), (13, 8), (13, 9),
+        #     (14, 10), (14, 11), (14, 12), (14, 13),
+        #     (15, 5),
+        #     (16, 10), (16, 2),
+        #     (17, 15),
+        #     (18, 8), (18, 11),
+        #     (19, 3),
+        #     (20, 7),
+        #     (21, 11),
+        #     (22, 16),
+        #     (23, 15), (23, 22),
+        #     (24, 20), (24, 19), (24, 21),
+        #     (25, 9), (25, 11), (25, 17),
+        #     (26, 21), (26, 17),
+        #     (27, 22),
+        #     (28, 27),
+        #     (29, 28),
+        #     (30, 29),
+        #     (31, 30),
+        #     (32, 31),
+        #     (33, 32),
+        #     (34, 33),
+        #     (35, 34),
+        #     (36, 35),
+        #     (37, 36),
+        #     (38, 37),
+        #     (39, 38),
+        #     (40, 39),
+        #     (41, 40),
+        #     (42, 41),
+        #     (43, 42),
+        #     (44, 43),
+        #     (45, 44),
+        #     (46, 45), (46, 44), (46, 43), (46, 42), (46, 41), (46, 40),
+        # ]
+        edges = []
+        for v1, v2 in combinations(list(range(1, i + 2)), 2):
+            edges.append((v1, v2))
+
+        vertices = set()
+        for edge in edges:
+            v1, v2 = edge
+            vertices.add(v1)
+            vertices.add(v2)
+
+        print()
+        print("EDGES")
+        print(edges)
+
+        print()
+        print("VERTICES")
+        print(vertices)
+
+        variables = len(colors) * len(vertices)
+        clause_count = 0
+        clause_count += len(vertices)
+        clause_count += len(vertices) * int(comb(len(colors), 2))
+        clause_count += len(edges) * len(colors)
+        print("Variables: ", variables, ", clauses: ", clause_count)
+
+        # For every vertex v and color c there is a variable V_{v,c}.
+        # Assume they are ordered, first by vertex then by color.
+        # The variable corresponding to V_{v,c} is ((v-1)*len(colors) + c)
+        # So: 1 is V_{1,1}, 2 is V_{1,2}, ..., c is V_{1,c}, c+1 is V_{2,1}, etc'
+
+        vertices_are_colored = [
+            (
+                frozenset({
+                    ((v - 1) * len(colors) + c)
+                    for c in colors
+                })
+            )
+            for v in vertices
+        ]
+        print(vertices_are_colored)
+
+        one_color_per_vertex = list([
+            (
+                list(
+                    frozenset({(-((v - 1) * len(colors) + c1)),
+                               (-((v - 1) * len(colors) + c2))})
+                    for c1, c2 in combinations(colors, 2)
+                )
+            )
+            for v in vertices
+        ])
+        one_color_per_vertex = [item for sublist in one_color_per_vertex for item in sublist]
+        print(one_color_per_vertex)
+
+        different_colors_per_edge = list([
+            (
+                list(
+                    frozenset({(-((v - 1) * len(colors) + c)),
+                               (-((u - 1) * len(colors) + c))})
+                    for c in colors
+                )
+            )
+            for v, u in edges
+        ])
+        different_colors_per_edge = [item for sublist in different_colors_per_edge for item in sublist]
+        print(different_colors_per_edge)
+
+        all_clauses = []
+        all_clauses.extend(vertices_are_colored)
+        all_clauses.extend(one_color_per_vertex)
+        all_clauses.extend(different_colors_per_edge)
+        all_clauses = frozenset(clause for clause in all_clauses)
+        print(all_clauses)
+
+        assert not SATSolver(all_clauses).solve()
+
