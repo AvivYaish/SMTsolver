@@ -151,13 +151,10 @@ class SATSolver:
                 }
             elif operator == "<=>":
                 transformed_subformulas[subformulas[cur_formula]] = {
-                    # =>
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
-                    frozenset({subformulas[left_parameter], subformulas[cur_formula]}),
-                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]}),
-                    # <=
+                    frozenset({-subformulas[cur_formula], subformulas[left_parameter], -subformulas[right_parameter]}),
                     frozenset({subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
-                    frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]})
+                    frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]}),
                 }
             transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
         transformed_formula.add(frozenset({1}))  # Always need to satisfy the entire formula

@@ -150,6 +150,17 @@ class TestSATSolver:
                  frozenset({1}),
                  frozenset({2, -4})}
         )
+        assert SATSolver._tseitin_transform(SATSolver._parse_formula("and (not x) x")) == (
+            {'x': 3, ('and', ('not', 'x'), 'x'): 1, ('not', 'x'): 2},
+            {1: {frozenset({1, -3, -2}), frozenset({2, -1}), frozenset({3, -1})},
+             2: {frozenset({2, 3}), frozenset({-3, -2})}},
+            {frozenset({1}),
+             frozenset({1, -3, -2}),
+             frozenset({2, 3}),
+             frozenset({3, -1}),
+             frozenset({2, -1}),
+             frozenset({-3, -2})}
+        )
 
     @staticmethod
     def test_preprocessing():
