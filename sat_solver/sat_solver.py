@@ -205,7 +205,7 @@ class SATSolver:
         # VSIDS related fields
         self._unassigned_vsids_count = Counter()
         self._assigned_vsids_count = {}
-        self._decision_counter = 0             # Count how many decisions have been made
+        self._step_counter = 0             # Count how many decisions have been made
         self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
 
         for clause in self._formula:
@@ -369,11 +369,27 @@ class SATSolver:
         if len(self._new_clauses) == self._max_new_clauses:
             clause_to_remove = self._new_clauses.popleft()
             for literal in clause_to_remove:
-                self._literal_to_clause[literal].discard[clause_to_remove]
+                self._literal_to_clause[literal].discard(clause_to_remove)
                 self._literal_to_watched_clause[abs(literal)].discard(clause_to_remove)
 
         self._new_clauses.append(conflict_clause)
         self._add_clause(conflict_clause)
+
+    def _bcp_to_exhaustion(self) -> bool:
+        """
+        :return: performs BCP until exhaustion, returns False iff formula is UNSAT.
+        """
+        conflict_clause = self._bcp()
+        while conflict_clause is not None:
+            conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
+            if level_to_jump_to == -1:
+                # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
+                return False
+            self._backtrack(level_to_jump_to)
+            self._add_conflict_clause(conflict_clause)
+            self._assign(conflict_clause, watch_literal)
+            conflict_clause = self._bcp()
+        return True
 
     def _backtrack(self, level: int):
         """
@@ -386,18 +402,19 @@ class SATSolver:
             for clause in self._satisfaction_by_level.pop():
                 self._satisfied_clauses.remove(clause)
 
-    def _decide(self):
-        """
-        Decides which literal to assign next, using the VSIDS decision heuristic.
-        """
+    def _increment_step(self):
         # Maintain data structures related to VSIDS
-        self._decision_counter += 1
-        if self._decision_counter >= self._halving_period:
+        self._step_counter += 1
+        if self._step_counter >= self._halving_period:
             for literal in self._unassigned_vsids_count:
                 self._unassigned_vsids_count[literal] /= 2
             for literal in self._assigned_vsids_count:
                 self._assigned_vsids_count[literal] /= 2
 
+    def _decide(self):
+        """
+        Decides which literal to assign next, using the VSIDS decision heuristic.
+        """
         self._create_new_decision_level()
         literal, count = self._unassigned_vsids_count.most_common(1).pop()
         self._assign(None, literal)
@@ -421,16 +438,9 @@ class SATSolver:
         self._satisfy_unit_clauses()
         while True:
             # Iterative BCP
-            conflict_clause = self._bcp()
-            while conflict_clause is not None:
-                conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
-                if level_to_jump_to == -1:  # TODO: maybe should be <= 0?
-                    # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
-                    return False
-                self._backtrack(level_to_jump_to)
-                self._add_conflict_clause(conflict_clause)
-                self._assign(conflict_clause, watch_literal)
-                conflict_clause = self._bcp()
+            self._increment_step()
+            if not self._bcp_to_exhaustion():
+                return False
 
             # If all clauses are satisfied, we are done
             if self._formula.issubset(self._satisfied_clauses):

@@ -244,8 +244,9 @@ class TestSATSolver:
             vertices.add(v1)
             vertices.add(v2)
 
-        # variable_count = len(colors) * len(vertices)
-        # clause_count = len(vertices) + len(vertices) * int(comb(len(colors), 2)) + len(edges) * len(colors)
+        variable_count = len(colors) * len(vertices)
+        clause_count = len(vertices) + len(vertices) * int(comb(len(colors), 2)) + len(edges) * len(colors)
+        print("Variables: ", variable_count, ", clauses: ", clause_count)
 
         # For every vertex v and color c there is a variable V_{v,c}.
         # Assume they are ordered, first by vertex then by color.
@@ -381,7 +382,9 @@ class TestSATSolver:
 
     @staticmethod
     def test_coloring_clique():
-        color_num = 50
+        color_num = 7
         edges = list(combinations(list(range(1, color_num + 2)), 2))
-        assert not SATSolver(TestSATSolver.generate_coloring_clauses(color_num, edges)).solve()
+        formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
+        # assert True
+        assert not SATSolver(formula).solve()
 
