@@ -244,12 +244,8 @@ class TestSATSolver:
             vertices.add(v1)
             vertices.add(v2)
 
-        variables = len(colors) * len(vertices)
-        clause_count = 0
-        clause_count += len(vertices)
-        clause_count += len(vertices) * int(comb(len(colors), 2))
-        clause_count += len(edges) * len(colors)
-        print("Variables: ", variables, ", clauses: ", clause_count)
+        # variable_count = len(colors) * len(vertices)
+        # clause_count = len(vertices) + len(vertices) * int(comb(len(colors), 2)) + len(edges) * len(colors)
 
         # For every vertex v and color c there is a variable V_{v,c}.
         # Assume they are ordered, first by vertex then by color.
@@ -391,9 +387,6 @@ class TestSATSolver:
     @staticmethod
     def test_coloring_advanced():
         color_num = 5
-        edges = []
-        for v1, v2 in combinations(list(range(1, color_num + 2)), 2):
-            edges.append((v1, v2))
-
+        edges = [(v1, v2) for v1, v2 in combinations(list(range(1, color_num + 2)), 2)]
         assert not SATSolver(TestSATSolver.generate_coloring_clauses(color_num, edges)).solve()
 
