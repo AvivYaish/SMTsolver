@@ -277,21 +277,21 @@ class SATSolver:
         """
         conflict_clause = set(conflict_clause)
         while True:
-            last_literal, prev_max_level, max_level, max_idx, max_count = None, -1, -1, -1, 0
+            last_literal, prev_max_level, max_level, max_idx, max_level_count = None, -1, -1, -1, 0
             for literal in conflict_clause:
                 variable = abs(literal)
                 level, idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
                 if level > max_level:
                     prev_max_level = max_level
-                    max_level, max_idx, max_count = level, -1, 0
-                elif level > prev_max_level:
-                    prev_max_level = level
-                if level == max_level:
-                    max_count += 1
+                    last_literal, max_level, max_idx, max_level_count = literal, level, idx, 1
+                elif level == max_level:
+                    max_level_count += 1
                     if idx > max_idx:
                         last_literal, max_idx = literal, idx
+                elif level > prev_max_level:
+                    prev_max_level = level
 
-            if max_count == 1:
+            if max_level_count == 1:
                 # The last assigned literal is the only one from the last decision level
                 # Return the conflict clause, the next literal to assign (which should be the watch literal of the
                 # conflict clause), and the decision level to jump to
@@ -332,11 +332,11 @@ class SATSolver:
                 continue
             unassigned_literals.append(unassigned_literal)
 
-            if (len(unassigned_literals) > 1) and (clause not in self._literal_to_watched_clause[-watch_literal]):
-                # The second condition implies we replaced the watch_literal and can stop searching for one.
-                break
-
-            if clause not in self._literal_to_watched_clause[unassigned_literal]:
+            if clause not in self._literal_to_watched_clause[watch_literal]:
+                # If we already replaced the watch_literal
+                if len(unassigned_literals) > 1:
+                    break
+            elif clause not in self._literal_to_watched_clause[unassigned_literal]:
                 # If the current literal is already watching the clause, it cannot replace the watch literal
                 self._literal_to_watched_clause[watch_literal].remove(clause)
                 self._literal_to_watched_clause[unassigned_literal].add(clause)
