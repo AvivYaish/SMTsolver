@@ -86,24 +86,23 @@ class SATSolver:
     @staticmethod
     def _simplify(parsed_formula):
         if not parsed_formula:
-            return "True"
+            return "true"
 
         # Base case, only one variable/boolean value
-        if len(parsed_formula) == 1:
+        if (len(parsed_formula) == 1) or (parsed_formula == "true") or (parsed_formula == "false"):
             return parsed_formula
 
         operator = parsed_formula[0]
-        right_side = SATSolver._simplify(parsed_formula[1])
+        left_parameter = SATSolver._simplify(parsed_formula[1])
 
         if operator == "not":
-            if right_side == "false":
+            if left_parameter == "false":
                 return "true"
-            elif right_side == "true":
+            elif left_parameter == "true":
                 return "false"
-            return operator, right_side
+            return operator, left_parameter
 
         # Boolean operator
-        left_parameter = right_side
         right_parameter = SATSolver._simplify(parsed_formula[2])
 
         if left_parameter == right_parameter:
@@ -111,9 +110,16 @@ class SATSolver:
                 return "true"
             return left_parameter
         else:
-            if (operator == "or") and ((left_parameter == "true") or (right_parameter == "true")):
-                return "true"
+            if operator == "or":
+                if (left_parameter == "true") or (right_parameter == "true"):
+                    return "true"
+                if left_parameter == "false":
+                    return right_parameter
+                if right_parameter == "false":
+                    return left_parameter
             if operator == "and":
+                if (left_parameter == "false") or (right_parameter == "false"):
+                    return "false"
                 if left_parameter == "true":
                     return right_parameter
                 if right_parameter == "true":
@@ -140,25 +146,24 @@ class SATSolver:
                 continue
 
             operator = cur_formula[0]
-            right_side = cur_formula[1]
             if operator not in {"not", "and", "or", "=>", "<=>"}:
                 continue
 
+            left_parameter = cur_formula[1]
             if operator == "not":
-                if right_side not in subformulas:
-                    subformulas[right_side] = len(subformulas) + 1
+                if left_parameter not in subformulas:
+                    subformulas[left_parameter] = len(subformulas) + 1
 
                 transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], -subformulas[right_side]}),
-                    frozenset({subformulas[cur_formula], subformulas[right_side]})
+                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
+                    frozenset({subformulas[cur_formula], subformulas[left_parameter]})
                 }
 
                 transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
-                formula_list.append(right_side)
+                formula_list.append(left_parameter)
                 continue
 
             # Boolean operator
-            left_parameter = right_side
             right_parameter = cur_formula[2]
             formula_list.append(left_parameter)
             formula_list.append(right_parameter)
