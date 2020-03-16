@@ -312,10 +312,11 @@ class SATSolver:
         """
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
-            for clause in (self._literal_to_watched_clause[abs(watch_literal)] - self._satisfied_clauses):
-                conflict_clause = self._replace_watch_literal(clause, watch_literal)
-                if conflict_clause is not None:
-                    return conflict_clause
+            for clause in self._literal_to_watched_clause[abs(watch_literal)].copy():
+                if clause not in self._satisfied_clauses:
+                    conflict_clause = self._replace_watch_literal(clause, watch_literal)
+                    if conflict_clause is not None:
+                        return conflict_clause
         return None  # No conflict-clause
 
     def _replace_watch_literal(self, clause, watch_literal: int):
