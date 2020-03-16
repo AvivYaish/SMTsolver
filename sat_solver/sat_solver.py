@@ -250,7 +250,7 @@ class SATSolver:
         # Keep data structures related to variable assignment up to date
         self._assignment_by_level[-1].append(variable)
         for cur_sign in [variable, -variable]:
-            if cur_sign in self._literal_to_clause:
+            if cur_sign in self._unassigned_vsids_count:
                 self._last_assigned_literals.append(cur_sign)
                 self._assigned_vsids_count[cur_sign] = self._unassigned_vsids_count[cur_sign]
                 del self._unassigned_vsids_count[cur_sign]
@@ -261,7 +261,7 @@ class SATSolver:
         """
         del self._assignment[variable]
         for cur_sign in [variable, -variable]:
-            if cur_sign in self._literal_to_clause:
+            if cur_sign in self._assigned_vsids_count:
                 self._unassigned_vsids_count[cur_sign] = self._assigned_vsids_count[cur_sign]
                 del self._assigned_vsids_count[cur_sign]
 
@@ -352,7 +352,7 @@ class SATSolver:
             self._assign(clause, unassigned_literals.pop())
         return None
 
-    def _add_conflict_clause(self, conflict_clause, literal_to_assign: int):
+    def _add_conflict_clause(self, conflict_clause):
         """
         Adds a conflict clause to the formula.
         """
@@ -368,7 +368,6 @@ class SATSolver:
 
         self._new_clauses.append(conflict_clause)
         self._add_clause(conflict_clause)
-        self._assign(conflict_clause, literal_to_assign)
 
     def _backtrack(self, level: int):
         """
@@ -419,11 +418,12 @@ class SATSolver:
             conflict_clause = self._bcp()
             while conflict_clause is not None:
                 conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
-                if level_to_jump_to == -1:
+                if level_to_jump_to == -1:  # TODO: maybe should be <= 0?
                     # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
                     return False
                 self._backtrack(level_to_jump_to)
-                self._add_conflict_clause(conflict_clause, watch_literal)
+                self._add_conflict_clause(conflict_clause)
+                self._assign(conflict_clause, watch_literal)
                 conflict_clause = self._bcp()
 
             # If all clauses are satisfied, we are done
