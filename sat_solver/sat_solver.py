@@ -216,15 +216,18 @@ class SATSolver:
         Initialize all clause data structures for the given clause.
         """
         for idx, literal in enumerate(clause):
+            variable = abs(literal)
             if literal not in self._literal_to_clause:
                 self._literal_to_clause[literal] = set()
-                self._literal_to_watched_clause[literal] = set()
+            if variable not in self._literal_to_watched_clause:
+                self._literal_to_watched_clause[variable] = set()
             if (literal not in self._unassigned_vsids_count) and (literal not in self._assigned_vsids_count):
                 self._unassigned_vsids_count[literal] = 0
+                self._unassigned_vsids_count[-literal] = 0
 
             self._literal_to_clause[literal].add(clause)
             if idx <= 1:
-                self._literal_to_watched_clause[literal].add(clause)
+                self._literal_to_watched_clause[variable].add(clause)
             if literal in self._unassigned_vsids_count:
                 self._unassigned_vsids_count[literal] += 1
             elif literal in self._assigned_vsids_count:
@@ -249,11 +252,10 @@ class SATSolver:
 
         # Keep data structures related to variable assignment up to date
         self._assignment_by_level[-1].append(variable)
+        self._last_assigned_literals.append(literal)
         for cur_sign in [variable, -variable]:
-            if cur_sign in self._unassigned_vsids_count:
-                self._last_assigned_literals.append(cur_sign)
-                self._assigned_vsids_count[cur_sign] = self._unassigned_vsids_count[cur_sign]
-                del self._unassigned_vsids_count[cur_sign]
+            self._assigned_vsids_count[cur_sign] = self._unassigned_vsids_count[cur_sign]
+            del self._unassigned_vsids_count[cur_sign]
 
     def _unassign(self, variable):
         """
@@ -261,9 +263,8 @@ class SATSolver:
         """
         del self._assignment[variable]
         for cur_sign in [variable, -variable]:
-            if cur_sign in self._assigned_vsids_count:
-                self._unassigned_vsids_count[cur_sign] = self._assigned_vsids_count[cur_sign]
-                del self._assigned_vsids_count[cur_sign]
+            self._unassigned_vsids_count[cur_sign] = self._assigned_vsids_count[cur_sign]
+            del self._assigned_vsids_count[cur_sign]
 
     def get_assignment(self):
         """
@@ -275,6 +276,7 @@ class SATSolver:
         """
         Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
         """
+        first_conflict = conflict_clause.copy()
         conflict_clause = set(conflict_clause)
         while True:
             last_literal, prev_max_level, max_level, max_idx, max_level_count = None, -1, -1, -1, 0
@@ -310,7 +312,7 @@ class SATSolver:
         """
         while self._last_assigned_literals:
             watch_literal = self._last_assigned_literals.popleft()
-            for clause in (self._literal_to_watched_clause[watch_literal] - self._satisfied_clauses):
+            for clause in (self._literal_to_watched_clause[abs(watch_literal)] - self._satisfied_clauses):
                 conflict_clause = self._replace_watch_literal(clause, watch_literal)
                 if conflict_clause is not None:
                     return conflict_clause
@@ -324,22 +326,25 @@ class SATSolver:
           - If it has 1 unassigned literals, assign the correct value to the last literal.
           - If it has > 2 unassigned literals, pick one to become the new watch literal.
         """
+        watch_variable = abs(watch_literal)
+        replaced_watcher = False
         unassigned_literals = []
         for unassigned_literal in clause:
-            variable = abs(unassigned_literal)
-            if variable in self._assignment:
+            unassigned_variable = abs(unassigned_literal)
+            if unassigned_variable in self._assignment:
                 # If the current literal is assigned, it cannot replace the current watch literal
                 continue
             unassigned_literals.append(unassigned_literal)
 
-            if clause not in self._literal_to_watched_clause[watch_literal]:
+            if replaced_watcher:
                 # If we already replaced the watch_literal
                 if len(unassigned_literals) > 1:
                     break
-            elif clause not in self._literal_to_watched_clause[unassigned_literal]:
-                # If the current literal is already watching the clause, it cannot replace the watch literal
-                self._literal_to_watched_clause[watch_literal].remove(clause)
-                self._literal_to_watched_clause[unassigned_literal].add(clause)
+            elif clause not in self._literal_to_watched_clause[unassigned_variable]:
+                # If the current literal is not already watching the clause, it can replace the watch literal
+                self._literal_to_watched_clause[watch_variable].remove(clause)
+                self._literal_to_watched_clause[unassigned_variable].add(clause)
+                replaced_watcher = True
 
         if len(unassigned_literals) == 0:
             # Clause is UNSAT, return it as the conflict-clause
@@ -363,8 +368,8 @@ class SATSolver:
         if len(self._new_clauses) == self._max_new_clauses:
             clause_to_remove = self._new_clauses.popleft()
             for literal in clause_to_remove:
-                if literal in self._literal_to_watched_clause:
-                    self._literal_to_watched_clause[literal].discard(clause_to_remove)
+                self._literal_to_clause[literal].discard[clause_to_remove]
+                self._literal_to_watched_clause[abs(literal)].discard(clause_to_remove)
 
         self._new_clauses.append(conflict_clause)
         self._add_clause(conflict_clause)
