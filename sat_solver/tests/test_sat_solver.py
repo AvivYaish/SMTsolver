@@ -381,10 +381,16 @@ class TestSATSolver:
         assert SATSolver(TestSATSolver.generate_coloring_clauses(color_num, edges)).solve()
 
     @staticmethod
-    def test_coloring_clique():
-        color_num = 7
+    def test_coloring_clique_uncolorable():
+        color_num = 8
         edges = list(combinations(list(range(1, color_num + 2)), 2))
         formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
-        # assert True
-        assert not SATSolver(formula).solve()
+        assert not SATSolver(formula, halving_period=10000).solve()
+
+    @staticmethod
+    def test_coloring_clique_colorable():
+        color_num = 75
+        edges = list(combinations(list(range(1, color_num + 1)), 2))
+        formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
+        assert SATSolver(formula, halving_period=float('inf')).solve()
 
