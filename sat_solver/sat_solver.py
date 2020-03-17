@@ -83,6 +83,20 @@ class SATSolver:
         return operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)
 
     @staticmethod
+    def _is_parameter_not(parameter):
+        return (len(parameter) > 1) and (parameter[0] == "not")
+
+    @staticmethod
+    def _is_left_not_right(left_parameter, right_parameter):
+        return (
+            # This case is: op (not x) (x)
+            (SATSolver._is_parameter_not(right_parameter) and (right_parameter[1] == left_parameter))
+            or
+            # This case is: op (not x) (x)
+            (SATSolver._is_parameter_not(left_parameter) and (left_parameter[1] == right_parameter))
+        )
+
+    @staticmethod
     def _simplify_formula(parsed_formula):
         # Base case, empty formula
         if (not parsed_formula) or (parsed_formula == ""):
@@ -95,6 +109,9 @@ class SATSolver:
 
         left_parameter = SATSolver._simplify_formula(parsed_formula[1])
         if operator == "not":
+            if SATSolver._is_parameter_not(left_parameter):
+                # not (not x)
+                return left_parameter[1]
             if left_parameter == "false":
                 return "true"
             elif left_parameter == "true":
@@ -103,44 +120,45 @@ class SATSolver:
 
         # Boolean operator
         right_parameter = SATSolver._simplify_formula(parsed_formula[2])
-
         if left_parameter == right_parameter:
             if (operator == "=>") or (operator == "<=>"):
                 return "true"
             return left_parameter
-        else:
+        elif (operator == "or") or (operator == "and"):
             if operator == "or":
-                if (left_parameter == "true") or (right_parameter == "true"):
-                    return "true"
-                if left_parameter == "false":
-                    return right_parameter
-                if right_parameter == "false":
-                    return left_parameter
-                if (len(right_parameter) > 1) and (right_parameter[0] == "not") and \
-                        (right_parameter[1] == left_parameter):
-                    # This case is: or (x) (not x)
-                    return "true"
-                # Symmetrical case
-                if (len(left_parameter) > 1) and (left_parameter[0] == "not") and \
-                        (left_parameter[1] == right_parameter):
-                    # This case is: or (not x) (x)
-                    return "true"
-            if operator == "and":
-                if (left_parameter == "false") or (right_parameter == "false"):
-                    return "false"
-                if left_parameter == "true":
-                    return right_parameter
-                if right_parameter == "true":
-                    return left_parameter
-                if (len(right_parameter) > 1) and (right_parameter[0] == "not") and \
-                        (right_parameter[1] == left_parameter):
-                    # This case is: and (x) (not x)
-                    return "false"
-                # Symmetrical case
-                if (len(left_parameter) > 1) and (left_parameter[0] == "not") and \
-                        (left_parameter[1] == right_parameter):
-                    # This case is: and (not x) (x)
-                    return "false"
+                first_bool, second_bool = "true", "false"
+            else:
+                first_bool, second_bool = "false", "true"
+            if (
+                    (left_parameter == first_bool) or (right_parameter == first_bool)
+                    or
+                    SATSolver._is_left_not_right(left_parameter, right_parameter)
+            ):
+                return first_bool
+            if left_parameter == second_bool:
+                return right_parameter
+            if right_parameter == second_bool:
+                return left_parameter
+        elif operator == "=>":
+            if (right_parameter == "true") or (left_parameter == "false"):
+                return "true"
+            if right_parameter == "false":
+                return "not", left_parameter
+            if left_parameter == "true":
+                return right_parameter
+            if SATSolver._is_left_not_right(left_parameter, right_parameter):
+                return right_parameter
+        elif operator == "<=>":
+            if left_parameter == "true":
+                return right_parameter
+            if right_parameter == "true":
+                return left_parameter
+            if left_parameter == "false":
+                return "not", right_parameter
+            if right_parameter == "false":
+                return "not", left_parameter
+            if SATSolver._is_left_not_right(left_parameter, right_parameter):
+                return "false"
         return operator, left_parameter, right_parameter
 
     @staticmethod
