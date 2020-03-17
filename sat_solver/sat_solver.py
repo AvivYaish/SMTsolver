@@ -85,27 +85,16 @@ class SATSolver:
 
     @staticmethod
     def _simplify_formula(parsed_formula):
-        # formula_list = [parsed_formula]
-        # subformulas = {}
-        # simplified_subformulas = {}
-        # simplified_formula = None
-        #
-        # while formula_list:
-        #     cur_formula = formula_list.pop()
-        #     if not cur_formula:
-        #         continue
-
         # Base case, empty formula
         if (not parsed_formula) or (parsed_formula == ""):
             return "true"
 
         # Base case, only one variable/boolean value
-        if (len(parsed_formula) == 1) or (parsed_formula == "true") or (parsed_formula == "false"):
+        operator = parsed_formula[0]
+        if operator not in {"not", "and", "or", "=>", "<=>"}:
             return parsed_formula
 
-        operator = parsed_formula[0]
         left_parameter = SATSolver._simplify_formula(parsed_formula[1])
-
         if operator == "not":
             if left_parameter == "false":
                 return "true"
@@ -170,10 +159,6 @@ class SATSolver:
                 # + 1 to avoid getting zeros (-0=0)
                 subformulas[cur_formula] = len(subformulas) + 1
 
-            # Base case, only one variable
-            if len(cur_formula) == 1:
-                continue
-
             operator = cur_formula[0]
             if operator not in {"not", "and", "or", "=>", "<=>"}:
                 continue
@@ -229,7 +214,8 @@ class SATSolver:
                 }
             transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
         transformed_formula.add(frozenset({1}))  # Always need to satisfy the entire formula
-        return subformulas, transformed_subformulas, transformed_formula
+        # return subformulas, transformed_subformulas, transformed_formula
+        return transformed_formula
 
     @staticmethod
     def _preprocessing(cnf_formula):
@@ -262,7 +248,7 @@ class SATSolver:
             return frozenset({})
         elif simplified_formula == "false":
             return frozenset({frozenset({1}), frozenset({-1})})
-        return SATSolver._tseitin_transform(simplified_formula)[2]
+        return SATSolver._tseitin_transform(simplified_formula)
 
     def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000):
         if formula is None:

@@ -94,73 +94,33 @@ class TestSATSolver:
 
     @staticmethod
     def test_tseitin_transform():
-        assert SATSolver._tseitin_transform(SATSolver._parse_formula("not (=> (not (and p q)) (not r))")) == (
-            {'p': 7,
-              'q': 8,
-              'r': 5,
-              ('=>', ('not', ('and', 'p', 'q')), ('not', 'r')): 2,
-              ('and', 'p', 'q'): 6,
-              ('not', ('=>', ('not', ('and', 'p', 'q')), ('not', 'r'))): 1,
-              ('not', ('and', 'p', 'q')): 3,
-              ('not', 'r'): 4},
-             {1: {frozenset({-1, -2}), frozenset({1, 2})},
-              2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
-              3: {frozenset({-6, -3}), frozenset({3, 6})},
-              4: {frozenset({-5, -4}), frozenset({4, 5})},
-              6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}},
-             {frozenset({2, 3}),
-              frozenset({1, 2}),
-              frozenset({-8, -7, 6}),
-              frozenset({4, 5}),
-              frozenset({-6, -3}),
-              frozenset({3, 6}),
-              frozenset({4, -3, -2}),
-              frozenset({-1, -2}),
-              frozenset({8, -6}),
-              frozenset({-5, -4}),
-              frozenset({-6, 7}),
-              frozenset({1}),
-              frozenset({2, -4})}
-        )
-        assert SATSolver._tseitin_transform(SATSolver._parse_formula("not (=> (not (and pq78 q)) (not r))")) == (
-                {'pq78': 7,
-                 'q': 8,
-                 'r': 5,
-                 ('=>', ('not', ('and', 'pq78', 'q')), ('not', 'r')): 2,
-                 ('and', 'pq78', 'q'): 6,
-                 ('not', ('=>', ('not', ('and', 'pq78', 'q')), ('not', 'r'))): 1,
-                 ('not', ('and', 'pq78', 'q')): 3,
-                 ('not', 'r'): 4},
-                {1: {frozenset({-1, -2}), frozenset({1, 2})},
-                 2: {frozenset({2, -4}), frozenset({2, 3}), frozenset({4, -3, -2})},
-                 3: {frozenset({-6, -3}), frozenset({3, 6})},
-                 4: {frozenset({-5, -4}), frozenset({4, 5})},
-                 6: {frozenset({8, -6}), frozenset({-8, -7, 6}), frozenset({-6, 7})}},
-                {frozenset({2, 3}),
-                 frozenset({1, 2}),
-                 frozenset({-8, -7, 6}),
-                 frozenset({4, 5}),
-                 frozenset({-6, -3}),
-                 frozenset({3, 6}),
-                 frozenset({4, -3, -2}),
-                 frozenset({-1, -2}),
-                 frozenset({8, -6}),
-                 frozenset({-5, -4}),
-                 frozenset({-6, 7}),
-                 frozenset({1}),
-                 frozenset({2, -4})}
-        )
-        assert SATSolver._tseitin_transform(SATSolver._parse_formula("and (not x) x")) == (
-            {'x': 3, ('and', ('not', 'x'), 'x'): 1, ('not', 'x'): 2},
-            {1: {frozenset({1, -3, -2}), frozenset({2, -1}), frozenset({3, -1})},
-             2: {frozenset({2, 3}), frozenset({-3, -2})}},
-            {frozenset({1}),
-             frozenset({1, -3, -2}),
-             frozenset({2, 3}),
-             frozenset({3, -1}),
-             frozenset({2, -1}),
-             frozenset({-3, -2})}
-        )
+        transformed_formula = {
+            frozenset({2, 3}),
+            frozenset({1, 2}),
+            frozenset({-8, -7, 6}),
+            frozenset({4, 5}),
+            frozenset({-6, -3}),
+            frozenset({3, 6}),
+            frozenset({4, -3, -2}),
+            frozenset({-1, -2}),
+            frozenset({8, -6}),
+            frozenset({-5, -4}),
+            frozenset({-6, 7}),
+            frozenset({1}),
+            frozenset({2, -4})
+        }
+        assert SATSolver._tseitin_transform(SATSolver._parse_formula("not (=> (not (and p q)) (not r))")) == \
+               transformed_formula
+        assert SATSolver._tseitin_transform(SATSolver._parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
+               transformed_formula
+        assert SATSolver._tseitin_transform(SATSolver._parse_formula("and (not x) x")) == {
+            frozenset({1}),
+            frozenset({1, -3, -2}),
+            frozenset({2, 3}),
+            frozenset({3, -1}),
+            frozenset({2, -1}),
+            frozenset({-3, -2})
+        }
 
     @staticmethod
     def test_preprocessing():
@@ -431,12 +391,12 @@ class TestSATSolver:
         formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
         assert not SATSolver(formula, halving_period=10000).solve()
 
-    @staticmethod
-    @pytest.mark.parametrize("color_num", list(range(21, 22)))
-    def test_coloring_clique_colorable(color_num: int):
-        edges = list(combinations(list(range(1, color_num + 1)), 2))
-        formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
-        assert SATSolver(formula, halving_period=float('inf')).solve()
+    # @staticmethod
+    # @pytest.mark.parametrize("color_num", list(range(21, 22)))
+    # def test_coloring_clique_colorable(color_num: int):
+    #     edges = list(combinations(list(range(1, color_num + 1)), 2))
+    #     formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
+    #     assert SATSolver(formula, halving_period=float('inf')).solve()
 
     @staticmethod
     def test_does_not_work():
@@ -485,11 +445,69 @@ SAT
 Z3:  [2 = False, 1 = False]
         """
 
+        """
+        FAILED [ 56%]Is sat?  True
+Z3:		 0.014008760452270508
+Our:	 0.0
+Z3 formula:  Or(Or(Or(1 == Not(1), Not(1 == Not(1))), Not(1)),
+   Or(Not(1), 1 == Not(1)))
+Text formula:  or (or (or (<=> (1) (not 1)) (not (<=> (1) (not 1)))) (not (1))) (or (not (1)) (<=> (1) (not 1)))
+Text formula, parsed:  ('or', ('or', ('or', ('<=>', '1', ('not', '1')), ('not', ('<=>', '1', ('not', '1')))), ('not', '1')), ('or', ('not', '1'), ('<=>', '1', ('not', '1'))))
+Tseitin:  ({('or', ('or', ('or', ('<=>', '1', ('not', '1')), ('not', ('<=>', '1', ('not', '1')))), ('not', '1')), ('or', ('not', '1'), ('<=>', '1', ('not', '1')))): 1, ('or', ('or', ('<=>', '1', ('not', '1')), ('not', ('<=>', '1', ('not', '1')))), ('not', '1')): 2, ('or', ('not', '1'), ('<=>', '1', ('not', '1'))): 3, ('not', '1'): 4, ('<=>', '1', ('not', '1')): 5, '1': 6, ('or', ('<=>', '1', ('not', '1')), ('not', ('<=>', '1', ('not', '1')))): 7, ('not', ('<=>', '1', ('not', '1'))): 8}, {1: {frozenset({2, 3, -1}), frozenset({1, -3}), frozenset({1, -2})}, 3: {frozenset({3, -5}), frozenset({3, -4}), frozenset({5, 4, -3})}, 5: {frozenset({-5, -4, 6}), frozenset({4, 5, 6}), frozenset({-6, -5, 4}), frozenset({-6, -4, 5})}, 4: {frozenset({-6, -4}), frozenset({4, 6})}, 2: {frozenset({-7, 2}), frozenset({2, -4}), frozenset({4, -2, 7})}, 7: {frozenset({8, -7, 5}), frozenset({-5, 7}), frozenset({-8, 7})}, 8: {frozenset({8, 5}), frozenset({-8, -5})}}, {frozenset({8, -7, 5}), frozenset({-8, 7}), frozenset({1, -3}), frozenset({4, 6}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({-6, -4}), frozenset({-5, 7}), frozenset({4, -2, 7}), frozenset({1}), frozenset({4, 5, 6}), frozenset({-5, -4, 6}), frozenset({-7, 2}), frozenset({1, -2}), frozenset({-8, -5}), frozenset({-6, -5, 4}), frozenset({3, -4}), frozenset({-6, -4, 5}), frozenset({2, -4}), frozenset({8, 5}), frozenset({5, 4, -3})})
+Our formula:  {frozenset({8, -7, 5}), frozenset({-8, 7}), frozenset({1, -3}), frozenset({4, 6}), frozenset({3, -5}), frozenset({2, 3, -1}), frozenset({-6, -4}), frozenset({-5, 7}), frozenset({4, -2, 7}), frozenset({1}), frozenset({4, 5, 6}), frozenset({-5, -4, 6}), frozenset({-7, 2}), frozenset({1, -2}), frozenset({-8, -5}), frozenset({-6, -5, 4}), frozenset({3, -4}), frozenset({-6, -4, 5}), frozenset({2, -4}), frozenset({8, 5}), frozenset({5, 4, -3})}
+SAT
+Z3:  []
+        """
+
+        """
+        FAILED [ 27%]Is sat?  True
+Z3:		 0.0329127311706543
+Our:	 0.0009975433349609375
+Z3 formula:  Or(Or(Or(Not(2) == 2, Implies(Not(2), Not(1))),
+      Implies(Implies(Not(2), Not(1)), Not(1))),
+   And(Not(2) == 2, Implies(Not(2), Not(1))))
+Text formula:  or (or (or (<=> (not 2) (2)) (=> (not 2) (not 1))) (=> (=> (not 2) (not 1)) (not 1))) (and (<=> (not 2) (2)) (=> (not 2) (not 1)))
+Text formula, parsed:  ('or', ('or', ('or', ('<=>', ('not', '2'), '2'), ('=>', ('not', '2'), ('not', '1'))), ('=>', ('=>', ('not', '2'), ('not', '1')), ('not', '1'))), ('and', ('<=>', ('not', '2'), '2'), ('=>', ('not', '2'), ('not', '1'))))
+Tseitin:  ({('or', ('or', ('or', ('<=>', ('not', '2'), '2'), ('=>', ('not', '2'), ('not', '1'))), ('=>', ('=>', ('not', '2'), ('not', '1')), ('not', '1'))), ('and', ('<=>', ('not', '2'), '2'), ('=>', ('not', '2'), ('not', '1')))): 1, ('or', ('or', ('<=>', ('not', '2'), '2'), ('=>', ('not', '2'), ('not', '1'))), ('=>', ('=>', ('not', '2'), ('not', '1')), ('not', '1'))): 2, ('and', ('<=>', ('not', '2'), '2'), ('=>', ('not', '2'), ('not', '1'))): 3, ('<=>', ('not', '2'), '2'): 4, ('=>', ('not', '2'), ('not', '1')): 5, ('not', '2'): 6, ('not', '1'): 7, '1': 8, '2': 9, ('or', ('<=>', ('not', '2'), '2'), ('=>', ('not', '2'), ('not', '1'))): 10, ('=>', ('=>', ('not', '2'), ('not', '1')), ('not', '1')): 11}, {1: {frozenset({2, 3, -1}), frozenset({1, -3}), frozenset({1, -2})}, 3: {frozenset({4, -3}), frozenset({5, -3}), frozenset({3, -5, -4})}, 5: {frozenset({-6, -5, 7}), frozenset({5, 6}), frozenset({-7, 5})}, 7: {frozenset({-8, -7}), frozenset({8, 7})}, 6: {frozenset({-6, -9}), frozenset({9, 6})}, 4: {frozenset({9, 4, 6}), frozenset({9, -6, -4}), frozenset({-4, 6, -9}), frozenset({-6, 4, -9})}, 2: {frozenset({2, -11}), frozenset({2, -10}), frozenset({10, 11, -2})}, 11: {frozenset({-5, -11, 7}), frozenset({11, 5}), frozenset({-7, 11})}, 10: {frozenset({4, 5, -10}), frozenset({10, -5}), frozenset({10, -4})}}, {frozenset({1, -3}), frozenset({9, -6, -4}), frozenset({4, 5, -10}), frozenset({2, 3, -1}), frozenset({9, 4, 6}), frozenset({2, -10}), frozenset({10, 11, -2}), frozenset({10, -4}), frozenset({8, 7}), frozenset({-6, -9}), frozenset({1}), frozenset({-4, 6, -9}), frozenset({-7, 5}), frozenset({3, -5, -4}), frozenset({-6, -5, 7}), frozenset({9, 6}), frozenset({11, 5}), frozenset({1, -2}), frozenset({10, -5}), frozenset({-7, 11}), frozenset({2, -11}), frozenset({-5, -11, 7}), frozenset({5, 6}), frozenset({-6, 4, -9}), frozenset({4, -3}), frozenset({-8, -7}), frozenset({5, -3})})
+Our formula:  {frozenset({1, -3}), frozenset({9, -6, -4}), frozenset({4, 5, -10}), frozenset({2, 3, -1}), frozenset({9, 4, 6}), frozenset({2, -10}), frozenset({10, 11, -2}), frozenset({10, -4}), frozenset({8, 7}), frozenset({-6, -9}), frozenset({1}), frozenset({-4, 6, -9}), frozenset({-7, 5}), frozenset({3, -5, -4}), frozenset({-6, -5, 7}), frozenset({9, 6}), frozenset({11, 5}), frozenset({1, -2}), frozenset({10, -5}), frozenset({-7, 11}), frozenset({2, -11}), frozenset({-5, -11, 7}), frozenset({5, 6}), frozenset({-6, 4, -9}), frozenset({4, -3}), frozenset({-8, -7}), frozenset({5, -3})}
+SAT
+Z3:  []
+        """
+
+        """
+        FAILED [ 32%]Is sat?  True
+Z3:		 0.041924476623535156
+Our:	 0.0
+Z3 formula:  Or(Or(Or(And(Not(1), Not(2)), 1 == Not(1)),
+      And(Not(1), Not(2)) == 1),
+   Not(2) == (1 == Not(1)))
+Text formula:  or (or (or (and (not 1) (not 2)) (<=> (1) (not 1))) (<=> (and (not 1) (not 2)) (1))) (<=> (not 2) (<=> (1) (not 1)))
+Text formula, parsed:  ('or', ('or', ('or', ('and', ('not', '1'), ('not', '2')), ('<=>', '1', ('not', '1'))), ('<=>', ('and', ('not', '1'), ('not', '2')), '1')), ('<=>', ('not', '2'), ('<=>', '1', ('not', '1'))))
+Tseitin:  ({('or', ('or', ('or', ('and', ('not', '1'), ('not', '2')), ('<=>', '1', ('not', '1'))), ('<=>', ('and', ('not', '1'), ('not', '2')), '1')), ('<=>', ('not', '2'), ('<=>', '1', ('not', '1')))): 1, ('or', ('or', ('and', ('not', '1'), ('not', '2')), ('<=>', '1', ('not', '1'))), ('<=>', ('and', ('not', '1'), ('not', '2')), '1')): 2, ('<=>', ('not', '2'), ('<=>', '1', ('not', '1'))): 3, ('not', '2'): 4, ('<=>', '1', ('not', '1')): 5, '1': 6, ('not', '1'): 7, '2': 8, ('or', ('and', ('not', '1'), ('not', '2')), ('<=>', '1', ('not', '1'))): 9, ('<=>', ('and', ('not', '1'), ('not', '2')), '1'): 10, ('and', ('not', '1'), ('not', '2')): 11}, {1: {frozenset({2, 3, -1}), frozenset({1, -3}), frozenset({1, -2})}, 3: {frozenset({5, -4, -3}), frozenset({-5, 4, -3}), frozenset({3, -4, -5}), frozenset({3, 4, 5})}, 5: {frozenset({-7, -6, 5}), frozenset({-6, -5, 7}), frozenset({5, 6, 7}), frozenset({-7, -5, 6})}, 7: {frozenset({6, 7}), frozenset({-7, -6})}, 4: {frozenset({-8, -4}), frozenset({8, 4})}, 2: {frozenset({9, 10, -2}), frozenset({2, -10}), frozenset({2, -9})}, 10: {frozenset({10, -6, -11}), frozenset({-6, 11, -10}), frozenset({-11, -10, 6}), frozenset({10, 11, 6})}, 11: {frozenset({-11, 7}), frozenset({4, -11}), frozenset({-7, 11, -4})}, 9: {frozenset({9, -11}), frozenset({11, 5, -9}), frozenset({9, -5})}}, {frozenset({9, 10, -2}), frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({-6, 11, -10}), frozenset({-7, 11, -4}), frozenset({2, 3, -1}), frozenset({6, 7}), frozenset({2, -10}), frozenset({-7, -5, 6}), frozenset({1}), frozenset({10, 11, 6}), frozenset({9, -11}), frozenset({3, -4, -5}), frozenset({-11, -10, 6}), frozenset({-7, -6, 5}), frozenset({-6, -5, 7}), frozenset({1, -2}), frozenset({2, -9}), frozenset({-8, -4}), frozenset({-5, 4, -3}), frozenset({10, -6, -11}), frozenset({9, -5}), frozenset({-11, 7}), frozenset({5, 6, 7}), frozenset({4, -11}), frozenset({3, 4, 5}), frozenset({-7, -6}), frozenset({11, 5, -9}), frozenset({8, 4})})
+Our formula:  {frozenset({9, 10, -2}), frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({-6, 11, -10}), frozenset({-7, 11, -4}), frozenset({2, 3, -1}), frozenset({6, 7}), frozenset({2, -10}), frozenset({-7, -5, 6}), frozenset({1}), frozenset({10, 11, 6}), frozenset({9, -11}), frozenset({3, -4, -5}), frozenset({-11, -10, 6}), frozenset({-7, -6, 5}), frozenset({-6, -5, 7}), frozenset({1, -2}), frozenset({2, -9}), frozenset({-8, -4}), frozenset({-5, 4, -3}), frozenset({10, -6, -11}), frozenset({9, -5}), frozenset({-11, 7}), frozenset({5, 6, 7}), frozenset({4, -11}), frozenset({3, 4, 5}), frozenset({-7, -6}), frozenset({11, 5, -9}), frozenset({8, 4})}
+SAT
+Z3:  [2 = False, 1 = False]
+        """
+
+        """
+        FAILED [ 99%]Is sat?  True
+Z3:		 0.031877994537353516
+Our:	 0.0009975433349609375
+Z3 formula:  Or(Or(Or(2 == Not(2), Not(2 == Not(2))), Or(2, 2)),
+   Not(2) == (2 == Not(2)))
+Text formula:  or (or (or (<=> (2) (not 2)) (not (<=> (2) (not 2)))) (or (2) (2))) (<=> (not 2) (<=> (2) (not 2)))
+Text formula, parsed:  ('or', ('or', ('or', ('<=>', '2', ('not', '2')), ('not', ('<=>', '2', ('not', '2')))), ('or', '2', '2')), ('<=>', ('not', '2'), ('<=>', '2', ('not', '2'))))
+Tseitin:  ({('or', ('or', ('or', ('<=>', '2', ('not', '2')), ('not', ('<=>', '2', ('not', '2')))), ('or', '2', '2')), ('<=>', ('not', '2'), ('<=>', '2', ('not', '2')))): 1, ('or', ('or', ('<=>', '2', ('not', '2')), ('not', ('<=>', '2', ('not', '2')))), ('or', '2', '2')): 2, ('<=>', ('not', '2'), ('<=>', '2', ('not', '2'))): 3, ('not', '2'): 4, ('<=>', '2', ('not', '2')): 5, '2': 6, ('or', ('<=>', '2', ('not', '2')), ('not', ('<=>', '2', ('not', '2')))): 7, ('or', '2', '2'): 8, ('not', ('<=>', '2', ('not', '2'))): 9}, {1: {frozenset({2, 3, -1}), frozenset({1, -3}), frozenset({1, -2})}, 3: {frozenset({5, -4, -3}), frozenset({-5, 4, -3}), frozenset({3, -4, -5}), frozenset({3, 4, 5})}, 5: {frozenset({-5, -4, 6}), frozenset({4, 5, 6}), frozenset({-6, -5, 4}), frozenset({-6, -4, 5})}, 4: {frozenset({-6, -4}), frozenset({4, 6})}, 2: {frozenset({-8, 2}), frozenset({-7, 2}), frozenset({8, -2, 7})}, 8: {frozenset({8, -6}), frozenset({-8, 6})}, 7: {frozenset({-5, 7}), frozenset({-7, 5, 9}), frozenset({7, -9})}, 9: {frozenset({-5, -9}), frozenset({9, 5})}}, {frozenset({-8, 2}), frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({4, 6}), frozenset({2, 3, -1}), frozenset({-6, -4}), frozenset({-5, 7}), frozenset({1}), frozenset({4, 5, 6}), frozenset({9, 5}), frozenset({3, -4, -5}), frozenset({-5, -4, 6}), frozenset({-7, 2}), frozenset({1, -2}), frozenset({7, -9}), frozenset({-5, -9}), frozenset({-5, 4, -3}), frozenset({-6, -5, 4}), frozenset({8, -6}), frozenset({-8, 6}), frozenset({-6, -4, 5}), frozenset({-7, 5, 9}), frozenset({3, 4, 5}), frozenset({8, -2, 7})})
+Our formula:  {frozenset({8, -7, 5}), frozenset({5, -4, -3}), frozenset({1, -3}), frozenset({4, 6}), frozenset({6, -2, 7}), frozenset({-8, 7}), frozenset({2, 3, -1}), frozenset({-6, -4}), frozenset({-5, 7}), frozenset({1}), frozenset({4, 5, 6}), frozenset({3, -4, -5}), frozenset({-5, -4, 6}), frozenset({-6, 2}), frozenset({-7, 2}), frozenset({1, -2}), frozenset({-8, -5}), frozenset({-5, 4, -3}), frozenset({-6, -5, 4}), frozenset({-6, -4, 5}), frozenset({3, 4, 5}), frozenset({8, 5})}
+SAT
+Z3:  []
+        """
+
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_parser",
-                             [(variable_num, 2 * variable_num, True) for variable_num in list(range(1, 3))] * 500
+                             [(variable_num, 2 * variable_num, True) for variable_num in list(range(1, 3))] * 50
                              # +
-                             # [(variable_num, variable_num, False) for variable_num in list(range(2000, 2005))]
+                             # [(variable_num, variable_num, False) for variable_num in list(range(900, 905))]
                              )
     def test_random_formula(variable_num: int, operator_num: int, test_parser):
         # Generates a random formula and compares our solver to Z3
@@ -560,9 +578,9 @@ Z3:  [2 = False, 1 = False]
                 formula_our = "or", formula_our, cur_subformula_our
 
         # Solve with Z3
-        start_time_z3 = time.time()
         z3_solver = z3.Solver()
         z3_solver.add(formula_z3)
+        start_time_z3 = time.time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
         end_time_z3 = time.time()
         print("Is sat? ", is_sat_z3)
@@ -572,10 +590,10 @@ Z3:  [2 = False, 1 = False]
         if test_parser:
             formula_our = SATSolver.convert_string_formula(formula_our_text)
         else:
-            formula_our = SATSolver._tseitin_transform(formula_our)[2]
+            formula_our = SATSolver._tseitin_transform(formula_our)
 
-        start_time_our = time.time()
         our_solver = SATSolver(formula_our)
+        start_time_our = time.time()
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
         print("Our:\t", end_time_our - start_time_our)
