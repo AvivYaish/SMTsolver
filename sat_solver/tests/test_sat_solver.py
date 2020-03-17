@@ -603,7 +603,10 @@ Z3:  []
             print("Text formula: ", formula_our_text)
             formula_our_text_parsed = SATSolver._parse_formula(formula_our_text)
             print("Text formula, parsed: ", formula_our_text_parsed)
-            print("Tseitin: ", SATSolver._tseitin_transform(formula_our_text_parsed))
+            formula_our_simplified = SATSolver._simplify_formula(formula_our_text_parsed)
+            print("Simplified formula: ", formula_our_simplified)
+            print("Tseitin on simplified: ", SATSolver._tseitin_transform(formula_our_simplified))
+            print("Tseitin on parsed: ", SATSolver._tseitin_transform(formula_our_text_parsed))
             print("Our formula: ", formula_our)
             if is_sat_z3:
                 print("SAT")

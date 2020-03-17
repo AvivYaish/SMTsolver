@@ -57,12 +57,11 @@ class SATSolver:
         cur_formula = SATSolver._prepare_formula(formula)
         if not cur_formula:
             return None
-        split_cur_formula = cur_formula.split(None, 1)
 
-        # Base case, only one variable
+        split_cur_formula = cur_formula.split(None, 1)
         if len(split_cur_formula) == 1:
-            variable = split_cur_formula.pop()
-            return variable
+            # Base case, only one variable/booolean value
+            return split_cur_formula.pop()
 
         right_side = split_cur_formula.pop()
         operator = split_cur_formula.pop().lower()
