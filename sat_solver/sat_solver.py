@@ -3,21 +3,6 @@ from collections import deque, Counter
 
 class SATSolver:
     @staticmethod
-    def import_file(filename):
-        variables = {}
-        with open(filename, 'r') as f:
-            contents = f.read()
-
-            # TODO: shouldn't pass line by line, there can be multi-line expressions
-            for line in contents:
-                tokens = line[1:-1].split()
-                if tokens[0] == "declare-const":
-                    variables[tokens[1]] = tokens[2]
-                if tokens[0] == "assert":
-                    pass
-        return None
-
-    @staticmethod
     def _find_closing_bracket(text: str) -> int:
         """
         :return: the index of the ')' bracket that closes the very first (left-most) '(' bracket.
@@ -144,9 +129,7 @@ class SATSolver:
                 return "true"
             if right_parameter == "false":
                 return "not", left_parameter
-            if left_parameter == "true":
-                return right_parameter
-            if SATSolver._is_left_not_right(left_parameter, right_parameter):
+            if (left_parameter == "true") or SATSolver._is_left_not_right(left_parameter, right_parameter):
                 return right_parameter
         elif operator == "<=>":
             if left_parameter == "true":
@@ -162,7 +145,7 @@ class SATSolver:
         return operator, left_parameter, right_parameter
 
     @staticmethod
-    def _tseitin_transform(parsed_formula):
+    def _tseitin_transform(parsed_formula, output_all=False):
         formula_list = [parsed_formula]
         subformulas = {}
         transformed_subformulas = {}
@@ -231,7 +214,8 @@ class SATSolver:
                 }
             transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
         transformed_formula.add(frozenset({1}))  # Always need to satisfy the entire formula
-        # return subformulas, transformed_subformulas, transformed_formula
+        if output_all:
+            return subformulas, transformed_subformulas, transformed_formula
         return transformed_formula
 
     @staticmethod
@@ -268,6 +252,9 @@ class SATSolver:
         return SATSolver._tseitin_transform(simplified_formula)
 
     def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000):
+        """
+        :param formula: a formula, in CNF. A formula is a set of clauses, where each clause is a frozenset.
+        """
         if formula is None:
             formula = set()
 
