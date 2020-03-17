@@ -1,4 +1,5 @@
 from collections import deque, Counter
+import re
 
 
 class SATSolver:
@@ -34,11 +35,41 @@ class SATSolver:
             formula = formula[1:-1].strip()
         return formula
 
+    _DECLARATION = re.compile(r'(\(\s*(declare-fun)\s+(\w+)\s+\(([^\)]*)\)\s+(\w+)\s*\))')
+    _ASSERTION = re.compile(r'(\(\s*(assert)\s(.+)\s*\))')
+
     @staticmethod
-    def _parse_formula(formula: str):
+    def _parse_formula_uf(formula: str, signature=None, parsed_formulas=None):
+        """
+        asserts and declarations are line separated, and are enclosed by a single ( and ).
+        """
+        if signature is None:
+            signature = {}
+        if parsed_formulas is None:
+            parsed_formulas = []
+
+        for match in re.finditer(SATSolver._DECLARATION, formula):
+            name = match.group(3)
+            parameters = match.group(4)
+            output = match.group(5)
+            signature[name] = {
+                "output_type": output,
+                "parameter_types": parameters.split()
+            }
+
+        for match in re.finditer(SATSolver._ASSERTION, formula):
+            partial_formula = match.group(3)
+            parsed_formulas.append(' '.join(partial_formula.split()).strip())
+
+        return signature, parsed_formulas
+
+    @staticmethod
+    def _parse_formula(formula: str, variables=None):
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it.
         """
+        if variables is None:
+            variables = set()
         cur_formula = SATSolver._prepare_formula(formula)
         if not cur_formula:
             return None
@@ -46,7 +77,11 @@ class SATSolver:
         split_cur_formula = cur_formula.split(None, 1)
         if len(split_cur_formula) == 1:
             # Base case, only one variable/booolean value
-            return split_cur_formula.pop()
+            variable = split_cur_formula.pop()
+            truth_value = variable.lower()
+            if (truth_value != "true") and (truth_value != "false"):
+                variables.add(truth_value)
+            return variable
 
         right_side = split_cur_formula.pop()
         operator = split_cur_formula.pop().lower()
@@ -54,7 +89,7 @@ class SATSolver:
             raise ValueError('"' + operator + '" is not a supported operator.')
 
         if operator == "not":
-            return operator, SATSolver._parse_formula(right_side)
+            return operator, SATSolver._parse_formula(right_side, variables)
 
         # Boolean operator
         if right_side and (right_side[0] == "("):
@@ -65,7 +100,7 @@ class SATSolver:
             right_side = SATSolver._prepare_formula(right_side[closing_idx:])
         else:
             left_side, right_side = right_side.split()
-        return operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)
+        return operator, SATSolver._parse_formula(left_side, variables), SATSolver._parse_formula(right_side, variables)
 
     @staticmethod
     def _is_parameter_not(parameter):
@@ -115,8 +150,10 @@ class SATSolver:
             else:
                 first_bool, second_bool = "false", "true"
             if (
+                    # Either: op (x) (first_bool), or: op (first_bool) (x)
                     (left_parameter == first_bool) or (right_parameter == first_bool)
                     or
+                    # Either: op (x) (not x), or: op (not x) (x)
                     SATSolver._is_left_not_right(left_parameter, right_parameter)
             ):
                 return first_bool
@@ -250,6 +287,18 @@ class SATSolver:
         elif simplified_formula == "false":
             return frozenset({frozenset({1}), frozenset({-1})})
         return SATSolver._tseitin_transform(simplified_formula)
+
+    @staticmethod
+    def convert_tseitin_assignment_to_regular(formula: str, assignment):
+        variables = set()
+        simplified_formula = SATSolver._simplify_formula(SATSolver._parse_formula(formula, variables))
+        if simplified_formula == "true":
+            return frozenset({})
+        elif simplified_formula == "false":
+            return frozenset({frozenset({1}), frozenset({-1})})
+        subformulas, transformed_subformulas, transformed_formula = SATSolver._tseitin_transform(simplified_formula)
+        # for variable in assignment:
+        #     if subformulas[]
 
     def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000):
         """
