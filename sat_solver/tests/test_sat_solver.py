@@ -4,6 +4,7 @@ from itertools import combinations
 from scipy.special import comb
 import z3
 import random
+import numpy
 import time
 
 COLORING_BASIC_EDGES = [
@@ -413,10 +414,48 @@ class TestSATSolver:
         assert SATSolver(formula, halving_period=1000).solve()
 
     @staticmethod
+    @pytest.mark.parametrize("variable_num, clause_num, clause_length",
+                             [(10, clause_num, 5) for clause_num in list(range(1000, 2000))])
+    def test_random_3sat(variable_num: int, clause_num: int, clause_length: int):
+        # Generates a random 3SAT and compares our solver to Z3
+
+        # Generate formula
+        formula_z3 = []
+        formula_our = set()
+
+        all_variables_z3 = numpy.array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal)))) for cur_literal
+                                        in range(1, variable_num + 1)]).flatten()
+        all_variables_our = numpy.array([(variable, -variable) for variable in range(1, variable_num + 1)]).flatten()
+
+        for cur_clause_idx in range(clause_num):
+            chosen_literals = numpy.random.randint(0, len(all_variables_our), size=clause_length)
+            formula_z3.append(z3.Or(*all_variables_z3[chosen_literals]))
+            formula_our.add(frozenset(all_variables_our[chosen_literals]))
+
+        # Solve with Z3
+        z3_solver = z3.Solver()
+        z3_solver.add(z3.And(*formula_z3))
+        start_time_z3 = time.time()
+        is_sat_z3 = (z3_solver.check() == z3.sat)
+        end_time_z3 = time.time()
+
+        # Solve with our
+        start_time_our = time.time()
+        our_solver = SATSolver(formula_our)
+        is_sat_our = our_solver.solve()
+        end_time_our = time.time()
+
+        print()
+        print("Is sat? ", is_sat_z3)
+        print("Z3:\t\t", end_time_z3 - start_time_z3)
+        print("Our:\t", end_time_our - start_time_our)
+        assert is_sat_our is is_sat_z3
+
+    @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_parser",
-                             # [(variable_num, 10000 * variable_num, True) for variable_num in list(range(1, 200))]
+                             [(variable_num, 20000 * variable_num, True) for variable_num in list(range(10, 20))]
                              # +
-                             [(variable_num, 10000 * variable_num, False) for variable_num in list(range(1, 200))]
+                             # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
     def test_random_formula(variable_num: int, operator_num: int, test_parser):
         # Generates a random formula and compares our solver to Z3
@@ -482,53 +521,37 @@ class TestSATSolver:
                 formula_our_text = cur_subformula_our_text
                 formula_our = cur_subformula_our
             else:
-                # formula_z3 = z3.Or(formula_z3, cur_subformula_z3)
-                # formula_our_text = "or (" + formula_our_text + ") (" + cur_subformula_our_text + ")"
-                # formula_our = "or", formula_our, cur_subformula_our
+                # This is probably UNSAT:
+                # formula_z3 = z3.And(formula_z3, cur_subformula_z3)
+                # formula_our_text = "and (" + formula_our_text + ") (" + cur_subformula_our_text + ")"
+                # formula_our = "and", formula_our, cur_subformula_our
+                # This is completely random:
                 formula_z3 = cur_subformula_z3
                 formula_our_text = cur_subformula_our_text
                 formula_our = cur_subformula_our
 
         # Solve with Z3
-        start_time_z3 = time.time()
         z3_solver = z3.Solver()
         z3_solver.add(formula_z3)
+        start_time_z3 = time.time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
         end_time_z3 = time.time()
 
         # Solve with ours
-        start_time_our = time.time()
         if test_parser:
             formula_our = SATSolver.convert_string_formula(formula_our_text)
         else:
             formula_our = SATSolver._tseitin_transform(formula_our)
+        start_time_our = time.time()
         our_solver = SATSolver(formula_our)
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
 
         print()
         print("Is sat? ", is_sat_z3)
-        if not is_sat_z3:
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         print("Z3:\t\t", end_time_z3 - start_time_z3)
         print("Our:\t", end_time_our - start_time_our)
-
         print("Z3 formula: ", formula_z3)
-        # print("Our formula: ", formula_our)
-        # print("Text formula: ", formula_our_text)
-        # formula_our_text_parsed = SATSolver._parse_formula(formula_our_text)
-        # print("Text formula, parsed: ", formula_our_text_parsed)
-        # print("Tseitin on parsed: ", SATSolver._tseitin_transform(formula_our_text_parsed))
-        # formula_our_simplified = SATSolver._simplify_formula(formula_our_text_parsed)
-        # print("Simplified formula: ", formula_our_simplified)
-        # print("Tseitin on simplified: ", SATSolver._tseitin_transform(formula_our_simplified))
-        # if is_sat_z3:
-        #     print("SAT")
-        #     print("Z3: ", z3_solver.model())
-        # else:
-        #     print("UNSAT")
-        #     print(our_solver.get_assignment())
         assert is_sat_our is is_sat_z3
 
     @staticmethod
