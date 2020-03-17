@@ -343,7 +343,6 @@ class SATSolver:
         """
         Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
         """
-        first_conflict = conflict_clause.copy()
         conflict_clause = set(conflict_clause)
         while True:
             last_literal, prev_max_level, max_level, max_idx, max_level_count = None, -1, -1, -1, 0
@@ -364,6 +363,8 @@ class SATSolver:
                 # The last assigned literal is the only one from the last decision level
                 # Return the conflict clause, the next literal to assign (which should be the watch literal of the
                 # conflict clause), and the decision level to jump to
+                if (prev_max_level == -1) and (max_level != -1):
+                    prev_max_level = max_level - 1
                 return frozenset(conflict_clause), last_literal, prev_max_level
 
             # Resolve the conflict clause with the clause on the incoming edge
