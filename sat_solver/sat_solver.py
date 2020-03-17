@@ -84,8 +84,19 @@ class SATSolver:
         return operator, SATSolver._parse_formula(left_side), SATSolver._parse_formula(right_side)
 
     @staticmethod
-    def _simplify(parsed_formula):
-        if not parsed_formula:
+    def _simplify_formula(parsed_formula):
+        # formula_list = [parsed_formula]
+        # subformulas = {}
+        # simplified_subformulas = {}
+        # simplified_formula = None
+        #
+        # while formula_list:
+        #     cur_formula = formula_list.pop()
+        #     if not cur_formula:
+        #         continue
+
+        # Base case, empty formula
+        if (not parsed_formula) or (parsed_formula == ""):
             return "true"
 
         # Base case, only one variable/boolean value
@@ -93,7 +104,7 @@ class SATSolver:
             return parsed_formula
 
         operator = parsed_formula[0]
-        left_parameter = SATSolver._simplify(parsed_formula[1])
+        left_parameter = SATSolver._simplify_formula(parsed_formula[1])
 
         if operator == "not":
             if left_parameter == "false":
@@ -103,7 +114,7 @@ class SATSolver:
             return operator, left_parameter
 
         # Boolean operator
-        right_parameter = SATSolver._simplify(parsed_formula[2])
+        right_parameter = SATSolver._simplify_formula(parsed_formula[2])
 
         if left_parameter == right_parameter:
             if (operator == "=>") or (operator == "<=>"):
@@ -117,6 +128,15 @@ class SATSolver:
                     return right_parameter
                 if right_parameter == "false":
                     return left_parameter
+                if (len(right_parameter) > 1) and (right_parameter[0] == "not") and \
+                        (right_parameter[1] == left_parameter):
+                    # This case is: or (x) (not x)
+                    return "true"
+                # Symmetrical case
+                if (len(left_parameter) > 1) and (left_parameter[0] == "not") and \
+                        (left_parameter[1] == right_parameter):
+                    # This case is: or (not x) (x)
+                    return "true"
             if operator == "and":
                 if (left_parameter == "false") or (right_parameter == "false"):
                     return "false"
@@ -124,6 +144,15 @@ class SATSolver:
                     return right_parameter
                 if right_parameter == "true":
                     return left_parameter
+                if (len(right_parameter) > 1) and (right_parameter[0] == "not") and \
+                        (right_parameter[1] == left_parameter):
+                    # This case is: and (x) (not x)
+                    return "false"
+                # Symmetrical case
+                if (len(left_parameter) > 1) and (left_parameter[0] == "not") and \
+                        (left_parameter[1] == right_parameter):
+                    # This case is: and (not x) (x)
+                    return "false"
         return operator, left_parameter, right_parameter
 
     @staticmethod
@@ -228,7 +257,7 @@ class SATSolver:
 
     @staticmethod
     def convert_string_formula(formula: str):
-        simplified_formula = SATSolver._simplify(SATSolver._parse_formula(formula))
+        simplified_formula = SATSolver._simplify_formula(SATSolver._parse_formula(formula))
         if simplified_formula == "true":
             return frozenset({})
         elif simplified_formula == "false":
