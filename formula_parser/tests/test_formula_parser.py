@@ -54,7 +54,7 @@ class TestFormulaParser:
                      'q2': {'output_type': 'Real', 'parameter_types': ['Int', 'Bool', 'a']},
                      'q3': {'output_type': 'Real', 'parameter_types': []},
                      'q4': {'output_type': 'Real', 'parameter_types': []}}
-        parsed_formulas = [('=', '250', ('+', ('q1',), '7')),
+        parsed_formulas = [('=', '250', ('+', ('q1', ('q1', '5', ('q2',)), '8'), '7')),
                            ('=',
                             '250',
                             ('+', ('and', ('q1',), 'x'), ('q2', '2', ('q2', '1', 'true', '2'), '8'))),
