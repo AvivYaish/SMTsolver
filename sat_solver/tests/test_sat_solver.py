@@ -84,13 +84,13 @@ class TestSATSolver:
 
     @staticmethod
     def test_parse_formula():
-        assert SATSolver._parse_formula("not (=> (not (and p q)) (not r))") == \
+        assert SATSolver.parse_formula("not (=> (not (and p q)) (not r))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
-        assert SATSolver._parse_formula("not (=> (not (and pq78 q)) (not r))") == \
+        assert SATSolver.parse_formula("not (=> (not (and pq78 q)) (not r))") == \
                ("not", ("=>", ("not", ("and", ("pq78"), ("q"))), ("not", ("r"))))
-        assert SATSolver._parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
+        assert SATSolver.parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
-        assert SATSolver._parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
+        assert SATSolver.parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("not", ("r")))), ("not", ("r"))))
 
     @staticmethod
@@ -110,11 +110,11 @@ class TestSATSolver:
             frozenset({1}),
             frozenset({2, -4})
         }
-        assert SATSolver._tseitin_transform(SATSolver._parse_formula("not (=> (not (and p q)) (not r))")) == \
+        assert SATSolver._tseitin_transform(SATSolver.parse_formula("not (=> (not (and p q)) (not r))")) == \
                transformed_formula
-        assert SATSolver._tseitin_transform(SATSolver._parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
+        assert SATSolver._tseitin_transform(SATSolver.parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
                transformed_formula
-        assert SATSolver._tseitin_transform(SATSolver._parse_formula("and (not x) x")) == {
+        assert SATSolver._tseitin_transform(SATSolver.parse_formula("and (not x) x")) == {
             frozenset({1}),
             frozenset({1, -3, -2}),
             frozenset({2, 3}),
@@ -453,7 +453,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_parser",
-                             [(variable_num, 500 * variable_num, True) for variable_num in list(range(1000, 2000))]
+                             [(variable_num, 50 * variable_num, True) for variable_num in list(range(100, 2000))]
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )

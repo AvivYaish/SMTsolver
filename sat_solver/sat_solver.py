@@ -35,7 +35,7 @@ class SATSolver:
         return formula
 
     @staticmethod
-    def _parse_formula(formula: str, variables=None):
+    def parse_formula(formula: str, variables=None):
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it.
         """
@@ -56,11 +56,11 @@ class SATSolver:
 
         right_side = split_cur_formula.pop()
         operator = split_cur_formula.pop().lower()
-        if operator not in {"not", "and", "or", "=>", "<=>"}:
-            raise ValueError('"' + operator + '" is not a supported operator.')
+        # if operator not in {"not", "and", "or", "=>", "<=>", "="}:
+        #     raise ValueError('"' + operator + '" is not a supported operator.')
 
         if operator == "not":
-            return operator, SATSolver._parse_formula(right_side, variables)
+            return operator, SATSolver.parse_formula(right_side, variables)
 
         # Boolean operator
         if right_side and (right_side[0] == "("):
@@ -70,8 +70,8 @@ class SATSolver:
             left_side = SATSolver._prepare_formula(right_side[:closing_idx])
             right_side = SATSolver._prepare_formula(right_side[closing_idx:])
         else:
-            left_side, right_side = right_side.split()
-        return operator, SATSolver._parse_formula(left_side, variables), SATSolver._parse_formula(right_side, variables)
+            left_side, right_side = right_side.split(None, 1)
+        return operator, SATSolver.parse_formula(left_side, variables), SATSolver.parse_formula(right_side, variables)
 
     @staticmethod
     def _is_parameter_not(parameter):
@@ -252,7 +252,7 @@ class SATSolver:
 
     @staticmethod
     def convert_string_formula(formula: str):
-        simplified_formula = SATSolver._simplify_formula(SATSolver._parse_formula(formula))
+        simplified_formula = SATSolver._simplify_formula(SATSolver.parse_formula(formula))
         if simplified_formula == "true":
             return frozenset({})
         elif simplified_formula == "false":
@@ -262,7 +262,7 @@ class SATSolver:
     @staticmethod
     def convert_tseitin_assignment_to_regular(formula: str, assignment):
         variables = set()
-        simplified_formula = SATSolver._simplify_formula(SATSolver._parse_formula(formula, variables))
+        simplified_formula = SATSolver._simplify_formula(SATSolver.parse_formula(formula, variables))
         if simplified_formula == "true":
             return frozenset({})
         elif simplified_formula == "false":
