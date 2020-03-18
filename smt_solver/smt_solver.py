@@ -15,7 +15,7 @@ class SMTSolver:
         if parsed_formulas is None:
             parsed_formulas = []
 
-        for match in re.finditer(SATSolver._DECLARATION, formula):
+        for match in re.finditer(SMTSolver._DECLARATION, formula):
             name = match.group(3)
             parameters = match.group(4)
             output = match.group(5)
@@ -26,6 +26,6 @@ class SMTSolver:
 
         for match in re.finditer(SMTSolver._ASSERTION, formula):
             partial_formula = match.group(3)
-            parsed_formulas.append(SMTSolver._prepare_formula(partial_formula))
+            parsed_formulas.append(partial_formula)
 
         return signature, parsed_formulas

@@ -33,5 +33,8 @@ class TestSMTSolver:
                      'q2': {'output_type': 'Real', 'parameter_types': ['Int', 'Bool', 'a']},
                      'q3': {'output_type': 'Real', 'parameter_types': []},
                      'q4': {'output_type': 'Real', 'parameter_types': []}}
-        parsed_formulas = ['= 250 (+ q1 q2 q3 q4)', '= 250 (+ (And (q1 ) (x ) ) q2 q3 q4 )', '= 250 ( + q1 q2 q3 q4)']
-        assert signature, parsed_formulas == SATSolver._parse_formula_uf(formula)
+        parsed_formulas = ['          (        = 250 (+           q1                       q2   q3 q4))',
+                           '(= 250 (+ (And (q1         )         (x    )   )     q2     q3 q4      '
+                           '))     ',
+                           '((= 250 (     + q1 q2 q3 q4)))       ']
+        assert signature, parsed_formulas == SMTSolver._parse_formula_uf(formula)
