@@ -35,12 +35,10 @@ class SATSolver:
         return formula
 
     @staticmethod
-    def parse_formula(formula: str, variables=None):
+    def parse_formula(formula: str, unary_operators=frozenset({"not"})):
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it.
         """
-        if variables is None:
-            variables = set()
         cur_formula = SATSolver._prepare_formula(formula)
         if not cur_formula:
             return None
@@ -49,9 +47,6 @@ class SATSolver:
         if len(split_cur_formula) == 1:
             # Base case, only one variable/boolean value
             variable = split_cur_formula.pop()
-            truth_value = variable.lower()
-            if (truth_value != "true") and (truth_value != "false"):
-                variables.add(truth_value)
             return variable
 
         right_side = split_cur_formula.pop()
@@ -59,8 +54,8 @@ class SATSolver:
         # if operator not in {"not", "and", "or", "=>", "<=>", "="}:
         #     raise ValueError('"' + operator + '" is not a supported operator.')
 
-        if operator == "not":
-            return operator, SATSolver.parse_formula(right_side, variables)
+        if operator in unary_operators:
+            return operator, SATSolver.parse_formula(right_side)
 
         # Boolean operator
         if right_side and (right_side[0] == "("):
@@ -71,7 +66,7 @@ class SATSolver:
             right_side = SATSolver._prepare_formula(right_side[closing_idx:])
         else:
             left_side, right_side = right_side.split(None, 1)
-        return operator, SATSolver.parse_formula(left_side, variables), SATSolver.parse_formula(right_side, variables)
+        return operator, SATSolver.parse_formula(left_side), SATSolver.parse_formula(right_side)
 
     @staticmethod
     def _is_parameter_not(parameter):
