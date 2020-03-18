@@ -66,7 +66,7 @@ class FormulaParser:
     @staticmethod
     def parse_uf(formula: str):
         """
-        asserts and declarations are line separated, and are enclosed by a single ( and ).
+        Assumes asserts and declarations are enclosed by a single ( and ).
         """
         signature = {}
         parsed_formulas = []
@@ -101,14 +101,11 @@ class FormulaParser:
         if not formula:
             return None
 
-        # Assumes function calls with parameters do not have any spaces, for example:
-        # func(param1,param2) <- this is valid
-        # func  (   param1  ,  param2) <- this is invalid
         parsed_function_call = FormulaParser._parse_function_call(formula, unary_operators, signature)
         if parsed_function_call is not None:
             return parsed_function_call
 
-        split_cur_formula = formula.split(None, 1)
+        split_cur_formula = formula.split(None, 1)  # Assumes operators are always a single character
         if len(split_cur_formula) == 1:
             # Base case, only one variable/boolean value
             variable = split_cur_formula.pop()
@@ -124,12 +121,14 @@ class FormulaParser:
 
         # Boolean operator
         closing_idx = FormulaParser._find_closing_bracket(right_side)
-        if closing_idx != len(right_side):
+        if (closing_idx != -1) and (closing_idx != len(right_side)):
             # If the first parameter of the operator is enclosed in brackets, split the first and second parameters
             # according to the location of the closing bracket.
             left_side = FormulaParser._prepare_formula(right_side[:closing_idx])
             right_side = FormulaParser._prepare_formula(right_side[closing_idx:])
         else:
+            # The first parameter is not enclosed in brackets and is not a function, can split according to the
+            # first whitespace
             left_side, right_side = right_side.split(None, 1)
         return operator, \
                FormulaParser.parse_formula(left_side, unary_operators, signature), \
