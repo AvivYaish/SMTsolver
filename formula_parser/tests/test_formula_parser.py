@@ -1,28 +1,28 @@
 import pytest
-from parser.parser import Parser
+from formula_parser.formula_parser import FormulaParser
 
 
-class TestParser:
+class TestFormulaParser:
 
     @staticmethod
     def test_prepare_formula():
-        assert Parser._prepare_formula('         ') == ''
-        assert Parser._prepare_formula('(((a)))') == 'a'
-        assert Parser._prepare_formula('   and    a     b    ') == 'and a b'
-        assert Parser._prepare_formula('   (   and a b     )     ') == 'and a b'
-        assert Parser._prepare_formula('(and (a) (b))') == 'and (a) (b)'
-        assert Parser._prepare_formula('and (a) (b)') == 'and (a) (b)'
-        assert Parser._prepare_formula('(((and (a) (b))))') == 'and (a) (b)'
+        assert FormulaParser._prepare_formula('         ') == ''
+        assert FormulaParser._prepare_formula('(((a)))') == 'a'
+        assert FormulaParser._prepare_formula('   and    a     b    ') == 'and a b'
+        assert FormulaParser._prepare_formula('   (   and a b     )     ') == 'and a b'
+        assert FormulaParser._prepare_formula('(and (a) (b))') == 'and (a) (b)'
+        assert FormulaParser._prepare_formula('and (a) (b)') == 'and (a) (b)'
+        assert FormulaParser._prepare_formula('(((and (a) (b))))') == 'and (a) (b)'
 
     @staticmethod
     def test_parse_formula():
-        assert Parser.parse_formula("not (=> (not (and p q)) (not r))") == \
+        assert FormulaParser.parse_formula("not (=> (not (and p q)) (not r))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
-        assert Parser.parse_formula("not (=> (not (and pq78 q)) (not r))") == \
+        assert FormulaParser.parse_formula("not (=> (not (and pq78 q)) (not r))") == \
                ("not", ("=>", ("not", ("and", ("pq78"), ("q"))), ("not", ("r"))))
-        assert Parser.parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
+        assert FormulaParser.parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
-        assert Parser.parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
+        assert FormulaParser.parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("not", ("r")))), ("not", ("r"))))
 
     @staticmethod
@@ -59,4 +59,4 @@ class TestParser:
                             '250',
                             ('+', ('and', ('q1',), 'x'), ('q2', '2', ('q2', '1', 'true', '2'), '8'))),
                            ('=', '250', ('+', ('q1',), ('q2',)))]
-        assert Parser.parse_uf(formula) == (signature, parsed_formulas)
+        assert FormulaParser.parse_uf(formula) == (signature, parsed_formulas)

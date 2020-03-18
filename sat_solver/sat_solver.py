@@ -1,3 +1,4 @@
+from formula_parser.formula_parser import FormulaParser
 from collections import deque, Counter
 
 
@@ -181,8 +182,8 @@ class SATSolver:
         return frozenset(preprocessed_formula)
 
     @staticmethod
-    def convert_string_formula(formula: str):
-        simplified_formula = SATSolver._simplify_formula(SATSolver.parse_formula(formula))
+    def import_formula(formula: str):
+        simplified_formula = SATSolver._simplify_formula(FormulaParser.parse_formula(formula))
         if simplified_formula == "true":
             return frozenset({})
         elif simplified_formula == "false":
@@ -192,7 +193,7 @@ class SATSolver:
     @staticmethod
     def convert_tseitin_assignment_to_regular(formula: str, assignment):
         variables = set()
-        simplified_formula = SATSolver._simplify_formula(SATSolver.parse_formula(formula, variables))
+        simplified_formula = SATSolver._simplify_formula(FormulaParser.parse_formula(formula, variables))
         if simplified_formula == "true":
             return frozenset({})
         elif simplified_formula == "false":

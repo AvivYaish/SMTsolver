@@ -1,7 +1,7 @@
 import re
 
 
-class Parser:
+class FormulaParser:
     _DECLARATION = re.compile(r'\(\s*declare-fun\s+(\w+)\s+\(([^\)]*)\)\s+(\w+)\s*\)')
     _ASSERTION = re.compile(r'\(\s*assert\s(.+)\s*\)')
     _FUNCTION_COMMA = re.compile(r'\(.*?\)|(,)')
@@ -34,7 +34,7 @@ class Parser:
         :return: a "cleaned" up formula, ready for parsing.
         """
         formula = ' '.join(formula.split()).strip()
-        while formula and (formula[0] == "(") and (Parser._find_closing_bracket(formula) == len(formula)):
+        while formula and (formula[0] == "(") and (FormulaParser._find_closing_bracket(formula) == len(formula)):
             formula = formula[1:-1].strip()
         return formula
 
@@ -43,7 +43,7 @@ class Parser:
         parameters = []
         if unparsed_parameters:
             start_idx = 0
-            for match in re.finditer(Parser._FUNCTION_COMMA, unparsed_parameters):
+            for match in re.finditer(FormulaParser._FUNCTION_COMMA, unparsed_parameters):
                 if match.group(0) != ",":
                     continue
                 cur_parameter = unparsed_parameters[start_idx:match.start()]
@@ -56,9 +56,9 @@ class Parser:
     def _parse_function_call(unparsed_call: str, unary_operators, signature):
         for function_name in signature:
             if unparsed_call.startswith(function_name):
-                parameter_string = Parser._prepare_formula(unparsed_call.split(function_name, 1).pop())
-                separated_parameters = Parser._separate_parameters(parameter_string)
-                parsed_parameters = [Parser.parse_formula(unparsed_parameter, unary_operators, signature) for
+                parameter_string = FormulaParser._prepare_formula(unparsed_call.split(function_name, 1).pop())
+                separated_parameters = FormulaParser._separate_parameters(parameter_string)
+                parsed_parameters = [FormulaParser.parse_formula(unparsed_parameter, unary_operators, signature) for
                                      unparsed_parameter in separated_parameters]
                 return (function_name, *parsed_parameters)
         return None
@@ -71,7 +71,7 @@ class Parser:
         signature = {}
         parsed_formulas = []
 
-        for match in re.finditer(Parser._DECLARATION, formula):
+        for match in re.finditer(FormulaParser._DECLARATION, formula):
             name = match.group(1)
             parameters = match.group(2)
             output = match.group(3)
@@ -80,9 +80,9 @@ class Parser:
                 "output_type": output
             }
 
-        for match in re.finditer(Parser._ASSERTION, formula):
+        for match in re.finditer(FormulaParser._ASSERTION, formula):
             partial_formula = match.group(1)
-            parsed_formulas.append(Parser.parse_formula(partial_formula, signature=signature))
+            parsed_formulas.append(FormulaParser.parse_formula(partial_formula, signature=signature))
 
         return signature, parsed_formulas
 
@@ -94,14 +94,14 @@ class Parser:
         if signature is None:
             signature = {}
 
-        cur_formula = Parser._prepare_formula(formula)
+        cur_formula = FormulaParser._prepare_formula(formula)
         if not cur_formula:
             return None
 
         # Assumes function calls with parameters do not have any spaces, for example:
         # func(param1,param2) <- this is valid
         # func  (   param1  ,  param2) <- this is invalid
-        parsed_function_call = Parser._parse_function_call(cur_formula, unary_operators, signature)
+        parsed_function_call = FormulaParser._parse_function_call(cur_formula, unary_operators, signature)
         if parsed_function_call is not None:
             return parsed_function_call
 
@@ -117,17 +117,17 @@ class Parser:
         #     raise ValueError('"' + operator + '" is not a supported operator.')
 
         if operator in unary_operators:
-            return operator, Parser.parse_formula(right_side, unary_operators, signature)
+            return operator, FormulaParser.parse_formula(right_side, unary_operators, signature)
 
         # Boolean operator
         if right_side and (right_side[0] == "("):
             # If the first parameter of the operator is enclosed in brackets, split the first and second parameters
             # according to the location of the closing bracket.
-            closing_idx = Parser._find_closing_bracket(right_side)
-            left_side = Parser._prepare_formula(right_side[:closing_idx])
-            right_side = Parser._prepare_formula(right_side[closing_idx:])
+            closing_idx = FormulaParser._find_closing_bracket(right_side)
+            left_side = FormulaParser._prepare_formula(right_side[:closing_idx])
+            right_side = FormulaParser._prepare_formula(right_side[closing_idx:])
         else:
             left_side, right_side = right_side.split(None, 1)
         return operator, \
-               Parser.parse_formula(left_side, unary_operators, signature), \
-               Parser.parse_formula(right_side, unary_operators, signature)
+               FormulaParser.parse_formula(left_side, unary_operators, signature), \
+               FormulaParser.parse_formula(right_side, unary_operators, signature)

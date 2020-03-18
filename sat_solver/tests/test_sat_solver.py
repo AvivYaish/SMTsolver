@@ -1,6 +1,6 @@
 import pytest
+from formula_parser.formula_parser import FormulaParser
 from sat_solver.sat_solver import SATSolver
-from parser2.parser import Parser
 from itertools import combinations
 from scipy.special import comb
 import z3
@@ -90,11 +90,11 @@ class TestSATSolver:
             frozenset({1}),
             frozenset({2, -4})
         }
-        assert SATSolver._tseitin_transform(Parser.parse_formula("not (=> (not (and p q)) (not r))")) == \
+        assert SATSolver._tseitin_transform(FormulaParser.parse_formula("not (=> (not (and p q)) (not r))")) == \
                transformed_formula
-        assert SATSolver._tseitin_transform(Parser.parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
+        assert SATSolver._tseitin_transform(FormulaParser.parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
                transformed_formula
-        assert SATSolver._tseitin_transform(Parser.parse_formula("and (not x) x")) == {
+        assert SATSolver._tseitin_transform(FormulaParser.parse_formula("and (not x) x")) == {
             frozenset({1}),
             frozenset({1, -3, -2}),
             frozenset({2, 3}),
@@ -425,12 +425,12 @@ class TestSATSolver:
         assert is_sat_our is is_sat_z3
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num, test_parser",
+    @pytest.mark.parametrize("variable_num, operator_num, test_import",
                              [(variable_num, 50 * variable_num, True) for variable_num in list(range(100, 2000))]
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
-    def test_random_formula(variable_num: int, operator_num: int, test_parser):
+    def test_random_formula(variable_num: int, operator_num: int, test_import):
         # Generates a random formula and compares our solver to Z3
 
         # Generate formula
@@ -511,8 +511,8 @@ class TestSATSolver:
         end_time_z3 = time.time()
 
         # Solve with ours
-        if test_parser:
-            formula_our = SATSolver.convert_string_formula(formula_our_text)
+        if test_import:
+            formula_our = SATSolver.import_formula(formula_our_text)
         else:
             formula_our = SATSolver._tseitin_transform(formula_our)
         start_time_our = time.time()
