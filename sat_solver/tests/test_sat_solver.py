@@ -553,26 +553,3 @@ class TestSATSolver:
         print("Our:\t", end_time_our - start_time_our)
         print("Z3 formula: ", formula_z3)
         assert is_sat_our is is_sat_z3
-
-    @staticmethod
-    def test_parse_formula_uf():
-        formula = """(declare-fun cost (Int Int Bool) Real)
-                        (declare-fun s1 () Bool)
-                        (declare-fun s2 () Bool)
-                        
-                        
-                        (declare-fun s3 () Bool)
-                        (declare-fun s4 (       ) Bool)
-                        (                   declare-fun              q1      (     )     Real                  )
-                        (declare-fun q2 (   Int         Bool           a     )                               Real    )
-                        (declare-fun q3 () Real)
-                        (            assert           (        = 250 (+           q1                       q2   q3 q4)))
-                        (  assert (= 250 (+ (And (q1         )         (x    )   )     q2     q3 q4      ))     )
-                        (declare-fun q4 () Real)
-                        
-                        
-                        ; set goods quantity
-                        
-                        (assert ((= 250 (     + q1 q2 q3 q4)))       )"""
-        SATSolver._parse_formula_uf(formula)
-        assert True

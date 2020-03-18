@@ -1,5 +1,4 @@
 from collections import deque, Counter
-import re
 
 
 class SATSolver:
@@ -35,34 +34,6 @@ class SATSolver:
             formula = formula[1:-1].strip()
         return formula
 
-    _DECLARATION = re.compile(r'(\(\s*(declare-fun)\s+(\w+)\s+\(([^\)]*)\)\s+(\w+)\s*\))')
-    _ASSERTION = re.compile(r'(\(\s*(assert)\s(.+)\s*\))')
-
-    @staticmethod
-    def _parse_formula_uf(formula: str, signature=None, parsed_formulas=None):
-        """
-        asserts and declarations are line separated, and are enclosed by a single ( and ).
-        """
-        if signature is None:
-            signature = {}
-        if parsed_formulas is None:
-            parsed_formulas = []
-
-        for match in re.finditer(SATSolver._DECLARATION, formula):
-            name = match.group(3)
-            parameters = match.group(4)
-            output = match.group(5)
-            signature[name] = {
-                "output_type": output,
-                "parameter_types": parameters.split()
-            }
-
-        for match in re.finditer(SATSolver._ASSERTION, formula):
-            partial_formula = match.group(3)
-            parsed_formulas.append(SATSolver._prepare_formula(partial_formula))
-
-        return signature, parsed_formulas
-
     @staticmethod
     def _parse_formula(formula: str, variables=None):
         """
@@ -76,7 +47,7 @@ class SATSolver:
 
         split_cur_formula = cur_formula.split(None, 1)
         if len(split_cur_formula) == 1:
-            # Base case, only one variable/booolean value
+            # Base case, only one variable/boolean value
             variable = split_cur_formula.pop()
             truth_value = variable.lower()
             if (truth_value != "true") and (truth_value != "false"):
