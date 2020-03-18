@@ -64,7 +64,8 @@ class TestFormulaParser:
         # Uses a weird one-line input
         formula = ("(declare-fun q1 () Real) (   assert    (= 250 (+    q1   (    q1   (5   , q2 ) , 8 )     7   )))" +
                    "(  assert (= 260 (+ (And (q1    )   (x   )   )" +
-                   " (  q1(2,q1(1,true,2),8)  )   ))   )  (declare-fun q3 () Real) ")
+                   " (  q1(2,q1(1,true,2),8)  )   ))   )  (declare-fun q3 () Real)       " +
+                   "(  assert (    - 50 ( + (            Or q3       (  not x   )   )  12 ) )   )          ")
         signature = {
             'q1': {'output_type': 'Real', 'parameter_types': []},
             'q3': {'output_type': 'Real', 'parameter_types': []}
@@ -72,5 +73,6 @@ class TestFormulaParser:
         parsed_formulas = [('=', '250', ('+', ('q1', ('q1', '5', 'q2'), '8'), '7')),
                            ('=',
                             '260',
-                            ('+', ('and', ('q1',), 'x'), ('q1', '2', ('q1', '1', 'true', '2'), '8')))]
+                            ('+', ('and', ('q1',), 'x'), ('q1', '2', ('q1', '1', 'true', '2'), '8'))),
+                           ('-', '50', ('+', ('or', ('q3',), ('not', 'x')), '12'))]
         assert FormulaParser.parse_uf(formula) == (signature, parsed_formulas)
