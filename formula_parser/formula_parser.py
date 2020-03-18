@@ -97,18 +97,18 @@ class FormulaParser:
         if signature is None:
             signature = {}
 
-        cur_formula = FormulaParser._prepare_formula(formula)
-        if not cur_formula:
+        formula = FormulaParser._prepare_formula(formula)
+        if not formula:
             return None
 
         # Assumes function calls with parameters do not have any spaces, for example:
         # func(param1,param2) <- this is valid
         # func  (   param1  ,  param2) <- this is invalid
-        parsed_function_call = FormulaParser._parse_function_call(cur_formula, unary_operators, signature)
+        parsed_function_call = FormulaParser._parse_function_call(formula, unary_operators, signature)
         if parsed_function_call is not None:
             return parsed_function_call
 
-        split_cur_formula = cur_formula.split(None, 1)
+        split_cur_formula = formula.split(None, 1)
         if len(split_cur_formula) == 1:
             # Base case, only one variable/boolean value
             variable = split_cur_formula.pop()
@@ -123,10 +123,10 @@ class FormulaParser:
             return operator, FormulaParser.parse_formula(right_side, unary_operators, signature)
 
         # Boolean operator
-        if right_side and (right_side[0] == "("):
+        closing_idx = FormulaParser._find_closing_bracket(right_side)
+        if closing_idx != len(right_side):
             # If the first parameter of the operator is enclosed in brackets, split the first and second parameters
             # according to the location of the closing bracket.
-            closing_idx = FormulaParser._find_closing_bracket(right_side)
             left_side = FormulaParser._prepare_formula(right_side[:closing_idx])
             right_side = FormulaParser._prepare_formula(right_side[closing_idx:])
         else:
