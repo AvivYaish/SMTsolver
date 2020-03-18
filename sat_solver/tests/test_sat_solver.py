@@ -415,9 +415,9 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, clause_num, clause_length",
-                             [(10, clause_num, 5) for clause_num in list(range(1000, 2000))])
-    def test_random_3sat(variable_num: int, clause_num: int, clause_length: int):
-        # Generates a random 3SAT and compares our solver to Z3
+                             [(200, clause_num, 3) for clause_num in list(range(40000, 61000))])
+    def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
+        # Generates a random CNF and compares our solver to Z3
 
         # Generate formula
         formula_z3 = []
@@ -453,7 +453,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_parser",
-                             [(variable_num, 20000 * variable_num, True) for variable_num in list(range(10, 20))]
+                             [(variable_num, 500 * variable_num, True) for variable_num in list(range(1000, 2000))]
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
@@ -463,15 +463,15 @@ class TestSATSolver:
         # Generate formula
         formula_z3 = None
         formula_our_text = None
-        formula_our = None
+        # formula_our = None
 
         all_variables = list(range(1, variable_num + 1))
         all_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
         all_subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in all_subformulas_z3])
         all_subformulas_our_text = [str(cur_literal) for cur_literal in all_variables]
         all_subformulas_our_text.extend([("not " + cur_literal) for cur_literal in all_subformulas_our_text])
-        all_subformulas_our = [str(cur_literal) for cur_literal in all_variables]
-        all_subformulas_our.extend([("not", cur_literal) for cur_literal in all_subformulas_our])
+        # all_subformulas_our = [str(cur_literal) for cur_literal in all_variables]
+        # all_subformulas_our.extend([("not", cur_literal) for cur_literal in all_subformulas_our])
 
         for cur_operator_idx in range(operator_num):
             cur_subformula_z3 = None
@@ -482,53 +482,53 @@ class TestSATSolver:
             first_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
             first_parameter_z3 = all_subformulas_z3[first_parameter_idx]
             first_parameter_our_text = all_subformulas_our_text[first_parameter_idx]
-            first_parameter_our = all_subformulas_our[first_parameter_idx]
+            # first_parameter_our = all_subformulas_our[first_parameter_idx]
             if random_operator == 1:
                 cur_subformula_z3 = z3.Not(first_parameter_z3)
                 cur_subformula_our_text = "not (" + first_parameter_our_text + ")"
-                cur_subformula_our = "not", first_parameter_our
+                # cur_subformula_our = "not", first_parameter_our
             else:
                 # Boolean operators
                 second_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
                 second_parameter_z3 = all_subformulas_z3[second_parameter_idx]
                 second_parameter_our_text = all_subformulas_our_text[second_parameter_idx]
-                second_parameter_our = all_subformulas_our[second_parameter_idx]
+                # second_parameter_our = all_subformulas_our[second_parameter_idx]
                 if random_operator == 2:
                     cur_subformula_z3 = z3.And(first_parameter_z3, second_parameter_z3)
                     cur_subformula_our_text = "and (" + first_parameter_our_text + ") (" + second_parameter_our_text \
                                               + ")"
-                    cur_subformula_our = "and", first_parameter_our, second_parameter_our
+                    # cur_subformula_our = "and", first_parameter_our, second_parameter_our
                 elif random_operator == 3:
                     cur_subformula_z3 = z3.Or(first_parameter_z3, second_parameter_z3)
                     cur_subformula_our_text = "or (" + first_parameter_our_text + ") (" + second_parameter_our_text \
                                               + ")"
-                    cur_subformula_our = "or", first_parameter_our, second_parameter_our
+                    # cur_subformula_our = "or", first_parameter_our, second_parameter_our
                 elif random_operator == 4:
                     cur_subformula_z3 = z3.Implies(first_parameter_z3, second_parameter_z3)
                     cur_subformula_our_text = "=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
                                               + ")"
-                    cur_subformula_our = "=>", first_parameter_our, second_parameter_our
+                    # cur_subformula_our = "=>", first_parameter_our, second_parameter_our
                 elif random_operator == 5:
                     cur_subformula_z3 = (first_parameter_z3 == second_parameter_z3)
                     cur_subformula_our_text = "<=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
                                               + ")"
-                    cur_subformula_our = "<=>", first_parameter_our, second_parameter_our
+                    # cur_subformula_our = "<=>", first_parameter_our, second_parameter_our
             all_subformulas_z3.append(cur_subformula_z3)
             all_subformulas_our_text.append(cur_subformula_our_text)
-            all_subformulas_our.append(cur_subformula_our)
-            if formula_z3 is None:
-                formula_z3 = cur_subformula_z3
-                formula_our_text = cur_subformula_our_text
-                formula_our = cur_subformula_our
-            else:
-                # This is probably UNSAT:
-                # formula_z3 = z3.And(formula_z3, cur_subformula_z3)
-                # formula_our_text = "and (" + formula_our_text + ") (" + cur_subformula_our_text + ")"
-                # formula_our = "and", formula_our, cur_subformula_our
-                # This is completely random:
-                formula_z3 = cur_subformula_z3
-                formula_our_text = cur_subformula_our_text
-                formula_our = cur_subformula_our
+            # all_subformulas_our.append(cur_subformula_our)
+            # if formula_z3 is None:
+            #     formula_z3 = cur_subformula_z3
+            #     formula_our_text = cur_subformula_our_text
+            #     formula_our = cur_subformula_our
+            # else:
+            #     # This is probably UNSAT:
+            #     # formula_z3 = z3.And(formula_z3, cur_subformula_z3)
+            #     # formula_our_text = "and (" + formula_our_text + ") (" + cur_subformula_our_text + ")"
+            #     # formula_our = "and", formula_our, cur_subformula_our
+        # This is completely random:
+        formula_z3 = cur_subformula_z3
+        formula_our_text = cur_subformula_our_text
+        # formula_our = cur_subformula_our
 
         # Solve with Z3
         z3_solver = z3.Solver()
@@ -540,8 +540,8 @@ class TestSATSolver:
         # Solve with ours
         if test_parser:
             formula_our = SATSolver.convert_string_formula(formula_our_text)
-        else:
-            formula_our = SATSolver._tseitin_transform(formula_our)
+        # else:
+            # formula_our = SATSolver._tseitin_transform(formula_our)
         start_time_our = time.time()
         our_solver = SATSolver(formula_our)
         is_sat_our = our_solver.solve()
@@ -559,16 +559,20 @@ class TestSATSolver:
         formula = """(declare-fun cost (Int Int Bool) Real)
                         (declare-fun s1 () Bool)
                         (declare-fun s2 () Bool)
+                        
+                        
                         (declare-fun s3 () Bool)
                         (declare-fun s4 (       ) Bool)
                         (                   declare-fun              q1      (     )     Real                  )
                         (declare-fun q2 (   Int         Bool           a     )                               Real    )
                         (declare-fun q3 () Real)
                         (            assert           (        = 250 (+           q1                       q2   q3 q4)))
-                        (  assert (= 250 (+ (And (q1         )         (x)) q2 q3 q4))     )
+                        (  assert (= 250 (+ (And (q1         )         (x    )   )     q2     q3 q4      ))     )
                         (declare-fun q4 () Real)
                         
+                        
                         ; set goods quantity
+                        
                         (assert ((= 250 (     + q1 q2 q3 q4)))       )"""
         SATSolver._parse_formula_uf(formula)
         assert True

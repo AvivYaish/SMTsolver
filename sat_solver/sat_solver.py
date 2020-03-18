@@ -59,7 +59,7 @@ class SATSolver:
 
         for match in re.finditer(SATSolver._ASSERTION, formula):
             partial_formula = match.group(3)
-            parsed_formulas.append(' '.join(partial_formula.split()).strip())
+            parsed_formulas.append(SATSolver._prepare_formula(partial_formula))
 
         return signature, parsed_formulas
 
