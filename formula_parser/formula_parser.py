@@ -3,7 +3,7 @@ import re
 
 class FormulaParser:
     _DECLARATION = re.compile(r'\(\s*declare-fun\s+(\w+)\s+\(([^\)]*)\)\s+(\w+)\s*\)')
-    _ASSERTION = re.compile(r'\(\s*assert\s(.+)\s*\)')
+    _ASSERTION = re.compile(r'\(\s*assert\s*')
     _FUNCTION_COMMA = re.compile(r'\(.*?\)|(,)')
 
     @staticmethod
@@ -71,6 +71,7 @@ class FormulaParser:
         signature = {}
         parsed_formulas = []
 
+        # Parsing function declarations
         for match in re.finditer(FormulaParser._DECLARATION, formula):
             name = match.group(1)
             parameters = match.group(2)
@@ -80,9 +81,11 @@ class FormulaParser:
                 "output_type": output
             }
 
+        # Parsing assertions
         for match in re.finditer(FormulaParser._ASSERTION, formula):
-            partial_formula = match.group(1)
-            parsed_formulas.append(FormulaParser.parse_formula(partial_formula, signature=signature))
+            unparsed_formula = formula[match.end():]
+            unparsed_formula = unparsed_formula[:FormulaParser._find_closing_bracket(unparsed_formula)]
+            parsed_formulas.append(FormulaParser.parse_formula(unparsed_formula, signature=signature))
 
         return signature, parsed_formulas
 
