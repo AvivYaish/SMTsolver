@@ -373,13 +373,6 @@ class TestSATSolver:
         assert not SATSolver(formula, halving_period=10000).solve()
 
     @staticmethod
-    @pytest.mark.parametrize("color_num", list(range(7, 10)))
-    def test_coloring_clique_uncolorable_2(color_num: int):
-        edges = list(combinations(list(range(1, color_num + 2)), 2))
-        formula = TestSATSolver.generate_coloring_clauses(color_num, edges)
-        assert not SATSolver(formula, halving_period=10000).solve()
-
-    @staticmethod
     @pytest.mark.parametrize("color_num", list(range(1, 21)))
     def test_coloring_clique_colorable(color_num: int):
         edges = list(combinations(list(range(1, color_num + 1)), 2))
@@ -388,7 +381,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, clause_num, clause_length",
-                             [(200, clause_num, 3) for clause_num in list(range(40000, 61000))])
+                             [(20, clause_num, 3) for clause_num in list(range(4000, 4005))])
     def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
         # Generates a random CNF and compares our solver to Z3
 
@@ -426,7 +419,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(variable_num, 50 * variable_num, True) for variable_num in list(range(100, 2000))]
+                             [(variable_num, 50 * variable_num, True) for variable_num in list(range(100, 120))]
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
