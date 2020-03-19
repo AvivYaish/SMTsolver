@@ -3,10 +3,23 @@ from collections import deque, Counter
 
 
 class SATSolver:
+    TRUE = 'true'
+    FALSE = 'false'
+
+    NOT = 'not'
+    AND = 'and'
+    OR = 'or'
+    IMPLICATION = '=>'
+    BICONDITIONAL = '<=>'
+
+    BOOLEAN_CONSTANTS = frozenset({TRUE, FALSE})
+    BOOLEAN_UNARY_OPS = frozenset({NOT})
+    BOOLEAN_BINARY_OPS = frozenset({AND, OR, IMPLICATION, BICONDITIONAL})
+    BOOLEAN_OPS = BOOLEAN_UNARY_OPS | BOOLEAN_BINARY_OPS
 
     @staticmethod
     def _is_parameter_not(parameter):
-        return (len(parameter) > 1) and (parameter[0] == "not")
+        return (len(parameter) > 1) and (parameter[0] == SATSolver.NOT)
 
     @staticmethod
     def _is_left_not_right(left_parameter, right_parameter):
@@ -21,36 +34,36 @@ class SATSolver:
     @staticmethod
     def _simplify_formula(parsed_formula):
         # Base case, empty formula
-        if (not parsed_formula) or (parsed_formula == ""):
-            return "true"
+        if not parsed_formula:
+            return SATSolver.TRUE
 
         # Base case, only one variable/boolean value
         operator = parsed_formula[0]
-        if operator not in {"not", "and", "or", "=>", "<=>"}:
+        if operator not in SATSolver.BOOLEAN_OPS:
             return parsed_formula
 
         left_parameter = SATSolver._simplify_formula(parsed_formula[1])
-        if operator == "not":
+        if operator == SATSolver.NOT:
             if SATSolver._is_parameter_not(left_parameter):
                 # not (not x)
                 return left_parameter[1]
-            if left_parameter == "false":
-                return "true"
-            elif left_parameter == "true":
-                return "false"
+            if left_parameter == SATSolver.FALSE:
+                return SATSolver.TRUE
+            elif left_parameter == SATSolver.TRUE:
+                return SATSolver.FALSE
             return operator, left_parameter
 
         # Boolean operator
         right_parameter = SATSolver._simplify_formula(parsed_formula[2])
         if left_parameter == right_parameter:
-            if (operator == "=>") or (operator == "<=>"):
-                return "true"
+            if (operator == SATSolver.IMPLICATION) or (operator == SATSolver.BICONDITIONAL):
+                return SATSolver.TRUE
             return left_parameter
-        elif (operator == "or") or (operator == "and"):
-            if operator == "or":
-                first_bool, second_bool = "true", "false"
+        elif (operator == SATSolver.OR) or (operator == SATSolver.AND):
+            if operator == SATSolver.OR:
+                first_bool, second_bool = SATSolver.TRUE, SATSolver.FALSE
             else:
-                first_bool, second_bool = "false", "true"
+                first_bool, second_bool = SATSolver.FALSE, SATSolver.TRUE
             if (
                     # Either: op (x) (first_bool), or: op (first_bool) (x)
                     (left_parameter == first_bool) or (right_parameter == first_bool)
@@ -63,24 +76,24 @@ class SATSolver:
                 return right_parameter
             if right_parameter == second_bool:
                 return left_parameter
-        elif operator == "=>":
-            if (right_parameter == "true") or (left_parameter == "false"):
-                return "true"
-            if right_parameter == "false":
-                return "not", left_parameter
-            if (left_parameter == "true") or SATSolver._is_left_not_right(left_parameter, right_parameter):
+        elif operator == SATSolver.IMPLICATION:
+            if (right_parameter == SATSolver.TRUE) or (left_parameter == SATSolver.FALSE):
+                return SATSolver.TRUE
+            if right_parameter == SATSolver.FALSE:
+                return SATSolver.NOT, left_parameter
+            if (left_parameter == SATSolver.TRUE) or SATSolver._is_left_not_right(left_parameter, right_parameter):
                 return right_parameter
-        elif operator == "<=>":
-            if left_parameter == "true":
+        elif operator == SATSolver.BICONDITIONAL:
+            if left_parameter == SATSolver.TRUE:
                 return right_parameter
-            if right_parameter == "true":
+            if right_parameter == SATSolver.TRUE:
                 return left_parameter
-            if left_parameter == "false":
-                return "not", right_parameter
-            if right_parameter == "false":
-                return "not", left_parameter
+            if left_parameter == SATSolver.FALSE:
+                return SATSolver.NOT, right_parameter
+            if right_parameter == SATSolver.FALSE:
+                return SATSolver.NOT, left_parameter
             if SATSolver._is_left_not_right(left_parameter, right_parameter):
-                return "false"
+                return SATSolver.FALSE
         return operator, left_parameter, right_parameter
 
     @staticmethod
@@ -88,7 +101,7 @@ class SATSolver:
         formula_list = [parsed_formula]
         subformulas = {}
         transformed_subformulas = {}
-        transformed_formula = set()
+        transformed_formula = {frozenset({1})}  # Always need to satisfy the entire formula
         while formula_list:
             cur_formula = formula_list.pop()
             if not cur_formula:
@@ -99,11 +112,11 @@ class SATSolver:
                 subformulas[cur_formula] = len(subformulas) + 1
 
             operator = cur_formula[0]
-            if operator not in {"not", "and", "or", "=>", "<=>"}:
+            if operator not in SATSolver.BOOLEAN_OPS:
                 continue
 
             left_parameter = cur_formula[1]
-            if operator == "not":
+            if operator == SATSolver.NOT:
                 if left_parameter not in subformulas:
                     subformulas[left_parameter] = len(subformulas) + 1
 
@@ -112,7 +125,7 @@ class SATSolver:
                     frozenset({subformulas[cur_formula], subformulas[left_parameter]})
                 }
 
-                transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
+                transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
                 formula_list.append(left_parameter)
                 continue
 
@@ -126,33 +139,32 @@ class SATSolver:
             if right_parameter not in subformulas:
                 subformulas[right_parameter] = len(subformulas) + 1
 
-            if operator == "and":
+            if operator == SATSolver.AND:
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], subformulas[left_parameter]}),
                     frozenset({-subformulas[cur_formula], subformulas[right_parameter]}),
                     frozenset({-subformulas[left_parameter], -subformulas[right_parameter], subformulas[cur_formula]}),
                 }
-            elif operator == "or":
+            elif operator == SATSolver.OR:
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
                     frozenset({-subformulas[left_parameter], subformulas[cur_formula]}),
                     frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
                 }
-            elif operator == "=>":
+            elif operator == SATSolver.IMPLICATION:
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
                     frozenset({subformulas[left_parameter], subformulas[cur_formula]}),
                     frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
                 }
-            elif operator == "<=>":
+            elif operator == SATSolver.BICONDITIONAL:
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
                     frozenset({-subformulas[cur_formula], subformulas[left_parameter], -subformulas[right_parameter]}),
                     frozenset({subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
                     frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]}),
                 }
-            transformed_formula = transformed_formula.union(transformed_subformulas[subformulas[cur_formula]])
-        transformed_formula.add(frozenset({1}))  # Always need to satisfy the entire formula
+            transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
         if output_all:
             return subformulas, transformed_subformulas, transformed_formula
         return transformed_formula
@@ -184,9 +196,9 @@ class SATSolver:
     @staticmethod
     def import_formula(formula: str):
         simplified_formula = SATSolver._simplify_formula(FormulaParser.parse_formula(formula))
-        if simplified_formula == "true":
+        if simplified_formula == SATSolver.TRUE:
             return frozenset({})
-        elif simplified_formula == "false":
+        elif simplified_formula == SATSolver.FALSE:
             return frozenset({frozenset({1}), frozenset({-1})})
         return SATSolver._tseitin_transform(simplified_formula)
 
@@ -194,9 +206,9 @@ class SATSolver:
     def convert_tseitin_assignment_to_regular(formula: str, assignment):
         variables = set()
         simplified_formula = SATSolver._simplify_formula(FormulaParser.parse_formula(formula, variables))
-        if simplified_formula == "true":
+        if simplified_formula == SATSolver.TRUE:
             return frozenset({})
-        elif simplified_formula == "false":
+        elif simplified_formula == SATSolver.FALSE:
             return frozenset({frozenset({1}), frozenset({-1})})
         subformulas, transformed_subformulas, transformed_formula = SATSolver._tseitin_transform(simplified_formula)
         # for variable in assignment:

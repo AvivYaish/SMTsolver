@@ -107,16 +107,12 @@ class FormulaParser:
             return parsed_function_call
 
         split_cur_formula = formula.split(None, 1)  # Assumes operators are always a single character
-        if len(split_cur_formula) == 1:
-            # Base case, only one variable/boolean value
-            variable = split_cur_formula.pop()
-            return variable
-
         right_side = split_cur_formula.pop()
-        operator = split_cur_formula.pop().lower()
-        # if operator not in {"not", "and", "or", "=>", "<=>", "="}:
-        #     raise ValueError('"' + operator + '" is not a supported operator.')
+        if len(split_cur_formula) == 0:
+            # Base case, only one variable/boolean value
+            return right_side
 
+        operator = split_cur_formula.pop().lower()
         if operator in unary_operators:
             return operator, FormulaParser.parse_formula(right_side, unary_operators, signature)
 
