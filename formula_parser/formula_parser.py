@@ -5,6 +5,7 @@ class FormulaParser:
     _DECLARATION = re.compile(r'\(\s*declare-fun\s+(\w+)\s+\(([^\)]*)\)\s+(\w+)\s*\)')
     _ASSERTION = re.compile(r'\(\s*assert\s*')
     _FUNCTION_COMMA = re.compile(r'\(.*?\)|(,)')
+    _UNARY_OPS = frozenset({"not"})
 
     @staticmethod
     def _find_closing_bracket(text: str) -> int:
@@ -64,7 +65,7 @@ class FormulaParser:
         return None
 
     @staticmethod
-    def parse_uf(formula: str):
+    def parse_uf(formula: str, unary_operators=_UNARY_OPS):
         """
         Assumes asserts and declarations are enclosed by a single ( and ).
         """
@@ -85,12 +86,12 @@ class FormulaParser:
         for match in re.finditer(FormulaParser._ASSERTION, formula):
             unparsed_formula = formula[match.end():]
             unparsed_formula = unparsed_formula[:FormulaParser._find_closing_bracket(unparsed_formula)]
-            parsed_formulas.append(FormulaParser.parse_formula(unparsed_formula, signature=signature))
+            parsed_formulas.append(FormulaParser.parse_formula(unparsed_formula, unary_operators, signature))
 
         return signature, parsed_formulas
 
     @staticmethod
-    def parse_formula(formula: str, unary_operators=frozenset({"not"}), signature=None):
+    def parse_formula(formula: str, unary_operators=_UNARY_OPS, signature=None):
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it.
         """
