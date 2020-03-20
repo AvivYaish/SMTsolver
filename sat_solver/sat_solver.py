@@ -257,8 +257,8 @@ class SATSolver:
         """
         self._satisfy_unit_clauses()
         while True:
-            # Iterative BCP
             self._increment_step()
+
             if not self._bcp_to_exhaustion():
                 return False
 
