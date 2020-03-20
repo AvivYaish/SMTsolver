@@ -419,7 +419,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(variable_num, 50 * variable_num, True) for variable_num in list(range(100, 120))]
+                             [(variable_num, 20 * variable_num, True) for variable_num in list(range(100, 105))]
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
