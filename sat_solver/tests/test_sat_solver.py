@@ -328,7 +328,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, clause_num, clause_length",
-                             [(20, clause_num, 3) for clause_num in list(range(4000, 4005))])
+                             [(20, clause_num, 3) for clause_num in list(range(1, 200))])
     def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
         # Generates a random CNF and compares our solver to Z3
 
@@ -366,7 +366,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(variable_num, 20 * variable_num, True) for variable_num in list(range(100, 105))]
+                             [(variable_num, variable_num ** 2, True) for variable_num in list(range(1, 100))]
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
@@ -374,10 +374,6 @@ class TestSATSolver:
         # Generates a random formula and compares our solver to Z3
 
         # Generate formula
-        formula_z3 = None
-        formula_our_text = None
-        formula_our = None
-
         all_variables = list(range(1, variable_num + 1))
         all_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
         all_subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in all_subformulas_z3])
@@ -401,7 +397,7 @@ class TestSATSolver:
                 cur_subformula_our_text = "not (" + first_parameter_our_text + ")"
                 cur_subformula_our = "not", first_parameter_our
             else:
-                # Boolean operators
+                # Binary operators
                 second_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
                 second_parameter_z3 = all_subformulas_z3[second_parameter_idx]
                 second_parameter_our_text = all_subformulas_our_text[second_parameter_idx]
@@ -456,4 +452,21 @@ class TestSATSolver:
         print("Z3:\t\t", end_time_z3 - start_time_z3)
         print("Our:\t", end_time_our - start_time_our)
         print("Z3 formula: ", formula_z3)
+        print("Our formula: ", formula_our_text)
         assert is_sat_our is is_sat_z3
+
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, operator_num, test_import",
+                             [(5, clause_num, True) for clause_num in list(range(1, 500))]
+                             )
+    def test_simple_random_formula(variable_num: int, operator_num: int, test_import):
+        TestSATSolver.test_random_formula(variable_num, operator_num, test_import)
+
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, operator_num, test_import",
+                             [(5, clause_num, True) for clause_num in range(1, 100000)]
+                             )
+    def test_million_random_formula(variable_num: int, operator_num: int, test_import):
+        if operator_num > 5000:
+            operator_num = 5000
+        TestSATSolver.test_random_formula(variable_num, operator_num, test_import)

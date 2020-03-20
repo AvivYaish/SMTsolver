@@ -3,7 +3,7 @@ from collections import deque, Counter
 
 class SATSolver:
 
-    def __init__(self, cnf_formula=None, max_new_clauses=float('inf'), halving_period=10000):
+    def __init__(self, cnf_formula=None, max_new_clauses=float('inf'), halving_period=10000, theory_solver=None):
         """
         :param cnf_formula: a formula, in CNF. A formula is a set of clauses, where each clause is a frozenset.
         """
@@ -11,8 +11,11 @@ class SATSolver:
             cnf_formula = frozenset()
 
         self._formula = cnf_formula
-        self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
+        self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
+        self._theory_solver = theory_solver
+
+        self._new_clauses = deque()
         self._assignment = dict()
         self._assignment_by_level = []
         self._satisfaction_by_level = []
@@ -25,7 +28,6 @@ class SATSolver:
         self._unassigned_vsids_count = Counter()
         self._assigned_vsids_count = {}
         self._step_counter = 0                      # Counts how many decisions have been made
-        self._halving_period = halving_period       # The time period after which all VSIDS counters are halved
 
         for clause in self._formula:
             self._add_clause(clause)
@@ -261,6 +263,16 @@ class SATSolver:
 
             if not self._bcp_to_exhaustion():
                 return False
+
+            # if self._theory_solver:
+            #     assignments, conflict_clause, level_to_jump_to = self._theory_solver.theory_propagate(
+            #         self.get_assignment()
+            #     )
+            #     if conflict_clause is not None:
+            #         self._backtrack(level_to_jump_to)
+            #     for literal, clause in assignments:
+            #         self._assign(clause, literal)
+                # Need to perform this to exhaustion, together with regular BCP,
 
             # If all clauses are satisfied, we are done
             if self._formula.issubset(self._satisfied_clauses):
