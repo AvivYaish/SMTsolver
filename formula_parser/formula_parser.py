@@ -179,7 +179,7 @@ class FormulaParser:
         operator = parsed_formula[0]
         if operator not in FormulaParser.BOOLEAN_OPS:
             # Base case, only one variable/boolean value
-            return operator
+            return parsed_formula
 
         left_parameter = FormulaParser._simplify_formula(parsed_formula[1])
         if operator == FormulaParser.NOT:
@@ -219,8 +219,13 @@ class FormulaParser:
             if (right_parameter == FormulaParser.TRUE) or (left_parameter == FormulaParser.FALSE):
                 return FormulaParser.TRUE
             if right_parameter == FormulaParser.FALSE:
+                if left_parameter == FormulaParser.TRUE:
+                    return FormulaParser.FALSE
+                if left_parameter == FormulaParser.FALSE:
+                    return FormulaParser.TRUE
                 return FormulaParser.NOT, left_parameter
-            if (left_parameter == FormulaParser.TRUE) or FormulaParser._is_left_not_right(left_parameter, right_parameter):
+            if (left_parameter == FormulaParser.TRUE) or \
+                    FormulaParser._is_left_not_right(left_parameter, right_parameter):
                 return right_parameter
         elif operator == FormulaParser.BICONDITIONAL:
             if left_parameter == FormulaParser.TRUE:
@@ -228,8 +233,16 @@ class FormulaParser:
             if right_parameter == FormulaParser.TRUE:
                 return left_parameter
             if left_parameter == FormulaParser.FALSE:
+                if right_parameter == FormulaParser.TRUE:
+                    return FormulaParser.FALSE
+                if right_parameter == FormulaParser.FALSE:
+                    return FormulaParser.TRUE
                 return FormulaParser.NOT, right_parameter
             if right_parameter == FormulaParser.FALSE:
+                if left_parameter == FormulaParser.TRUE:
+                    return FormulaParser.FALSE
+                if left_parameter == FormulaParser.FALSE:
+                    return FormulaParser.TRUE
                 return FormulaParser.NOT, left_parameter
             if FormulaParser._is_left_not_right(left_parameter, right_parameter):
                 return FormulaParser.FALSE
@@ -250,9 +263,8 @@ class FormulaParser:
             transformed_subformulas = {}
         if transformed_formula is None:
             transformed_formula = set()
-        original_subformulas_len = len(subformulas)
-        formula_list = [parsed_formula]
 
+        formula_list = [parsed_formula]
         while formula_list:
             cur_formula = formula_list.pop()
             if not cur_formula:
@@ -261,9 +273,6 @@ class FormulaParser:
             if cur_formula not in subformulas:
                 # + 1 to avoid getting zeros (-0=0)
                 subformulas[cur_formula] = len(subformulas) + 1
-                if len(subformulas) == original_subformulas_len + 1:
-                    # Always need to satisfy the entire formula
-                    transformed_formula.add(frozenset({subformulas[cur_formula]}))
 
             operator = cur_formula[0]
             if operator not in FormulaParser.BOOLEAN_OPS:
@@ -319,6 +328,8 @@ class FormulaParser:
                     frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]}),
                 }
             transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
+
+        transformed_formula.add(frozenset({subformulas[parsed_formula]}))   # Always need to satisfy the entire formula
         if output_all:
             return subformulas, transformed_subformulas, transformed_formula
         return transformed_formula
