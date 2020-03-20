@@ -155,3 +155,203 @@ class FormulaParser:
         return operator, \
                FormulaParser.parse_formula(left_side, unary_operators, signature), \
                FormulaParser.parse_formula(right_side, unary_operators, signature)
+
+
+    @staticmethod
+    def _is_parameter_not(parameter):
+        return (len(parameter) > 1) and (parameter[0] == FormulaParser.NOT)
+
+    @staticmethod
+    def _is_left_not_right(left_parameter, right_parameter):
+        return (
+            # This case is: op (not x) (x)
+            (FormulaParser._is_parameter_not(right_parameter) and (right_parameter[1] == left_parameter))
+            or
+            # This case is: op (not x) (x)
+            (FormulaParser._is_parameter_not(left_parameter) and (left_parameter[1] == right_parameter))
+        )
+
+    @staticmethod
+    def simplify_formula(parsed_formula):
+        # Base case, empty formula
+        if not parsed_formula:
+            return FormulaParser.TRUE
+
+        operator = parsed_formula[0]
+        if operator not in FormulaParser.BOOLEAN_OPS:
+            # Base case, only one variable/boolean value
+            return operator
+
+        left_parameter = FormulaParser.simplify_formula(parsed_formula[1])
+        if operator == FormulaParser.NOT:
+            if FormulaParser._is_parameter_not(left_parameter):
+                # not (not x)
+                return left_parameter[1]
+            if left_parameter == FormulaParser.FALSE:
+                return FormulaParser.TRUE
+            elif left_parameter == FormulaParser.TRUE:
+                return FormulaParser.FALSE
+            return operator, left_parameter
+
+        # Binary operator
+        right_parameter = FormulaParser.simplify_formula(parsed_formula[2])
+        if left_parameter == right_parameter:
+            if (operator == FormulaParser.IMPLICATION) or (operator == FormulaParser.BICONDITIONAL):
+                return FormulaParser.TRUE
+            return left_parameter
+        elif (operator == FormulaParser.OR) or (operator == FormulaParser.AND):
+            if operator == FormulaParser.OR:
+                first_bool, second_bool = FormulaParser.TRUE, FormulaParser.FALSE
+            else:
+                first_bool, second_bool = FormulaParser.FALSE, FormulaParser.TRUE
+            if (
+                    # Either: op (x) (first_bool), or: op (first_bool) (x)
+                    (left_parameter == first_bool) or (right_parameter == first_bool)
+                    or
+                    # Either: op (x) (not x), or: op (not x) (x)
+                    FormulaParser._is_left_not_right(left_parameter, right_parameter)
+            ):
+                return first_bool
+            if left_parameter == second_bool:
+                return right_parameter
+            if right_parameter == second_bool:
+                return left_parameter
+        elif operator == FormulaParser.IMPLICATION:
+            if (right_parameter == FormulaParser.TRUE) or (left_parameter == FormulaParser.FALSE):
+                return FormulaParser.TRUE
+            if right_parameter == FormulaParser.FALSE:
+                return FormulaParser.NOT, left_parameter
+            if (left_parameter == FormulaParser.TRUE) or FormulaParser._is_left_not_right(left_parameter, right_parameter):
+                return right_parameter
+        elif operator == FormulaParser.BICONDITIONAL:
+            if left_parameter == FormulaParser.TRUE:
+                return right_parameter
+            if right_parameter == FormulaParser.TRUE:
+                return left_parameter
+            if left_parameter == FormulaParser.FALSE:
+                return FormulaParser.NOT, right_parameter
+            if right_parameter == FormulaParser.FALSE:
+                return FormulaParser.NOT, left_parameter
+            if FormulaParser._is_left_not_right(left_parameter, right_parameter):
+                return FormulaParser.FALSE
+        return operator, left_parameter, right_parameter
+
+    @staticmethod
+    def tseitin_transform(parsed_formula,
+                          output_all=False,
+                          subformulas=None,
+                          transformed_subformulas=None,
+                          transformed_formula=None):
+        if subformulas is None:
+            subformulas = {}
+        if transformed_subformulas is None:
+            transformed_subformulas = {}
+        if transformed_formula is None:
+            transformed_formula = set()
+        original_subformulas_len = len(subformulas)
+        formula_list = [parsed_formula]
+
+        while formula_list:
+            cur_formula = formula_list.pop()
+            if not cur_formula:
+                continue
+
+            if cur_formula not in subformulas:
+                # + 1 to avoid getting zeros (-0=0)
+                subformulas[cur_formula] = len(subformulas) + 1
+                if len(subformulas) == original_subformulas_len + 1:
+                    # Always need to satisfy the entire formula
+                    transformed_formula.add(frozenset({subformulas[cur_formula]}))
+
+            operator = cur_formula[0]
+            if operator not in FormulaParser.BOOLEAN_OPS:
+                continue
+
+            left_parameter = cur_formula[1]
+            if operator == FormulaParser.NOT:
+                if left_parameter not in subformulas:
+                    subformulas[left_parameter] = len(subformulas) + 1
+
+                transformed_subformulas[subformulas[cur_formula]] = {
+                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
+                    frozenset({subformulas[cur_formula], subformulas[left_parameter]})
+                }
+
+                transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
+                formula_list.append(left_parameter)
+                continue
+
+            # Binary operator
+            right_parameter = cur_formula[2]
+            formula_list.append(left_parameter)
+            formula_list.append(right_parameter)
+
+            if left_parameter not in subformulas:
+                subformulas[left_parameter] = len(subformulas) + 1
+            if right_parameter not in subformulas:
+                subformulas[right_parameter] = len(subformulas) + 1
+
+            if operator == FormulaParser.AND:
+                transformed_subformulas[subformulas[cur_formula]] = {
+                    frozenset({-subformulas[cur_formula], subformulas[left_parameter]}),
+                    frozenset({-subformulas[cur_formula], subformulas[right_parameter]}),
+                    frozenset({-subformulas[left_parameter], -subformulas[right_parameter], subformulas[cur_formula]}),
+                }
+            elif operator == FormulaParser.OR:
+                transformed_subformulas[subformulas[cur_formula]] = {
+                    frozenset({-subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({-subformulas[left_parameter], subformulas[cur_formula]}),
+                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
+                }
+            elif operator == FormulaParser.IMPLICATION:
+                transformed_subformulas[subformulas[cur_formula]] = {
+                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({subformulas[left_parameter], subformulas[cur_formula]}),
+                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
+                }
+            elif operator == FormulaParser.BICONDITIONAL:
+                transformed_subformulas[subformulas[cur_formula]] = {
+                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({-subformulas[cur_formula], subformulas[left_parameter], -subformulas[right_parameter]}),
+                    frozenset({subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
+                    frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]}),
+                }
+            transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
+        if output_all:
+            return subformulas, transformed_subformulas, transformed_formula
+        return transformed_formula
+
+    @staticmethod
+    def preprocess(cnf_formula):
+        """
+        :param cnf_formula: a formula, in CNF.
+        :return: processed formula, with no trivial or empty clauses.
+        """
+        preprocessed_formula = []
+        for clause in cnf_formula:
+            trivial_clause = False
+            for literal in clause:
+                if -literal in clause:
+                    # Remove trivial clauses, if the same variable appears twice with different signs in the same clause
+                    trivial_clause = True
+                    break
+
+            if trivial_clause or (len(clause) == 0):
+                # Remove empty clauses
+                continue
+
+            preprocessed_formula.append(clause)
+        return frozenset(preprocessed_formula)
+
+    @staticmethod
+    def import_formula(formula: str):
+        simplified_formula = FormulaParser.simplify_formula(FormulaParser.parse_formula(formula))
+        if simplified_formula == FormulaParser.TRUE:
+            return frozenset({})
+        elif simplified_formula == FormulaParser.FALSE:
+            return frozenset({frozenset({1}), frozenset({-1})})
+        return FormulaParser.preprocess(FormulaParser.tseitin_transform(simplified_formula))
+
+    @staticmethod
+    def convert_tseitin_assignment_to_regular(formula: str, assignment):
+        pass

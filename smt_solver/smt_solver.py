@@ -34,3 +34,10 @@ class SMTSolver:
         right_parameter = SMTSolver._create_boolean_abstraction(parsed_formula[2], signature, abstraction)
         return operator, left_parameter, right_parameter
 
+    def __init__(self, formula: str):
+        signature, parsed_formulas = FormulaParser.parse_uf(formula)
+        abstraction = {}
+        boolean_abstractions = []
+        for parsed_formula in parsed_formulas:
+            boolean_abstractions.append(self._create_boolean_abstraction(parsed_formula, signature, abstraction))
+
