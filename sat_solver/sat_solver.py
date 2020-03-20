@@ -3,14 +3,14 @@ from collections import deque, Counter
 
 class SATSolver:
 
-    def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000):
+    def __init__(self, cnf_formula=None, max_new_clauses=float('inf'), halving_period=10000):
         """
-        :param formula: a formula, in CNF. A formula is a set of clauses, where each clause is a frozenset.
+        :param cnf_formula: a formula, in CNF. A formula is a set of clauses, where each clause is a frozenset.
         """
-        if formula is None:
-            formula = set()
+        if cnf_formula is None:
+            cnf_formula = frozenset()
 
-        self._formula = formula
+        self._formula = cnf_formula
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
         self._assignment = dict()
@@ -18,14 +18,14 @@ class SATSolver:
         self._satisfaction_by_level = []
         self._literal_to_clause = {}
         self._satisfied_clauses = set()
-        self._last_assigned_literals = deque()               # a queue of the literals assigned in the last level
-        self._literal_to_watched_clause = {}                   # A literal -> set(clause) dictionary.
+        self._last_assigned_literals = deque()      # a queue of the literals assigned in the last level
+        self._literal_to_watched_clause = {}        # A literal -> set(clause) dictionary.
 
         # VSIDS related fields
         self._unassigned_vsids_count = Counter()
         self._assigned_vsids_count = {}
-        self._step_counter = 0             # Count how many decisions have been made
-        self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
+        self._step_counter = 0                      # Counts how many decisions have been made
+        self._halving_period = halving_period       # The time period after which all VSIDS counters are halved
 
         for clause in self._formula:
             self._add_clause(clause)
