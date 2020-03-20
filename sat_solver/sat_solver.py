@@ -24,10 +24,10 @@ class SATSolver:
         if not parsed_formula:
             return FormulaParser.TRUE
 
-        # Base case, only one variable/boolean value
         operator = parsed_formula[0]
         if operator not in FormulaParser.BOOLEAN_OPS:
-            return parsed_formula
+            # Base case, only one variable/boolean value
+            return operator
 
         left_parameter = SATSolver._simplify_formula(parsed_formula[1])
         if operator == FormulaParser.NOT:
@@ -167,9 +167,7 @@ class SATSolver:
             trivial_clause = False
             for literal in clause:
                 if -literal in clause:
-                    # Remove trivial clauses
-                    # If the same variable appears twice with
-                    # different signs in the same clause
+                    # Remove trivial clauses, if the same variable appears twice with different signs in the same clause
                     trivial_clause = True
                     break
 
