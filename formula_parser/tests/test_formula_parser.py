@@ -166,3 +166,23 @@ class TestFormulaParser:
                                ('=', ('g', 'a'), 'c'): 1,
                                ('=', ('g', 'a'), 'd'): 3,
                                ('=', 'c', 'd'): 4}
+
+    @staticmethod
+    def test_import_uf():
+        formula = '(declare-fun f (Int Int) Bool) (assert ((and a f ( 1 , 2 ) )))'
+        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        assert cnf_formula == frozenset({
+            frozenset({1, -3, -2}),
+            frozenset({1}),
+            frozenset({2, -1}),
+            frozenset({3, -1})
+        })
+
+        formula = '(declare-fun f (Int Int) Bool) (declare-fun g () Bool) (assert ((and (= a g) f ( 1 , 2 ) )))'
+        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        assert cnf_formula == frozenset({
+            frozenset({1, -3, -2}),
+            frozenset({1}),
+            frozenset({2, -1}),
+            frozenset({3, -1})
+        })
