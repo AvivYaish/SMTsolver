@@ -40,7 +40,7 @@ class SATSolver:
                 return FormulaParser.FALSE
             return operator, left_parameter
 
-        # Boolean operator
+        # Binary operator
         right_parameter = SATSolver._simplify_formula(parsed_formula[2])
         if left_parameter == right_parameter:
             if (operator == FormulaParser.IMPLICATION) or (operator == FormulaParser.BICONDITIONAL):
@@ -116,7 +116,7 @@ class SATSolver:
                 formula_list.append(left_parameter)
                 continue
 
-            # Boolean operator
+            # Binary operator
             right_parameter = cur_formula[2]
             formula_list.append(left_parameter)
             formula_list.append(right_parameter)
