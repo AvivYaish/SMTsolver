@@ -454,7 +454,7 @@ class TestSATSolver:
         if test_import:
             formula_our = FormulaParser.import_formula(formula_our_text)
         else:
-            formula_our = FormulaParser.preprocess(FormulaParser.tseitin_transform(formula_our))
+            formula_our = FormulaParser._convert_to_cnf(formula_our)
         start_time_our = time.time()
         our_solver = SATSolver(formula_our)
         is_sat_our = our_solver.solve()

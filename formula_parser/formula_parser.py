@@ -83,13 +83,13 @@ class FormulaParser:
             if unparsed_call.startswith(function_name):
                 parameter_string = FormulaParser._prepare_formula(unparsed_call.split(function_name, 1).pop())
                 separated_parameters = FormulaParser._separate_parameters(parameter_string)
-                parsed_parameters = [FormulaParser.parse_formula(unparsed_parameter, unary_operators, signature) for
+                parsed_parameters = [FormulaParser._parse_formula(unparsed_parameter, unary_operators, signature) for
                                      unparsed_parameter in separated_parameters]
                 return (function_name, *parsed_parameters)
         return None
 
     @staticmethod
-    def parse_uf(formula: str, unary_operators=BOOLEAN_UNARY_OPS):
+    def _parse_uf(formula: str, unary_operators=BOOLEAN_UNARY_OPS):
         """
         Assumes asserts and declarations are enclosed by a single ( and ).
         """
@@ -110,12 +110,12 @@ class FormulaParser:
         for match in re.finditer(FormulaParser._ASSERTION, formula):
             unparsed_formula = formula[match.end():]
             unparsed_formula = unparsed_formula[:FormulaParser._find_closing_bracket(unparsed_formula)]
-            parsed_formulas.append(FormulaParser.parse_formula(unparsed_formula, unary_operators, signature))
+            parsed_formulas.append(FormulaParser._parse_formula(unparsed_formula, unary_operators, signature))
 
         return signature, parsed_formulas
 
     @staticmethod
-    def parse_formula(formula: str, unary_operators=BOOLEAN_UNARY_OPS, signature=None):
+    def _parse_formula(formula: str, unary_operators=BOOLEAN_UNARY_OPS, signature=None):
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it:
         (operator, left side, right side (if exists))
@@ -139,7 +139,7 @@ class FormulaParser:
 
         operator = split_cur_formula.pop().lower()
         if operator in unary_operators:
-            return operator, FormulaParser.parse_formula(right_side, unary_operators, signature)
+            return operator, FormulaParser._parse_formula(right_side, unary_operators, signature)
 
         # Binary operator
         closing_idx = FormulaParser._find_closing_bracket(right_side)
@@ -153,9 +153,8 @@ class FormulaParser:
             # first whitespace
             left_side, right_side = right_side.split(None, 1)
         return operator, \
-               FormulaParser.parse_formula(left_side, unary_operators, signature), \
-               FormulaParser.parse_formula(right_side, unary_operators, signature)
-
+               FormulaParser._parse_formula(left_side, unary_operators, signature), \
+               FormulaParser._parse_formula(right_side, unary_operators, signature)
 
     @staticmethod
     def _is_parameter_not(parameter):
@@ -172,7 +171,7 @@ class FormulaParser:
         )
 
     @staticmethod
-    def simplify_formula(parsed_formula):
+    def _simplify_formula(parsed_formula):
         # Base case, empty formula
         if not parsed_formula:
             return FormulaParser.TRUE
@@ -182,7 +181,7 @@ class FormulaParser:
             # Base case, only one variable/boolean value
             return operator
 
-        left_parameter = FormulaParser.simplify_formula(parsed_formula[1])
+        left_parameter = FormulaParser._simplify_formula(parsed_formula[1])
         if operator == FormulaParser.NOT:
             if FormulaParser._is_parameter_not(left_parameter):
                 # not (not x)
@@ -194,7 +193,7 @@ class FormulaParser:
             return operator, left_parameter
 
         # Binary operator
-        right_parameter = FormulaParser.simplify_formula(parsed_formula[2])
+        right_parameter = FormulaParser._simplify_formula(parsed_formula[2])
         if left_parameter == right_parameter:
             if (operator == FormulaParser.IMPLICATION) or (operator == FormulaParser.BICONDITIONAL):
                 return FormulaParser.TRUE
@@ -237,11 +236,11 @@ class FormulaParser:
         return operator, left_parameter, right_parameter
 
     @staticmethod
-    def tseitin_transform(parsed_formula,
-                          output_all=False,
-                          subformulas=None,
-                          transformed_subformulas=None,
-                          transformed_formula=None):
+    def _tseitin_transform(parsed_formula,
+                           output_all=False,
+                           subformulas=None,
+                           transformed_subformulas=None,
+                           transformed_formula=None):
         if subformulas is None:
             subformulas = {}
         if transformed_subformulas is None:
@@ -322,7 +321,7 @@ class FormulaParser:
         return transformed_formula
 
     @staticmethod
-    def preprocess(cnf_formula):
+    def _preprocess(cnf_formula):
         """
         :param cnf_formula: a formula, in CNF.
         :return: processed formula, with no trivial or empty clauses.
@@ -344,18 +343,63 @@ class FormulaParser:
         return frozenset(preprocessed_formula)
 
     @staticmethod
-    def convert_to_cnf(parsed_formula):
-        simplified_formula = FormulaParser.simplify_formula(parsed_formula)
+    def _convert_to_cnf(parsed_formula):
+        """
+        :return: a CNF representation of parsed_formula, after simplification, Tseitin, and preprocessing.
+        """
+        simplified_formula = FormulaParser._simplify_formula(parsed_formula)
         if simplified_formula == FormulaParser.TRUE:
             return frozenset({})
         elif simplified_formula == FormulaParser.FALSE:
             return frozenset({frozenset({1}), frozenset({-1})})
-        return FormulaParser.preprocess(FormulaParser.tseitin_transform(simplified_formula))
+        return FormulaParser._preprocess(FormulaParser._tseitin_transform(simplified_formula))
 
     @staticmethod
     def import_formula(formula: str):
-        return FormulaParser.convert_to_cnf(FormulaParser.parse_formula(formula))
+        return FormulaParser._convert_to_cnf(FormulaParser._parse_formula(formula))
 
     @staticmethod
     def convert_tseitin_assignment_to_regular(formula: str, assignment):
         pass
+
+    @staticmethod
+    def _create_boolean_abstraction(parsed_formula, signature, abstraction=None):
+        """
+        :param abstraction: a dictionary that will hold the abstraction. It is update in-place, so an empty
+        dictionary must be passed as an argument!
+        :return: the abstracted formula.
+        """
+        if abstraction is None:
+            abstraction = {}
+        if not parsed_formula:
+            return parsed_formula
+
+        operator = parsed_formula[0]
+        if operator not in FormulaParser.BOOLEAN_OPS:
+            # Base cases:
+            # - A constant
+            # - Only one variable
+            # - A non-boolean operator (like "=")
+            if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
+                # Introduce a fresh variable, if this is not a constant
+                abstraction[parsed_formula] = len(abstraction) + 1
+            return str(abstraction[parsed_formula])
+
+        left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction)
+        if operator in FormulaParser.BOOLEAN_UNARY_OPS:
+            return operator, left_parameter
+
+        # Binary operator
+        right_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[2], signature, abstraction)
+        return operator, left_parameter, right_parameter
+
+    @staticmethod
+    def import_uf(formula: str):
+        signature, parsed_formulas = FormulaParser._parse_uf(formula)
+        abstraction = {}
+        formula = set()
+        for parsed_formula in parsed_formulas:
+            formula |= FormulaParser._convert_to_cnf(
+                FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction)
+            )
+        return frozenset(formula), signature, abstraction

@@ -16,13 +16,13 @@ class TestFormulaParser:
 
     @staticmethod
     def test_parse_formula():
-        assert FormulaParser.parse_formula("not (=> (not (and p q)) (not r))") == \
+        assert FormulaParser._parse_formula("not (=> (not (and p q)) (not r))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
-        assert FormulaParser.parse_formula("not (=> (not (and pq78 q)) (not r))") == \
+        assert FormulaParser._parse_formula("not (=> (not (and pq78 q)) (not r))") == \
                ("not", ("=>", ("not", ("and", ("pq78"), ("q"))), ("not", ("r"))))
-        assert FormulaParser.parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
+        assert FormulaParser._parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
-        assert FormulaParser.parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
+        assert FormulaParser._parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("not", ("r")))), ("not", ("r"))))
 
 
@@ -43,11 +43,11 @@ class TestFormulaParser:
             frozenset({1}),
             frozenset({2, -4})
         }
-        assert FormulaParser.tseitin_transform(FormulaParser.parse_formula("not (=> (not (and p q)) (not r))")) == \
+        assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("not (=> (not (and p q)) (not r))")) == \
                transformed_formula
-        assert FormulaParser.tseitin_transform(FormulaParser.parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
+        assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
                transformed_formula
-        assert FormulaParser.tseitin_transform(FormulaParser.parse_formula("and (not x) x")) == {
+        assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("and (not x) x")) == {
             frozenset({1}),
             frozenset({1, -3, -2}),
             frozenset({2, 3}),
@@ -58,25 +58,25 @@ class TestFormulaParser:
 
     @staticmethod
     def test_preprocessing():
-        assert FormulaParser.preprocess(frozenset({frozenset({})})) == frozenset()
-        assert FormulaParser.preprocess(frozenset({frozenset({1})})) == frozenset({frozenset({1})})
-        assert FormulaParser.preprocess(frozenset({frozenset({1}), frozenset({2})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({})})) == frozenset()
+        assert FormulaParser._preprocess(frozenset({frozenset({1})})) == frozenset({frozenset({1})})
+        assert FormulaParser._preprocess(frozenset({frozenset({1}), frozenset({2})})) == \
                frozenset({frozenset({2}), frozenset({1})})
-        assert FormulaParser.preprocess(frozenset({frozenset({2, 1}), frozenset({3, 4})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({2, 1}), frozenset({3, 4})})) == \
                frozenset({frozenset({3, 4}), frozenset({1, 2})})
-        assert FormulaParser.preprocess(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})})) == \
                frozenset({frozenset({3, 4}), frozenset({1, 2})})
-        assert FormulaParser.preprocess(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})})) == \
                frozenset({frozenset({3, 4})})
-        assert FormulaParser.preprocess(frozenset({frozenset({1, -1}), frozenset({3, -4})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({1, -1}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert FormulaParser.preprocess(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert FormulaParser.preprocess(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert FormulaParser.preprocess(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert FormulaParser.preprocess(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})})) == \
+        assert FormulaParser._preprocess(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})})) == \
                frozenset({frozenset({1, 2, 3, -4})})
 
     @staticmethod
@@ -113,7 +113,7 @@ class TestFormulaParser:
                             '250',
                             ('+', ('and', ('q1',), 'x'), ('q2', '2', ('q2', '1', 'true', '2'), '8'))),
                            ('=', '250', ('+', ('q1',), ('q2',)))]
-        assert FormulaParser.parse_uf(formula) == (signature, parsed_formulas)
+        assert FormulaParser._parse_uf(formula) == (signature, parsed_formulas)
 
         # Uses a weird one-line input
         formula = ("(declare-fun q1 () Real) (   assert    (= 250 (+    q1   (    q1   (5   , q2 ) , 8 )     7   )))" +
@@ -129,4 +129,40 @@ class TestFormulaParser:
                             '260',
                             ('+', ('and', ('q1',), 'x'), ('q1', '2', ('q1', '1', 'true', '2'), '8'))),
                            ('-', '50', ('+', ('or', ('q3',), ('not', 'x')), '12'))]
-        assert FormulaParser.parse_uf(formula) == (signature, parsed_formulas)
+        assert FormulaParser._parse_uf(formula) == (signature, parsed_formulas)
+
+    @staticmethod
+    def test_create_boolean_abstraction():
+        formula = '   ((     (   and (   a   ) (   b   )   ))   )    '
+        abstraction = {}
+        signature = {}
+        parsed_formula = FormulaParser._parse_formula(formula)
+        abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction)
+        assert abstracted_formula == ('and', '1', '2')
+        assert abstraction == {'a': 1, 'b': 2}
+
+        formula = '(((and (   =     true     false    ) (a))))'
+        abstraction = {}
+        parsed_formula = FormulaParser._parse_formula(formula)
+        abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction)
+        assert abstracted_formula == ('and', '1', '2')
+        assert abstraction == {('=', 'true', 'false'): 1, 'a': 2}
+
+        formula = '(declare-fun f (Int Int) Bool) (assert ((and (= (not a) f ( 1 , 2 ) ) (a))))'
+        abstraction = {}
+        signature, parsed_formula = FormulaParser._parse_uf(formula)
+        abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
+        assert abstracted_formula == ('and', '1', '2')
+        assert abstraction == {'a': 2, ('=', ('not', 'a'), ('f', '1', '2')): 1}
+
+        formula = ('(declare-fun f (Int) Bool) ' +
+                   '(declare-fun g (Int) Bool) '
+                   '(assert (and (and (= g(a) c) (or (not (= f(g(a)) f(c))) (= g(a) d))) (not (= c d)))')
+        abstraction = {}
+        signature, parsed_formula = FormulaParser._parse_uf(formula)
+        abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
+        assert abstracted_formula == ('and', ('and', '1', ('or', ('not', '2'), '3')), ('not', '4'))
+        assert abstraction == {('=', ('f', ('g', 'a')), ('f', 'c')): 2,
+                               ('=', ('g', 'a'), 'c'): 1,
+                               ('=', ('g', 'a'), 'd'): 3,
+                               ('=', 'c', 'd'): 4}
