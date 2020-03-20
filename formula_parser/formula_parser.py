@@ -344,13 +344,17 @@ class FormulaParser:
         return frozenset(preprocessed_formula)
 
     @staticmethod
-    def import_formula(formula: str):
-        simplified_formula = FormulaParser.simplify_formula(FormulaParser.parse_formula(formula))
+    def convert_to_cnf(parsed_formula):
+        simplified_formula = FormulaParser.simplify_formula(parsed_formula)
         if simplified_formula == FormulaParser.TRUE:
             return frozenset({})
         elif simplified_formula == FormulaParser.FALSE:
             return frozenset({frozenset({1}), frozenset({-1})})
         return FormulaParser.preprocess(FormulaParser.tseitin_transform(simplified_formula))
+
+    @staticmethod
+    def import_formula(formula: str):
+        return FormulaParser.convert_to_cnf(FormulaParser.parse_formula(formula))
 
     @staticmethod
     def convert_tseitin_assignment_to_regular(formula: str, assignment):
