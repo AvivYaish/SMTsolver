@@ -25,7 +25,6 @@ class TestFormulaParser:
         assert FormulaParser._parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
                ("not", ("=>", ("not", ("and", ("p"), ("not", ("r")))), ("not", ("r"))))
 
-
     @staticmethod
     def test_tseitin_transform():
         transformed_formula = {

@@ -76,7 +76,7 @@ class SATSolver:
             self._assigned_vsids_count[cur_sign] = self._unassigned_vsids_count[cur_sign]
             del self._unassigned_vsids_count[cur_sign]
 
-    def _unassign(self, variable):
+    def _unassign(self, variable: int):
         """
         Unassigns the given variable.
         """
