@@ -241,6 +241,9 @@ class FormulaParser:
                            subformulas=None,
                            transformed_subformulas=None,
                            transformed_formula=None):
+        """
+        Changes all parameters in-place.
+        """
         if subformulas is None:
             subformulas = {}
         if transformed_subformulas is None:
@@ -343,16 +346,33 @@ class FormulaParser:
         return frozenset(preprocessed_formula)
 
     @staticmethod
-    def _convert_to_cnf(parsed_formula):
+    def _convert_to_cnf(parsed_formula,
+                        output_all=False,
+                        subformulas=None,
+                        transformed_subformulas=None,
+                        cnf_formula=None):
         """
+        :param cnf_formula: a pre-existing CNF formula, that has an "and" operation between it and parsed_formula.
         :return: a CNF representation of parsed_formula, after simplification, Tseitin, and preprocessing.
         """
+        if subformulas is None:
+            subformulas = {}
+        if transformed_subformulas is None:
+            transformed_subformulas = {}
+        if cnf_formula is None:
+            cnf_formula = set()
         simplified_formula = FormulaParser._simplify_formula(parsed_formula)
-        if simplified_formula == FormulaParser.TRUE:
-            return frozenset({})
-        elif simplified_formula == FormulaParser.FALSE:
-            return frozenset({frozenset({1}), frozenset({-1})})
-        return FormulaParser._preprocess(FormulaParser._tseitin_transform(simplified_formula))
+        if simplified_formula == FormulaParser.FALSE:
+            cnf_formula = frozenset({frozenset({1}), frozenset({-1})})
+        else:
+            FormulaParser._tseitin_transform(simplified_formula,
+                                             subformulas=subformulas,
+                                             transformed_subformulas=transformed_subformulas,
+                                             transformed_formula=cnf_formula)
+        cnf_formula = FormulaParser._preprocess(cnf_formula)
+        if output_all:
+            return subformulas, transformed_subformulas, cnf_formula
+        return cnf_formula
 
     @staticmethod
     def import_formula(formula: str):
@@ -396,10 +416,15 @@ class FormulaParser:
     @staticmethod
     def import_uf(formula: str):
         signature, parsed_formulas = FormulaParser._parse_uf(formula)
+        subformulas = {}
+        transformed_subformulas = {}
         abstraction = {}
-        formula = set()
+        cnf_formula = set()
         for parsed_formula in parsed_formulas:
-            formula |= FormulaParser._convert_to_cnf(
-                FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction)
+            FormulaParser._convert_to_cnf(
+                FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction),
+                subformulas=subformulas,
+                transformed_subformulas=transformed_subformulas,
+                cnf_formula=cnf_formula
             )
-        return frozenset(formula), signature, abstraction
+        return frozenset(cnf_formula), signature, abstraction

@@ -186,3 +186,18 @@ class TestFormulaParser:
             frozenset({2, -1}),
             frozenset({3, -1})
         })
+
+        formula = ('(declare-fun f (Int Int) Bool) ' +
+                   '(declare-fun g () Bool) ' +
+                   '(assert ((and (= a g) f ( 1 , 2 ) ))) ' +
+                   '(assert (not f(5,7)))')
+        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        assert cnf_formula == frozenset({
+            frozenset({1, -3, -2}),
+            frozenset({3, -1}),
+            frozenset({4, 5}),
+            frozenset({-5, -4}),
+            frozenset({1}),
+            frozenset({2, -1}),
+            frozenset({4})
+        })
