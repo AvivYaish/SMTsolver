@@ -19,7 +19,7 @@ class SATSolver:
         )
 
     @staticmethod
-    def _simplify_formula(parsed_formula):
+    def simplify_formula(parsed_formula):
         # Base case, empty formula
         if not parsed_formula:
             return FormulaParser.TRUE
@@ -29,7 +29,7 @@ class SATSolver:
             # Base case, only one variable/boolean value
             return operator
 
-        left_parameter = SATSolver._simplify_formula(parsed_formula[1])
+        left_parameter = SATSolver.simplify_formula(parsed_formula[1])
         if operator == FormulaParser.NOT:
             if SATSolver._is_parameter_not(left_parameter):
                 # not (not x)
@@ -41,7 +41,7 @@ class SATSolver:
             return operator, left_parameter
 
         # Binary operator
-        right_parameter = SATSolver._simplify_formula(parsed_formula[2])
+        right_parameter = SATSolver.simplify_formula(parsed_formula[2])
         if left_parameter == right_parameter:
             if (operator == FormulaParser.IMPLICATION) or (operator == FormulaParser.BICONDITIONAL):
                 return FormulaParser.TRUE
@@ -84,11 +84,20 @@ class SATSolver:
         return operator, left_parameter, right_parameter
 
     @staticmethod
-    def _tseitin_transform(parsed_formula, output_all=False):
+    def tseitin_transform(parsed_formula,
+                          output_all=False,
+                          subformulas=None,
+                          transformed_subformulas=None,
+                          transformed_formula=None):
+        if subformulas is None:
+            subformulas = {}
+        if transformed_subformulas is None:
+            transformed_subformulas = {}
+        if transformed_formula is None:
+            transformed_formula = set()
+        original_subformulas_len = len(subformulas)
         formula_list = [parsed_formula]
-        subformulas = {}
-        transformed_subformulas = {}
-        transformed_formula = {frozenset({1})}  # Always need to satisfy the entire formula
+
         while formula_list:
             cur_formula = formula_list.pop()
             if not cur_formula:
@@ -97,6 +106,9 @@ class SATSolver:
             if cur_formula not in subformulas:
                 # + 1 to avoid getting zeros (-0=0)
                 subformulas[cur_formula] = len(subformulas) + 1
+                if len(subformulas) == original_subformulas_len + 1:
+                    # Always need to satisfy the entire formula
+                    transformed_formula.add(frozenset({subformulas[cur_formula]}))
 
             operator = cur_formula[0]
             if operator not in FormulaParser.BOOLEAN_OPS:
@@ -157,10 +169,10 @@ class SATSolver:
         return transformed_formula
 
     @staticmethod
-    def _preprocessing(cnf_formula):
+    def preprocess(cnf_formula):
         """
         :param cnf_formula: a formula, in CNF.
-        :return: processed formula.
+        :return: processed formula, with no trivial or empty clauses.
         """
         preprocessed_formula = []
         for clause in cnf_formula:
@@ -180,22 +192,22 @@ class SATSolver:
 
     @staticmethod
     def import_formula(formula: str):
-        simplified_formula = SATSolver._simplify_formula(FormulaParser.parse_formula(formula))
+        simplified_formula = SATSolver.simplify_formula(FormulaParser.parse_formula(formula))
         if simplified_formula == FormulaParser.TRUE:
             return frozenset({})
         elif simplified_formula == FormulaParser.FALSE:
             return frozenset({frozenset({1}), frozenset({-1})})
-        return SATSolver._tseitin_transform(simplified_formula)
+        return SATSolver.tseitin_transform(simplified_formula)
 
     @staticmethod
     def convert_tseitin_assignment_to_regular(formula: str, assignment):
         variables = set()
-        simplified_formula = SATSolver._simplify_formula(FormulaParser.parse_formula(formula, variables))
+        simplified_formula = SATSolver.simplify_formula(FormulaParser.parse_formula(formula, variables))
         if simplified_formula == FormulaParser.TRUE:
             return frozenset({})
         elif simplified_formula == FormulaParser.FALSE:
             return frozenset({frozenset({1}), frozenset({-1})})
-        subformulas, transformed_subformulas, transformed_formula = SATSolver._tseitin_transform(simplified_formula)
+        subformulas, transformed_subformulas, transformed_formula = SATSolver.tseitin_transform(simplified_formula)
         # for variable in assignment:
         #     if subformulas[]
 
@@ -206,7 +218,7 @@ class SATSolver:
         if formula is None:
             formula = set()
 
-        self._formula = SATSolver._preprocessing(formula)
+        self._formula = SATSolver.preprocess(formula)
         self._new_clauses = deque()
         self._max_new_clauses = max_new_clauses
         self._assignment = dict()

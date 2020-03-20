@@ -90,11 +90,11 @@ class TestSATSolver:
             frozenset({1}),
             frozenset({2, -4})
         }
-        assert SATSolver._tseitin_transform(FormulaParser.parse_formula("not (=> (not (and p q)) (not r))")) == \
+        assert SATSolver.tseitin_transform(FormulaParser.parse_formula("not (=> (not (and p q)) (not r))")) == \
                transformed_formula
-        assert SATSolver._tseitin_transform(FormulaParser.parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
+        assert SATSolver.tseitin_transform(FormulaParser.parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
                transformed_formula
-        assert SATSolver._tseitin_transform(FormulaParser.parse_formula("and (not x) x")) == {
+        assert SATSolver.tseitin_transform(FormulaParser.parse_formula("and (not x) x")) == {
             frozenset({1}),
             frozenset({1, -3, -2}),
             frozenset({2, 3}),
@@ -105,25 +105,25 @@ class TestSATSolver:
 
     @staticmethod
     def test_preprocessing():
-        assert SATSolver._preprocessing(frozenset({frozenset({})})) == frozenset()
-        assert SATSolver._preprocessing(frozenset({frozenset({1})})) == frozenset({frozenset({1})})
-        assert SATSolver._preprocessing(frozenset({frozenset({1}), frozenset({2})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({})})) == frozenset()
+        assert SATSolver.preprocess(frozenset({frozenset({1})})) == frozenset({frozenset({1})})
+        assert SATSolver.preprocess(frozenset({frozenset({1}), frozenset({2})})) == \
                frozenset({frozenset({2}), frozenset({1})})
-        assert SATSolver._preprocessing(frozenset({frozenset({2, 1}), frozenset({3, 4})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({2, 1}), frozenset({3, 4})})) == \
                frozenset({frozenset({3, 4}), frozenset({1, 2})})
-        assert SATSolver._preprocessing(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})})) == \
                frozenset({frozenset({3, 4}), frozenset({1, 2})})
-        assert SATSolver._preprocessing(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})})) == \
                frozenset({frozenset({3, 4})})
-        assert SATSolver._preprocessing(frozenset({frozenset({1, -1}), frozenset({3, -4})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({1, -1}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert SATSolver._preprocessing(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert SATSolver._preprocessing(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert SATSolver._preprocessing(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})})) == \
                frozenset({frozenset({3, -4})})
-        assert SATSolver._preprocessing(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})})) == \
+        assert SATSolver.preprocess(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})})) == \
                frozenset({frozenset({1, 2, 3, -4})})
 
     @staticmethod
@@ -507,7 +507,7 @@ class TestSATSolver:
         if test_import:
             formula_our = SATSolver.import_formula(formula_our_text)
         else:
-            formula_our = SATSolver._tseitin_transform(formula_our)
+            formula_our = SATSolver.tseitin_transform(formula_our)
         start_time_our = time.time()
         our_solver = SATSolver(formula_our)
         is_sat_our = our_solver.solve()
