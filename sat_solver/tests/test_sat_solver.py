@@ -429,19 +429,10 @@ class TestSATSolver:
             all_subformulas_z3.append(cur_subformula_z3)
             all_subformulas_our_text.append(cur_subformula_our_text)
             all_subformulas_our.append(cur_subformula_our)
-            if formula_z3 is None:
-                formula_z3 = cur_subformula_z3
-                formula_our_text = cur_subformula_our_text
-                formula_our = cur_subformula_our
-            else:
-                # # This is probably UNSAT:
-                # formula_z3 = z3.And(formula_z3, cur_subformula_z3)
-                # formula_our_text = "and (" + formula_our_text + ") (" + cur_subformula_our_text + ")"
-                # formula_our = "and", formula_our, cur_subformula_our
-                # This is completely random:
-                formula_z3 = cur_subformula_z3
-                formula_our_text = cur_subformula_our_text
-                formula_our = cur_subformula_our
+
+        formula_z3 = cur_subformula_z3
+        formula_our_text = cur_subformula_our_text
+        formula_our = cur_subformula_our
 
         # Solve with Z3
         z3_solver = z3.Solver()
