@@ -328,7 +328,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, clause_num, clause_length",
-                             [(20, clause_num, 3) for clause_num in list(range(1, 200))])
+                             [(20, clause_num, 3) for clause_num in list(range(1, 50))])
     def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
         # Generates a random CNF and compares our solver to Z3
 
@@ -366,7 +366,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(variable_num, variable_num ** 2, True) for variable_num in list(range(1, 100))]
+                             [(variable_num, variable_num ** 4, True) for variable_num in list(range(1, 15))]
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
@@ -457,16 +457,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(5, clause_num, True) for clause_num in list(range(1, 500))]
+                             [(5, clause_num, True) for clause_num in list(range(1, 300))]
                              )
     def test_simple_random_formula(variable_num: int, operator_num: int, test_import):
-        TestSATSolver.test_random_formula(variable_num, operator_num, test_import)
-
-    @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(5, clause_num, True) for clause_num in range(1, 100000)]
-                             )
-    def test_million_random_formula(variable_num: int, operator_num: int, test_import):
-        if operator_num > 5000:
-            operator_num = 5000
         TestSATSolver.test_random_formula(variable_num, operator_num, test_import)
