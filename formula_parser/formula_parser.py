@@ -2,6 +2,8 @@ import re
 
 
 class FormulaParser:
+    # It would definitely be better to use a Lexer here, but we assumed that parsing was also a part of the project.
+
     TRUE = 'true'
     FALSE = 'false'
 
@@ -115,7 +117,8 @@ class FormulaParser:
     @staticmethod
     def parse_formula(formula: str, unary_operators=BOOLEAN_UNARY_OPS, signature=None):
         """
-        :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it.
+        :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it:
+        (operator, left side, right side (if exists))
         """
         if signature is None:
             signature = {}
@@ -138,7 +141,7 @@ class FormulaParser:
         if operator in unary_operators:
             return operator, FormulaParser.parse_formula(right_side, unary_operators, signature)
 
-        # Boolean operator
+        # Binary operator
         closing_idx = FormulaParser._find_closing_bracket(right_side)
         if (closing_idx != -1) and (closing_idx != len(right_side)):
             # If the first parameter of the operator is enclosed in brackets, split the first and second parameters
