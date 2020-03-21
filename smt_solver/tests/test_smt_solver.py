@@ -31,3 +31,12 @@ class TestSMTSolver:
                    '(assert (not (= f(a) a)))')
         solver = SMTSolver(formula)
         assert solver._congruence_closure({1: True, 2: True, 4: False}) == frozenset({4, -1, -2})
+
+        formula = ('(declare-fun f (Bool) Bool) ' +
+                   '(declare-fun g (Bool) Bool) ' +
+                   '(assert (= f(g(x)) g(f(x)))) ' +
+                   '(assert (= f(g(f(y))) x)) ' +
+                   '(assert (= f(y) x)) ' +
+                   '(assert (not (= g(f(x)) x)))')
+        solver = SMTSolver(formula)
+        assert solver._congruence_closure({1: True, 2: True, 3: True, 5: False}) == frozenset({5, -1, -2, -3})
