@@ -483,7 +483,7 @@ class FormulaParser:
                 graph[cur_formula] = {
                     "index": len(graph) + 1,
                     "parents": set(),
-                    "next": cur_formula  # Points to itself
+                    "find": cur_formula  # Points to itself
                 }
             else:
                 formula_list.append(cur_formula[1])
@@ -502,3 +502,7 @@ class FormulaParser:
             (tseitin_variable_to_subterm, subterm_to_tseitin_variable),
             (non_boolean_clauses, congruence_graph)
         )
+
+    @staticmethod
+    def _replace_parameter(term, parameter_to_replace, new_parameter):
+        pass
