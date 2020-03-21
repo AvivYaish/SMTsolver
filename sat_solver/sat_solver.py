@@ -3,7 +3,11 @@ from collections import deque, Counter
 
 class SATSolver:
 
-    def __init__(self, cnf_formula=None, max_new_clauses=float('inf'), halving_period=10000, theory_solver=None):
+    def __init__(self,
+                 cnf_formula=None,
+                 max_new_clauses=float('inf'),
+                 halving_period=10000,
+                 theory_solver=None):
         """
         :param cnf_formula: a formula, in CNF. A formula is a set of clauses, where each clause is a frozenset.
         """
@@ -261,6 +265,7 @@ class SATSolver:
             # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
             for literal, clause in assignments:
                 self._assign(clause, literal)
+            # TODO: add the conflict clause! MAYBE ALSO MAKE THIS EXACTLY THE SAME AS BCP
         return conflict_clause, level_to_jump_to
 
     def _theory_propagation_to_exhaustion(self) -> bool:

@@ -58,7 +58,7 @@ class FormulaParser:
         :return: a "cleaned" up formula, ready for parsing.
         """
         formula = ' '.join(formula.split()).strip()
-        while (formula and (formula[0] == FormulaParser._OPENING_BRACKET) and 
+        while (formula and (formula[0] == FormulaParser._OPENING_BRACKET) and
                (FormulaParser._find_closing_bracket(formula) == len(formula))):
             formula = formula[1:-1].strip()
         return formula
@@ -164,10 +164,10 @@ class FormulaParser:
     def _is_left_not_right(left_parameter, right_parameter):
         return (
             # This case is: op (not x) (x)
-            (FormulaParser._is_parameter_not(right_parameter) and (right_parameter[1] == left_parameter))
-            or
-            # This case is: op (not x) (x)
-            (FormulaParser._is_parameter_not(left_parameter) and (left_parameter[1] == right_parameter))
+                (FormulaParser._is_parameter_not(right_parameter) and (right_parameter[1] == left_parameter))
+                or
+                # This case is: op (not x) (x)
+                (FormulaParser._is_parameter_not(left_parameter) and (left_parameter[1] == right_parameter))
         )
 
     @staticmethod
@@ -329,7 +329,7 @@ class FormulaParser:
                 }
             transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
 
-        transformed_formula.add(frozenset({subformulas[parsed_formula]}))   # Always need to satisfy the entire formula
+        transformed_formula.add(frozenset({subformulas[parsed_formula]}))  # Always need to satisfy the entire formula
         if output_all:
             return subformulas, transformed_subformulas, transformed_formula
         return transformed_formula
@@ -395,7 +395,7 @@ class FormulaParser:
         regular_assignment = {}
         for tseitin_variable in assignment:
             if variable_to_subformula[tseitin_variable][0] not in FormulaParser.ALL_OPS:
-               regular_assignment[variable_to_subformula[tseitin_variable]] = assignment[tseitin_variable]
+                regular_assignment[variable_to_subformula[tseitin_variable]] = assignment[tseitin_variable]
         return regular_assignment
 
     @staticmethod
@@ -430,12 +430,11 @@ class FormulaParser:
         return operator, left_parameter, right_parameter
 
     @staticmethod
-    def import_uf(formula: str):
-        signature, parsed_formulas = FormulaParser._parse_uf(formula)
+    def _convert_non_boolean_formulas_to_cnf(signature, parsed_formulas):
         subformulas = {}
         transformed_subformulas = {}
-        abstraction = {}    # A map between subterms to new variables (the "abstractions")
         cnf_formula = set()
+        abstraction = {}  # A map between subterms to new variables (the "abstractions")
         for parsed_formula in parsed_formulas:
             FormulaParser._convert_to_cnf(
                 FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction),
@@ -443,10 +442,17 @@ class FormulaParser:
                 transformed_subformulas=transformed_subformulas,
                 cnf_formula=cnf_formula
             )
+
         tseitin_variable_to_subterm = {}
         subterm_to_tseitin_variable = {}
-        # variable_to_subterm = {v: k for k, v in abstraction.items()}
         for subterm, abstracted_subterm in abstraction.items():
             tseitin_variable_to_subterm[subformulas[abstracted_subterm]] = subterm
             subterm_to_tseitin_variable[subterm] = subformulas[abstracted_subterm]
-        return frozenset(cnf_formula), signature, abstraction
+        return cnf_formula, tseitin_variable_to_subterm, subterm_to_tseitin_variable
+
+    @staticmethod
+    def import_uf(formula: str):
+        signature, parsed_formulas = FormulaParser._parse_uf(formula)
+        cnf_formula, tseitin_variable_to_subterm, subterm_to_tseitin_variable = \
+            FormulaParser._convert_non_boolean_formulas_to_cnf(signature, parsed_formulas)
+        return frozenset(cnf_formula), tseitin_variable_to_subterm, subterm_to_tseitin_variable

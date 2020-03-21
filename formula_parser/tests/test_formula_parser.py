@@ -219,6 +219,21 @@ class TestFormulaParser:
         })
 
         formula = ('(declare-fun f (Int Int) Bool) ' +
+                   '(declare-fun g () Bool) ' +
+                   '(assert (and (= 5 4) f(1, 2))) ' +
+                   '(assert (not g(1, 2)))')
+        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        assert cnf_formula == frozenset({
+            frozenset({1, -3, -2}),
+            frozenset({3, -1}),
+            frozenset({4, 5}),
+            frozenset({-5, -4}),
+            frozenset({1}),
+            frozenset({2, -1}),
+            frozenset({4})
+        })
+
+        formula = ('(declare-fun f (Int Int) Bool) ' +
                    '(assert (= f(2,3) a) ' +
                    '(assert (not (= f(2,3) a))')
         cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)

@@ -8,4 +8,10 @@ class SMTSolver:
         self._max_new_clauses = max_new_clauses
         self._halving_period = halving_period
 
+        self._subterms = None
 
+    def _process_equality(self, equality):
+        pass
+
+    def _congruence_closure(self):
+        pass
