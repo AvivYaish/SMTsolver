@@ -253,6 +253,39 @@ class SATSolver:
                     if abs(literal) not in self._assignment:
                         self._assign(clause, literal)
 
+    def _theory_propagation(self):
+        assignments, conflict_clause, level_to_jump_to = self._theory_solver.theory_propagate(
+            self.get_assignment()
+        )
+        if level_to_jump_to != -1:
+            # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
+            for literal, clause in assignments:
+                self._assign(clause, literal)
+        return conflict_clause, level_to_jump_to
+
+    def _theory_propagation_to_exhaustion(self) -> bool:
+        if self._theory_solver:
+            conflict_clause, level_to_jump_to = self._theory_propagation()
+            while conflict_clause is not None:
+                if level_to_jump_to == -1:
+                    # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
+                    return False
+                self._backtrack(level_to_jump_to)
+                conflict_clause, level_to_jump_to = self._theory_propagation()
+        return True
+
+    def _propagation(self) -> bool:
+        while self._last_assigned_literals:
+            if (not self._bcp_to_exhaustion()) or (not self._theory_propagation_to_exhaustion()):
+                return False
+        return True
+
+    def _is_sat(self) -> bool:
+        return (
+                self._formula.issubset(self._satisfied_clauses) and
+                ((self._theory_solver is None) or self._theory_solver.is_sat())
+        )
+
     def solve(self) -> bool:
         """
         :return: True if SAT, False otherwise.
@@ -260,22 +293,8 @@ class SATSolver:
         self._satisfy_unit_clauses()
         while True:
             self._increment_step()
-
-            if not self._bcp_to_exhaustion():
+            if not self._propagation():
                 return False
-
-            # if self._theory_solver:
-            #     assignments, conflict_clause, level_to_jump_to = self._theory_solver.theory_propagate(
-            #         self.get_assignment()
-            #     )
-            #     if conflict_clause is not None:
-            #         self._backtrack(level_to_jump_to)
-            #     for literal, clause in assignments:
-            #         self._assign(clause, literal)
-                # Need to perform this to exhaustion, together with regular BCP,
-
-            # If all clauses are satisfied, we are done
-            if self._formula.issubset(self._satisfied_clauses):
+            if self._is_sat():
                 return True
-
             self._decide()
