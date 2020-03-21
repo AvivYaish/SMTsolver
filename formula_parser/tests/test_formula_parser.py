@@ -200,3 +200,25 @@ class TestFormulaParser:
             frozenset({2, -1}),
             frozenset({4})
         })
+
+        formula = ('(declare-fun f (Int Int) Bool) ' +
+                   '(assert (= f(2,3) a) ' +
+                   '(assert (not (= f(2,3) a))')
+        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        assert cnf_formula == frozenset({
+            frozenset({2}),
+            frozenset({1}),
+            frozenset({-2, -1}),
+            frozenset({1, 2})
+        })
+
+        formula = ('(declare-fun f (Int Int) Bool) ' +
+                   '(assert (= f(3,3) a) ' +
+                   '(assert (not (= f(2,3) a))')
+        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        assert cnf_formula == frozenset({
+            frozenset({2}),
+            frozenset({1}),
+            frozenset({2, 3}),
+            frozenset({-3, -2})
+        })
