@@ -482,7 +482,6 @@ class FormulaParser:
                         formula_list.append(cur_formula)
                         continue
                 graph[cur_formula] = {
-                    "index": len(graph) + 1,
                     "parents": {},
                     "find": cur_formula  # Points to itself
                 }
