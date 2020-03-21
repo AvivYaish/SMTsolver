@@ -10,27 +10,23 @@ class TestSMTSolver:
                    '(assert (= f(a, b) a)) ' +
                    '(assert (not (= f(f(a, b), b) a)))')
         solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 3: False}) == frozenset({3, -1})
+        solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
+        assert solver._congruence_closure() == frozenset({3, -1})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(f(f(a))) a)) ' +
                    '(assert (= f(f(f(f(f(a))))) a)) ' +
                    '(assert (not (= f(a) a)))')
         solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 2: True, 4: False}) == frozenset({4, -1, -2})
+        solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 4: {"value": False}}
+        assert solver._congruence_closure() == frozenset({4, -1, -2})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(x) f(y))) ' +
                    '(assert (not (= x y)))')
         solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 3: False}) is None
-
-        formula = ('(declare-fun f (Bool) Bool) ' +
-                   '(assert (= f(f(f(a))) a)) ' +
-                   '(assert (= f(f(f(f(f(a))))) a)) ' +
-                   '(assert (not (= f(a) a)))')
-        solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 2: True, 4: False}) == frozenset({4, -1, -2})
+        solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
+        assert solver._congruence_closure() is None
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(declare-fun g (Bool) Bool) ' +
@@ -39,4 +35,5 @@ class TestSMTSolver:
                    '(assert (= f(y) x)) ' +
                    '(assert (not (= g(f(x)) x)))')
         solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 2: True, 3: True, 5: False}) == frozenset({5, -1, -2, -3})
+        solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
+        assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
