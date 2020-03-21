@@ -421,6 +421,7 @@ class FormulaParser:
             if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
                 # Introduce a fresh variable, if this is not a constant
                 abstraction[parsed_formula] = str(len(abstraction) + 1)
+                non_boolean_clauses.add(parsed_formula)
             return abstraction[parsed_formula]
 
         left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction,
@@ -473,7 +474,7 @@ class FormulaParser:
                     new_parameters = False
                     for parameter in cur_formula[1:]:
                         if parameter in graph:
-                            graph[parameter]["parents"].add(cur_formula)
+                            graph[parameter]["parents"][cur_formula] = cur_formula
                         else:
                             formula_list.append(parameter)
                             new_parameters = True
@@ -482,7 +483,7 @@ class FormulaParser:
                         continue
                 graph[cur_formula] = {
                     "index": len(graph) + 1,
-                    "parents": set(),
+                    "parents": {},
                     "find": cur_formula  # Points to itself
                 }
             else:
@@ -504,5 +505,9 @@ class FormulaParser:
         )
 
     @staticmethod
-    def _replace_parameter(term, parameter_to_replace, new_parameter):
-        pass
+    def replace_parameter(term, parameter_to_replace, new_parameter):
+        new_term = list(term)
+        for idx, parameter in enumerate(new_term):
+            if (idx > 0) and (parameter == parameter_to_replace):
+                new_term[idx] = new_parameter
+        return tuple(new_term)

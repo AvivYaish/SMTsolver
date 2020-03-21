@@ -26,28 +26,35 @@ class SMTSolver:
             if subterm in self._non_boolean_clauses:
                 # If the variable represents an equality
                 if assignment[variable]:
-                    equalities.append(subterm)
+                    equalities.append((subterm[1], subterm[2]))
                 else:
-                    nequalities.append(subterm)
+                    nequalities.append((subterm[1], subterm[2]))
 
         while equalities:
-            equality = equalities.popleft()
-            term1, term2 = equality[1], equality[2]
+            term1, term2 = equalities.popleft()
             rep1, rep2 = self._find_representative(term1), self._find_representative(term2)
 
-            new_parents = set()
-            for parent1 in self._congruence_graph[rep1]["parents"]:
-                new_parents.append(FormulaParser.replace_parameter(parent1, rep1, rep2))
-            self._congruence_graph[rep1]["parents"] = set()
+            # Update the representation of parents of rep1
+            for parent1, replaced_parent1 in self._congruence_graph[rep1]["parents"].items():
+                self._congruence_graph[rep1]["parents"][parent1] = \
+                    FormulaParser.replace_parameter(replaced_parent1, rep1, rep2)
 
-            for parent1, parent2 in product(new_parents, self._congruence_graph[rep2]["parents"]):
-                self._congruence_graph[rep2]["parents"].add(parent1)
-                if parent1 == parent2:
-                    equalities.append(parent1)
+            # Add congruent parents
+            for parent1, parent2 in product(self._congruence_graph[rep1]["parents"],
+                                            self._congruence_graph[rep2]["parents"]):
+                replaced_parent1 = self._congruence_graph[rep1]["parents"][parent1]
+                replaced_parent2 = self._congruence_graph[rep2]["parents"][parent2]
+                if replaced_parent1 == replaced_parent2:
+                    equalities.appendleft((parent1, parent2))
+
+            self._congruence_graph[rep1]["find"] = rep2
+            # Update parents
+            for parent1, replaced_parent1 in self._congruence_graph[rep1]["parents"].items():
+                self._congruence_graph[rep2]["parents"][parent1] = replaced_parent1
+            self._congruence_graph[rep1]["parents"] = {}
 
         while nequalities:
-            nequality = nequalities.pop()
-            term1, term2 = nequality[1], nequality[2]
+            term1, term2 = nequalities.pop()
             if self._find_representative(term1) == self._find_representative(term2):
                 return False
         return True
