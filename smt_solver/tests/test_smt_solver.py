@@ -10,7 +10,8 @@ class TestSMTSolver:
                    '(assert (= f(a, b) a)) ' +
                    '(assert (not (= f(f(a, b), b) a)))')
         solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 3: False}) is not None
+        conflict = solver._congruence_closure({1: True, 3: False})
+        assert conflict is not None
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(f(f(a))) a)) ' +

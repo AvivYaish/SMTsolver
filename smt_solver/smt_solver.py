@@ -1,6 +1,5 @@
 from formula_parser.formula_parser import FormulaParser
 from smt_solver.congruence_graph import CongruenceGraph
-from collections import deque
 from copy import deepcopy
 
 
@@ -14,7 +13,7 @@ class SMTSolver:
         self._halving_period = halving_period
 
     def _congruence_closure(self, assignment):
-        positive_relations = deque()
+        positive_relations = []
         negative_relations = []
         for variable in assignment:
             subterm = self._tseitin_variable_to_subterm[variable]
@@ -25,8 +24,10 @@ class SMTSolver:
                     negative_relations.append(subterm)
 
         graph = deepcopy(self._basic_congruence_graph)
-        all_positive_relations = graph.process_positive_relations(positive_relations)
+        graph.process_positive_relations(positive_relations)
         conflict = graph.process_negative_relations(negative_relations)
         if conflict is None:
             return None
-        return all_positive_relations | {conflict}
+
+        return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
+                         | {self._subterm_to_tseitin_variable[conflict]})
