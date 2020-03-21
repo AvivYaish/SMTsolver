@@ -386,12 +386,17 @@ class FormulaParser:
         return cnf_formula
 
     @staticmethod
-    def import_formula(formula: str):
-        return FormulaParser._convert_to_cnf(FormulaParser._parse_formula(formula))
+    def import_formula(formula: str, output_all=False):
+        return FormulaParser._convert_to_cnf(FormulaParser._parse_formula(formula), output_all)
 
     @staticmethod
-    def convert_tseitin_assignment_to_regular(formula: str, assignment):
-        pass
+    def convert_tseitin_assignment_to_regular(subformulas, assignment):
+        variable_to_subformula = {v: k for k, v in subformulas.items()}
+        regular_assignment = {}
+        for tseitin_variable in assignment:
+            if variable_to_subformula[tseitin_variable][0] not in FormulaParser.ALL_OPS:
+               regular_assignment[variable_to_subformula[tseitin_variable]] = assignment[tseitin_variable]
+        return regular_assignment
 
     @staticmethod
     def _create_boolean_abstraction(parsed_formula, signature, abstraction=None):
@@ -438,4 +443,8 @@ class FormulaParser:
                 transformed_subformulas=transformed_subformulas,
                 cnf_formula=cnf_formula
             )
+        var_to_subformula = {v: k for k, v in subformulas.items()}
+        for subformula in subformulas:
+            if subformula in abstraction:
+                pass
         return frozenset(cnf_formula), signature, abstraction

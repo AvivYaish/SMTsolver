@@ -1,5 +1,6 @@
 import pytest
 from formula_parser.formula_parser import FormulaParser
+from sat_solver.sat_solver import SATSolver
 
 
 class TestFormulaParser:
@@ -77,6 +78,22 @@ class TestFormulaParser:
                frozenset({frozenset({3, -4})})
         assert FormulaParser._preprocess(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})})) == \
                frozenset({frozenset({1, 2, 3, -4})})
+
+    @staticmethod
+    def test_convert_tseitin_assignment_to_regular():
+        formula = "=> (5) (not 5)"
+        subformulas, transformed_subformulas, cnf_formula = FormulaParser.import_formula(formula, True)
+        solver = SATSolver(cnf_formula)
+        solver.solve()
+        assignment = FormulaParser.convert_tseitin_assignment_to_regular(subformulas, solver.get_assignment())
+        assert assignment == {'5': False}
+
+        formula = "=> (5) (not 5)"
+        subformulas, transformed_subformulas, cnf_formula = FormulaParser.import_formula(formula, True)
+        solver = SATSolver(cnf_formula)
+        solver.solve()
+        assignment = FormulaParser.convert_tseitin_assignment_to_regular(subformulas, solver.get_assignment())
+        assert assignment == {'5': True, '4': False}
 
     @staticmethod
     def test_parse_uf():
