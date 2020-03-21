@@ -1,4 +1,4 @@
-from collections import deque
+from smt_solver.congruence_graph import CongruenceGraph
 import re
 
 
@@ -458,51 +458,14 @@ class FormulaParser:
         return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses
 
     @staticmethod
-    def _create_congruence_graph(signature, parsed_formulas):
-        graph = {}
-        formula_list = deque(parsed_formulas)
-        while formula_list:
-            cur_formula = formula_list.popleft()
-            if (not cur_formula) or (cur_formula in graph):
-                continue
-
-            operator = cur_formula[0]
-            if operator not in FormulaParser.ALL_OPS:
-                # Base cases: 1. A constant, 2. Only one variable, 3. A function
-                if operator in signature:   # A function
-                    new_parameters = False
-                    for parameter in cur_formula[1:]:
-                        if parameter in graph:
-                            graph[parameter]["parents"][cur_formula] = cur_formula
-                        else:
-                            formula_list.append(parameter)
-                            new_parameters = True
-                    if new_parameters:
-                        formula_list.append(cur_formula)
-                        continue
-                graph[cur_formula] = {"parents": {}, "find": cur_formula}
-            else:
-                formula_list.append(cur_formula[1])
-                if operator in FormulaParser.ALL_BINARY_OPS:
-                    formula_list.append(cur_formula[2])
-        return graph
-
-    @staticmethod
     def import_uf(formula: str):
         signature, parsed_formulas = FormulaParser._parse_uf(formula)
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, parsed_formulas)
-        congruence_graph = FormulaParser._create_congruence_graph(signature, parsed_formulas)
+        congruence_graph = CongruenceGraph(signature, parsed_formulas,
+                                           FormulaParser.ALL_OPS, FormulaParser.ALL_BINARY_OPS)
         return (
             frozenset(cnf_formula),
             (tseitin_variable_to_subterm, subterm_to_tseitin_variable),
             (non_boolean_clauses, congruence_graph)
         )
-
-    @staticmethod
-    def replace_parameter(term, parameter_to_replace, new_parameter):
-        new_term = list(term)
-        for idx, parameter in enumerate(new_term):
-            if (idx > 0) and (parameter == parameter_to_replace):
-                new_term[idx] = new_parameter
-        return tuple(new_term)
