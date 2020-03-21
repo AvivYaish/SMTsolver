@@ -47,8 +47,10 @@ class CongruenceGraph:
         return term
 
     def process_positive_relations(self, relations):
+        all_positive_relations = set()
         while relations:
-            term1, term2 = relations.popleft()
+            op, term1, term2 = relations.popleft()
+            all_positive_relations.add((op, term1, term2))
             rep1, rep2 = self._find_representative(term1), self._find_representative(term2)
 
             # Update the representation of parents of rep1
@@ -60,17 +62,18 @@ class CongruenceGraph:
                 replaced_parent1 = self._graph[rep1]["parents"][parent1]
                 replaced_parent2 = self._graph[rep2]["parents"][parent2]
                 if replaced_parent1 == replaced_parent2:
-                    relations.appendleft((parent1, parent2))
+                    relations.appendleft((op, parent1, parent2))
 
             self._graph[rep1]["find"] = rep2
             # Update parents
             for parent1, replaced_parent1 in self._graph[rep1]["parents"].items():
                 self._graph[rep2]["parents"][parent1] = replaced_parent1
             self._graph[rep1]["parents"] = {}
+        return all_positive_relations
 
-    def process_negative_relations(self, relations) -> bool:
+    def process_negative_relations(self, relations):
         while relations:
-            term1, term2 = relations.pop()
+            op, term1, term2 = relations.pop()
             if self._find_representative(term1) == self._find_representative(term2):
-                return False
-        return True
+                return op, term1, term2
+        return None

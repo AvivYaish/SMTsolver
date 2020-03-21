@@ -13,17 +13,20 @@ class SMTSolver:
         self._max_new_clauses = max_new_clauses
         self._halving_period = halving_period
 
-    def _congruence_closure(self, assignment) -> bool:
+    def _congruence_closure(self, assignment):
         positive_relations = deque()
         negative_relations = []
         for variable in assignment:
             subterm = self._tseitin_variable_to_subterm[variable]
             if subterm in self._non_boolean_clauses:    # If the variable represents an equality
                 if assignment[variable]:
-                    positive_relations.append((subterm[1], subterm[2]))
+                    positive_relations.append(subterm)
                 else:
-                    negative_relations.append((subterm[1], subterm[2]))
+                    negative_relations.append(subterm)
 
         graph = deepcopy(self._basic_congruence_graph)
-        graph.process_positive_relations(positive_relations)
-        return graph.process_negative_relations(negative_relations)
+        all_positive_relations = graph.process_positive_relations(positive_relations)
+        conflict = graph.process_negative_relations(negative_relations)
+        if conflict is None:
+            return None
+        return all_positive_relations | {conflict}
