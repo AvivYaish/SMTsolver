@@ -18,18 +18,7 @@ class SMTSolver:
             term = self._congruence_graph[term]["find"]
         return term
 
-    def _congruence_closure(self, assignment) -> bool:
-        equalities = deque()
-        nequalities = []
-        for variable in assignment:
-            subterm = self._tseitin_variable_to_subterm[variable]
-            if subterm in self._non_boolean_clauses:
-                # If the variable represents an equality
-                if assignment[variable]:
-                    equalities.append((subterm[1], subterm[2]))
-                else:
-                    nequalities.append((subterm[1], subterm[2]))
-
+    def _process_equalities(self, equalities):
         while equalities:
             term1, term2 = equalities.popleft()
             rep1, rep2 = self._find_representative(term1), self._find_representative(term2)
@@ -53,8 +42,24 @@ class SMTSolver:
                 self._congruence_graph[rep2]["parents"][parent1] = replaced_parent1
             self._congruence_graph[rep1]["parents"] = {}
 
-        while nequalities:
-            term1, term2 = nequalities.pop()
+    def _process_inequalities(self, inequalities) -> bool:
+        while inequalities:
+            term1, term2 = inequalities.pop()
             if self._find_representative(term1) == self._find_representative(term2):
                 return False
         return True
+
+    def _congruence_closure(self, assignment) -> bool:
+        equalities = deque()
+        inequalities = []
+        for variable in assignment:
+            subterm = self._tseitin_variable_to_subterm[variable]
+            if subterm in self._non_boolean_clauses:
+                # If the variable represents an equality
+                if assignment[variable]:
+                    equalities.append((subterm[1], subterm[2]))
+                else:
+                    inequalities.append((subterm[1], subterm[2]))
+
+        self._process_equalities(equalities)
+        return self._process_inequalities(inequalities)

@@ -469,8 +469,7 @@ class FormulaParser:
             operator = cur_formula[0]
             if operator not in FormulaParser.ALL_OPS:
                 # Base cases: 1. A constant, 2. Only one variable, 3. A function
-                if operator in signature:
-                    # A function
+                if operator in signature:   # A function
                     new_parameters = False
                     for parameter in cur_formula[1:]:
                         if parameter in graph:
@@ -481,10 +480,7 @@ class FormulaParser:
                     if new_parameters:
                         formula_list.append(cur_formula)
                         continue
-                graph[cur_formula] = {
-                    "parents": {},
-                    "find": cur_formula  # Points to itself
-                }
+                graph[cur_formula] = {"parents": {}, "find": cur_formula}
             else:
                 formula_list.append(cur_formula[1])
                 if operator in FormulaParser.ALL_BINARY_OPS:
