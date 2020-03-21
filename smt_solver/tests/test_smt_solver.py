@@ -10,15 +10,14 @@ class TestSMTSolver:
                    '(assert (= f(a, b) a)) ' +
                    '(assert (not (= f(f(a, b), b) a)))')
         solver = SMTSolver(formula)
-        conflict = solver._congruence_closure({1: True, 3: False})
-        assert conflict is not None
+        assert solver._congruence_closure({1: True, 3: False}) == frozenset({3, -1})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(f(f(a))) a)) ' +
                    '(assert (= f(f(f(f(f(a))))) a)) ' +
                    '(assert (not (= f(a) a)))')
         solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 2: True, 4: False}) is not None
+        assert solver._congruence_closure({1: True, 2: True, 4: False}) == frozenset({4, -1, -2})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(x) f(y))) ' +
@@ -31,4 +30,4 @@ class TestSMTSolver:
                    '(assert (= f(f(f(f(f(a))))) a)) ' +
                    '(assert (not (= f(a) a)))')
         solver = SMTSolver(formula)
-        assert solver._congruence_closure({1: True, 2: True, 4: False}) is not None
+        assert solver._congruence_closure({1: True, 2: True, 4: False}) == frozenset({4, -1, -2})
