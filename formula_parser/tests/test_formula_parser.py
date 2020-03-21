@@ -268,25 +268,25 @@ class TestFormulaParser:
         })
 
     @staticmethod
-    def test_create_graph():
+    def test_create_congruence_graph():
         formula = '(declare-fun f (Int Int) Bool) (assert ((and a f ( 1 , 2 ) )))'
-        cnf_formula, _, (_, graph) = FormulaParser.import_uf(formula)
-        assert graph == {'1': {'index': 2, 'next': '1', 'parents': {('f', '1', '2')}},
-                         '2': {'index': 3, 'next': '2', 'parents': {('f', '1', '2')}},
-                         'a': {'index': 1, 'next': 'a', 'parents': set()},
-                         ('f', '1', '2'): {'index': 4, 'next': ('f', '1', '2'), 'parents': set()}}
+        cnf_formula, _, (_, congruence_graph) = FormulaParser.import_uf(formula)
+        assert congruence_graph == {'1': {'index': 2, 'next': '1', 'parents': {('f', '1', '2')}},
+                                    '2': {'index': 3, 'next': '2', 'parents': {('f', '1', '2')}},
+                                    'a': {'index': 1, 'next': 'a', 'parents': set()},
+                                    ('f', '1', '2'): {'index': 4, 'next': ('f', '1', '2'), 'parents': set()}}
 
         formula = '(declare-fun f (Int Int) Bool) (assert (= 1 (and f(5,7) f(f(1,2), 2)))'
-        cnf_formula, _, (_, graph) = FormulaParser.import_uf(formula)
-        assert graph == {'1': {'index': 1, 'next': '1', 'parents': {('f', '1', '2')}},
-                         '2': {'index': 5, 'next': '2',
-                               'parents': {('f', ('f', '1', '2'), '2'), ('f', '1', '2')}},
-                         '5': {'index': 2, 'next': '5', 'parents': {('f', '5', '7')}},
-                         '7': {'index': 3, 'next': '7', 'parents': {('f', '5', '7')}},
-                         ('f', ('f', '1', '2'), '2'): {'index': 7,
-                                                       'next': ('f', ('f', '1', '2'), '2'),
-                                                       'parents': set()},
-                         ('f', '1', '2'): {'index': 6,
-                                           'next': ('f', '1', '2'),
-                                           'parents': {('f', ('f', '1', '2'), '2')}},
-                         ('f', '5', '7'): {'index': 4, 'next': ('f', '5', '7'), 'parents': set()}}
+        cnf_formula, _, (_, congruence_graph) = FormulaParser.import_uf(formula)
+        assert congruence_graph == {'1': {'index': 1, 'next': '1', 'parents': {('f', '1', '2')}},
+                                    '2': {'index': 5, 'next': '2',
+                                          'parents': {('f', ('f', '1', '2'), '2'), ('f', '1', '2')}},
+                                    '5': {'index': 2, 'next': '5', 'parents': {('f', '5', '7')}},
+                                    '7': {'index': 3, 'next': '7', 'parents': {('f', '5', '7')}},
+                                    ('f', ('f', '1', '2'), '2'): {'index': 7,
+                                                                  'next': ('f', ('f', '1', '2'), '2'),
+                                                                  'parents': set()},
+                                    ('f', '1', '2'): {'index': 6,
+                                                      'next': ('f', '1', '2'),
+                                                      'parents': {('f', ('f', '1', '2'), '2')}},
+                                    ('f', '5', '7'): {'index': 4, 'next': ('f', '5', '7'), 'parents': set()}}

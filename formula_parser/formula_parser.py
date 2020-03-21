@@ -417,10 +417,7 @@ class FormulaParser:
 
         operator = parsed_formula[0]
         if operator not in FormulaParser.BOOLEAN_OPS:
-            # Base cases:
-            # - A constant
-            # - Only one variable
-            # - A non-boolean operator (like "=")
+            # Base cases: 1. A constant, 2. Only one variable, 3. A non-boolean operator (like "=")
             if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
                 # Introduce a fresh variable, if this is not a constant
                 abstraction[parsed_formula] = str(len(abstraction) + 1)
@@ -441,8 +438,8 @@ class FormulaParser:
         subformulas = {}
         transformed_subformulas = {}
         cnf_formula = set()
-        abstraction = {}            # A map between subterms to new variables (the "abstractions")
-        non_boolean_clauses = set() # A set of all non_boolean_clauses
+        abstraction = {}                # A map between subterms to new variables (the "abstractions")
+        non_boolean_clauses = set()     # A set of all non_boolean_clauses
         for parsed_formula in parsed_formulas:
             FormulaParser._convert_to_cnf(
                 FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction, non_boolean_clauses),
@@ -451,6 +448,7 @@ class FormulaParser:
                 cnf_formula=cnf_formula
             )
 
+        # Keep a mapping of new tseitin variables to original subterms
         tseitin_variable_to_subterm = {}
         subterm_to_tseitin_variable = {}
         for subterm, abstracted_subterm in abstraction.items():
@@ -459,7 +457,7 @@ class FormulaParser:
         return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses
 
     @staticmethod
-    def _create_graph(signature, parsed_formulas):
+    def _create_congruence_graph(signature, parsed_formulas):
         graph = {}
         formula_list = deque(parsed_formulas)
         while formula_list:
@@ -469,10 +467,7 @@ class FormulaParser:
 
             operator = cur_formula[0]
             if operator not in FormulaParser.ALL_OPS:
-                # Base cases:
-                # - A constant
-                # - Only one variable
-                # - A function
+                # Base cases: 1. A constant, 2. Only one variable, 3. A function
                 if operator in signature:
                     # A function
                     new_parameters = False
@@ -492,7 +487,6 @@ class FormulaParser:
                 }
             else:
                 formula_list.append(cur_formula[1])
-                # Binary operator
                 if operator in FormulaParser.ALL_BINARY_OPS:
                     formula_list.append(cur_formula[2])
         return graph
@@ -502,9 +496,9 @@ class FormulaParser:
         signature, parsed_formulas = FormulaParser._parse_uf(formula)
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, parsed_formulas)
-        graph = FormulaParser._create_graph(signature, parsed_formulas)
+        congruence_graph = FormulaParser._create_congruence_graph(signature, parsed_formulas)
         return (
             frozenset(cnf_formula),
             (tseitin_variable_to_subterm, subterm_to_tseitin_variable),
-            (non_boolean_clauses, graph)
+            (non_boolean_clauses, congruence_graph)
         )
