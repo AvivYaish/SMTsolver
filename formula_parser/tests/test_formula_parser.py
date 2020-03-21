@@ -222,7 +222,7 @@ class TestFormulaParser:
                    '(declare-fun g () Bool) ' +
                    '(assert (and (= 5 4) f(1, 2))) ' +
                    '(assert (not g(1, 2)))')
-        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
             frozenset({1, -3, -2}),
             frozenset({3, -1}),
@@ -236,7 +236,7 @@ class TestFormulaParser:
         formula = ('(declare-fun f (Int Int) Bool) ' +
                    '(assert (= f(2,3) a) ' +
                    '(assert (not (= f(2,3) a))')
-        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
             frozenset({2}),
             frozenset({1}),
@@ -247,10 +247,19 @@ class TestFormulaParser:
         formula = ('(declare-fun f (Int Int) Bool) ' +
                    '(assert (= f(3,3) a) ' +
                    '(assert (not (= f(2,3) a))')
-        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
             frozenset({2}),
             frozenset({1}),
             frozenset({2, 3}),
             frozenset({-3, -2})
         })
+
+    @staticmethod
+    def test_create_graph():
+        formula = '(declare-fun f (Int Int) Bool) (assert ((and a f ( 1 , 2 ) )))'
+        cnf_formula, _, (_, graph) = FormulaParser.import_uf(formula)
+        assert graph == {'1': {'index': 2, 'next': '1', 'parents': {('f', '1', '2')}},
+                         '2': {'index': 3, 'next': '2', 'parents': {('f', '1', '2')}},
+                         'a': {'index': 1, 'next': 'a', 'parents': set()},
+                         ('f', '1', '2'): {'index': 4, 'next': ('f', '1', '2'), 'parents': set()}}

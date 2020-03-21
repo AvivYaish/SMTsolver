@@ -1,3 +1,4 @@
+from collections import deque
 import re
 
 
@@ -20,6 +21,8 @@ class FormulaParser:
 
     EQUALITY = "="
     UF_OPS = frozenset({EQUALITY})
+
+    ALL_BINARY_OPS = UF_OPS | BOOLEAN_BINARY_OPS
     ALL_OPS = UF_OPS | BOOLEAN_OPS
 
     _OPENING_BRACKET = '('
@@ -399,7 +402,7 @@ class FormulaParser:
         return regular_assignment
 
     @staticmethod
-    def _create_boolean_abstraction(parsed_formula, signature, abstraction=None):
+    def _create_boolean_abstraction(parsed_formula, signature, abstraction=None, non_boolean_clauses=None):
         """
         :param abstraction: a dictionary that will hold the abstraction. It is update in-place, so an empty
         dictionary must be passed as an argument!
@@ -407,6 +410,8 @@ class FormulaParser:
         """
         if abstraction is None:
             abstraction = {}
+        if non_boolean_clauses is None:
+            non_boolean_clauses = set()
         if not parsed_formula:
             return parsed_formula
 
@@ -421,12 +426,14 @@ class FormulaParser:
                 abstraction[parsed_formula] = str(len(abstraction) + 1)
             return abstraction[parsed_formula]
 
-        left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction)
+        left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction,
+                                                                   non_boolean_clauses)
         if operator in FormulaParser.BOOLEAN_UNARY_OPS:
             return operator, left_parameter
 
         # Binary operator
-        right_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[2], signature, abstraction)
+        right_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[2], signature, abstraction,
+                                                                    non_boolean_clauses)
         return operator, left_parameter, right_parameter
 
     @staticmethod
@@ -434,10 +441,11 @@ class FormulaParser:
         subformulas = {}
         transformed_subformulas = {}
         cnf_formula = set()
-        abstraction = {}  # A map between subterms to new variables (the "abstractions")
+        abstraction = {}            # A map between subterms to new variables (the "abstractions")
+        non_boolean_clauses = set() # A set of all non_boolean_clauses
         for parsed_formula in parsed_formulas:
             FormulaParser._convert_to_cnf(
-                FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction),
+                FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction, non_boolean_clauses),
                 subformulas=subformulas,
                 transformed_subformulas=transformed_subformulas,
                 cnf_formula=cnf_formula
@@ -448,11 +456,55 @@ class FormulaParser:
         for subterm, abstracted_subterm in abstraction.items():
             tseitin_variable_to_subterm[subformulas[abstracted_subterm]] = subterm
             subterm_to_tseitin_variable[subterm] = subformulas[abstracted_subterm]
-        return cnf_formula, tseitin_variable_to_subterm, subterm_to_tseitin_variable
+        return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses
+
+    @staticmethod
+    def _create_graph(signature, parsed_formulas):
+        graph = {}
+        formula_list = deque(parsed_formulas)
+        while formula_list:
+            cur_formula = formula_list.popleft()
+            if (not cur_formula) or (cur_formula in graph):
+                continue
+
+            operator = cur_formula[0]
+            if operator not in FormulaParser.ALL_OPS:
+                # Base cases:
+                # - A constant
+                # - Only one variable
+                # - A function
+                if operator in signature:
+                    # A function
+                    new_parameters = False
+                    for parameter in cur_formula[1:]:
+                        if parameter in graph:
+                            graph[parameter]["parents"].add(cur_formula)
+                        else:
+                            formula_list.append(parameter)
+                            new_parameters = True
+                    if new_parameters:
+                        formula_list.append(cur_formula)
+                        continue
+                graph[cur_formula] = {
+                    "index": len(graph) + 1,
+                    "parents": set(),
+                    "next": cur_formula  # Points to itself
+                }
+            else:
+                formula_list.append(cur_formula[1])
+                # Binary operator
+                if operator in FormulaParser.ALL_BINARY_OPS:
+                    formula_list.append(cur_formula[2])
+        return graph
 
     @staticmethod
     def import_uf(formula: str):
         signature, parsed_formulas = FormulaParser._parse_uf(formula)
-        cnf_formula, tseitin_variable_to_subterm, subterm_to_tseitin_variable = \
+        cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, parsed_formulas)
-        return frozenset(cnf_formula), tseitin_variable_to_subterm, subterm_to_tseitin_variable
+        graph = FormulaParser._create_graph(signature, parsed_formulas)
+        return (
+            frozenset(cnf_formula),
+            (tseitin_variable_to_subterm, subterm_to_tseitin_variable),
+            (non_boolean_clauses, graph)
+        )
