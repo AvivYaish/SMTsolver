@@ -147,6 +147,11 @@ class TestFormulaParser:
                            ('-', '50', ('+', ('or', ('q3',), ('not', 'x')), '12'))]
         assert FormulaParser._parse_uf(formula) == (signature, parsed_formulas)
 
+        formula = '(declare-fun f () Bool) (assert (=> (= a b) f(1)))'
+        signature = {'f': {'output_type': 'Bool', 'parameter_types': []}}
+        parsed_formulas = [('=>', ('=', 'a', 'b'), ('f', '1'))]
+        assert FormulaParser._parse_uf(formula) == (signature, parsed_formulas)
+
     @staticmethod
     def test_create_boolean_abstraction():
         formula = '   ((     (   and (   a   ) (   b   )   ))   )    '
@@ -183,10 +188,17 @@ class TestFormulaParser:
                                ('=', ('g', 'a'), 'd'): '3',
                                ('=', 'c', 'd'): '4'}
 
+        formula = '(declare-fun f () Bool) (assert (=> (= a b) f(1)))'
+        abstraction = {}
+        signature, parsed_formula = FormulaParser._parse_uf(formula)
+        abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
+        assert abstracted_formula == ('=>', '1', '2')
+        assert abstraction == {('=', 'a', 'b'): '1', ('f', '1'): '2'}
+
     @staticmethod
     def test_import_uf():
         formula = '(declare-fun f (Int Int) Bool) (assert ((and a f ( 1 , 2 ) )))'
-        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
             frozenset({1, -3, -2}),
             frozenset({1}),
@@ -195,7 +207,7 @@ class TestFormulaParser:
         })
 
         formula = '(declare-fun f (Int Int) Bool) (declare-fun g () Bool) (assert ((and (= a g) f ( 1 , 2 ) )))'
-        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
             frozenset({1, -3, -2}),
             frozenset({1}),
@@ -207,7 +219,7 @@ class TestFormulaParser:
                    '(declare-fun g () Bool) ' +
                    '(assert ((and (= a g) f ( 1 , 2 ) ))) ' +
                    '(assert (not f(5,7)))')
-        cnf_formula, signature, abstraction = FormulaParser.import_uf(formula)
+        cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
             frozenset({1, -3, -2}),
             frozenset({3, -1}),
@@ -263,3 +275,18 @@ class TestFormulaParser:
                          '2': {'index': 3, 'next': '2', 'parents': {('f', '1', '2')}},
                          'a': {'index': 1, 'next': 'a', 'parents': set()},
                          ('f', '1', '2'): {'index': 4, 'next': ('f', '1', '2'), 'parents': set()}}
+
+        formula = '(declare-fun f (Int Int) Bool) (assert (= 1 (and f(5,7) f(f(1,2), 2)))'
+        cnf_formula, _, (_, graph) = FormulaParser.import_uf(formula)
+        assert graph == {'1': {'index': 1, 'next': '1', 'parents': {('f', '1', '2')}},
+                         '2': {'index': 5, 'next': '2',
+                               'parents': {('f', ('f', '1', '2'), '2'), ('f', '1', '2')}},
+                         '5': {'index': 2, 'next': '5', 'parents': {('f', '5', '7')}},
+                         '7': {'index': 3, 'next': '7', 'parents': {('f', '5', '7')}},
+                         ('f', ('f', '1', '2'), '2'): {'index': 7,
+                                                       'next': ('f', ('f', '1', '2'), '2'),
+                                                       'parents': set()},
+                         ('f', '1', '2'): {'index': 6,
+                                           'next': ('f', '1', '2'),
+                                           'parents': {('f', ('f', '1', '2'), '2')}},
+                         ('f', '5', '7'): {'index': 4, 'next': ('f', '5', '7'), 'parents': set()}}
