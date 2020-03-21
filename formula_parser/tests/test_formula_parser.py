@@ -88,7 +88,7 @@ class TestFormulaParser:
         assignment = FormulaParser.convert_tseitin_assignment_to_regular(subformulas, solver.get_assignment())
         assert assignment == {'5': False}
 
-        formula = "=> (5) (not 5)"
+        formula = "=> (=> (not (or (5) (1))) (and (not 4) (not 5))) (or (or (5) (1)) (not 5))"
         subformulas, transformed_subformulas, cnf_formula = FormulaParser.import_formula(formula, True)
         solver = SATSolver(cnf_formula)
         solver.solve()
@@ -155,21 +155,21 @@ class TestFormulaParser:
         parsed_formula = FormulaParser._parse_formula(formula)
         abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction)
         assert abstracted_formula == ('and', '1', '2')
-        assert abstraction == {'a': 1, 'b': 2}
+        assert abstraction == {'a': '1', 'b': '2'}
 
         formula = '(((and (   =     true     false    ) (a))))'
         abstraction = {}
         parsed_formula = FormulaParser._parse_formula(formula)
         abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction)
         assert abstracted_formula == ('and', '1', '2')
-        assert abstraction == {('=', 'true', 'false'): 1, 'a': 2}
+        assert abstraction == {('=', 'true', 'false'): '1', 'a': '2'}
 
         formula = '(declare-fun f (Int Int) Bool) (assert ((and (= (not a) f ( 1 , 2 ) ) (a))))'
         abstraction = {}
         signature, parsed_formula = FormulaParser._parse_uf(formula)
         abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
         assert abstracted_formula == ('and', '1', '2')
-        assert abstraction == {'a': 2, ('=', ('not', 'a'), ('f', '1', '2')): 1}
+        assert abstraction == {'a': '2', ('=', ('not', 'a'), ('f', '1', '2')): '1'}
 
         formula = ('(declare-fun f (Int) Bool) ' +
                    '(declare-fun g (Int) Bool) '
@@ -178,10 +178,10 @@ class TestFormulaParser:
         signature, parsed_formula = FormulaParser._parse_uf(formula)
         abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
         assert abstracted_formula == ('and', ('and', '1', ('or', ('not', '2'), '3')), ('not', '4'))
-        assert abstraction == {('=', ('f', ('g', 'a')), ('f', 'c')): 2,
-                               ('=', ('g', 'a'), 'c'): 1,
-                               ('=', ('g', 'a'), 'd'): 3,
-                               ('=', 'c', 'd'): 4}
+        assert abstraction == {('=', ('f', ('g', 'a')), ('f', 'c')): '2',
+                               ('=', ('g', 'a'), 'c'): '1',
+                               ('=', ('g', 'a'), 'd'): '3',
+                               ('=', 'c', 'd'): '4'}
 
     @staticmethod
     def test_import_uf():

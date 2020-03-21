@@ -418,8 +418,8 @@ class FormulaParser:
             # - A non-boolean operator (like "=")
             if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
                 # Introduce a fresh variable, if this is not a constant
-                abstraction[parsed_formula] = len(abstraction) + 1
-            return str(abstraction[parsed_formula])
+                abstraction[parsed_formula] = str(len(abstraction) + 1)
+            return abstraction[parsed_formula]
 
         left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction)
         if operator in FormulaParser.BOOLEAN_UNARY_OPS:
@@ -434,7 +434,7 @@ class FormulaParser:
         signature, parsed_formulas = FormulaParser._parse_uf(formula)
         subformulas = {}
         transformed_subformulas = {}
-        abstraction = {}
+        abstraction = {}    # A map between subterms to new variables (the "abstractions")
         cnf_formula = set()
         for parsed_formula in parsed_formulas:
             FormulaParser._convert_to_cnf(
@@ -443,8 +443,10 @@ class FormulaParser:
                 transformed_subformulas=transformed_subformulas,
                 cnf_formula=cnf_formula
             )
-        var_to_subformula = {v: k for k, v in subformulas.items()}
-        for subformula in subformulas:
-            if subformula in abstraction:
-                pass
+        tseitin_variable_to_subterm = {}
+        subterm_to_tseitin_variable = {}
+        # variable_to_subterm = {v: k for k, v in abstraction.items()}
+        for subterm, abstracted_subterm in abstraction.items():
+            tseitin_variable_to_subterm[subformulas[abstracted_subterm]] = subterm
+            subterm_to_tseitin_variable[subterm] = subformulas[abstracted_subterm]
         return frozenset(cnf_formula), signature, abstraction
