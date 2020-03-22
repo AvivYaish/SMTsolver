@@ -68,7 +68,7 @@ class TestSMTSolver:
             12: {"value": True},   # ('=', 't', 'r')
             # 10: {"value": },      # ('=', ('f', 's'), ('f', 't'))
             15: {"value": True},    # ('=', ('f', 's'), ('f', 'a'))
-            20: {"value": False},   # ('=', ('f', 's'), ('f', 'c'))
+            20: {"value": False},   # ('=', ('f', 'a'), ('f', 'c'))
         }
         # assert solver._congruence_closure() == frozenset({20, -1, -4})  # <- this is the minimal
         assert solver._congruence_closure() == frozenset({-15, -12, 20, -7, -4, -1})
@@ -82,7 +82,7 @@ class TestSMTSolver:
             12: {"value": False},  # ('=', 't', 'r')
             # 10: {"value": },      # ('=', ('f', 's'), ('f', 't'))
             15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
-            20: {"value": False},  # ('=', ('f', 's'), ('f', 'c'))
+            20: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
         }
         assert solver._congruence_closure() == frozenset({-15, 20, -7, -4, -1})
 
@@ -95,10 +95,18 @@ class TestSMTSolver:
             12: {"value": False},  # ('=', 't', 'r')
             10: {"value": True},  # ('=', ('f', 's'), ('f', 't'))
             15: {"value": False},  # ('=', ('f', 's'), ('f', 'a'))
-            20: {"value": True},  # ('=', ('f', 's'), ('f', 'c'))
+            20: {"value": True},  # ('=', ('f', 'a'), ('f', 'c'))
         }
         assert solver._congruence_closure() is None
 
+    @staticmethod
+    def test_theory_propagation():
+        formula = ('(declare-fun f (Bool) Bool) ' +
+                   '(assert (= a b)) ' +
+                   '(assert (or (or (not (= a b)) (not (= s t))) (= b c))) ' +
+                   '(assert (or (or (= s t) (not (= t r))) (= f(s) f(t)))) ' +
+                   '(assert (or (or (not (= b c)) (not (= t r))) (= f(s) f(a))))' +
+                   '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         solver._solver._create_new_decision_level()
         solver._solver._assignment = {
@@ -110,4 +118,19 @@ class TestSMTSolver:
             1: True,  # ('=', 'a', 'b')
             7: True,  # ('=', 's', 't')
             10: True,  # ('=', ('f', 's'), ('f', 't'))
+        }
+
+        solver._solver._assignment = {
+            1: {"value": True},  # ('=', 'a', 'b')
+            7: {"value": True},  # ('=', 's', 't')
+            10: {"value": True},  # ('=', ('f', 's'), ('f', 't'))
+            4: {"value": True},  # ('=', 'b', 'c')
+        }
+        assert solver._congruence_closure() is None
+        assert solver._solver.get_assignment() == {
+            1: True,  # ('=', 'a', 'b')
+            7: True,  # ('=', 's', 't')
+            10: True,  # ('=', ('f', 's'), ('f', 't'))
+            4: True,  # ('=', 'b', 'c')
+            20: True,  # ('=', ('f', 'a'), ('f', 'c'))
         }
