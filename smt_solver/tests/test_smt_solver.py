@@ -98,3 +98,16 @@ class TestSMTSolver:
             20: {"value": True},  # ('=', ('f', 's'), ('f', 'c'))
         }
         assert solver._congruence_closure() is None
+
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver._solver._create_new_decision_level()
+        solver._solver._assignment = {
+            1: {"value": True},  # ('=', 'a', 'b')
+            7: {"value": True},  # ('=', 's', 't')
+        }
+        assert solver._congruence_closure() is None
+        assert solver._solver.get_assignment() == {
+            1: True,  # ('=', 'a', 'b')
+            7: True,  # ('=', 's', 't')
+            10: True,  # ('=', ('f', 's'), ('f', 't'))
+        }

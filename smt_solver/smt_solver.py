@@ -10,7 +10,10 @@ class SMTSolver:
         self._non_boolean_clauses, self._basic_congruence_graph = theory_datastructures
 
         self._congruence_graph_by_level = []
-        self._solver = SATSolver(cnf_formula, max_new_clauses=max_new_clauses, halving_period=halving_period)
+        self._solver = SATSolver(cnf_formula,
+                                 max_new_clauses=max_new_clauses,
+                                 halving_period=halving_period,
+                                 theory_solver=self)
 
     def create_new_decision_level(self):
         if len(self._congruence_graph_by_level) == 0:
@@ -26,9 +29,11 @@ class SMTSolver:
     def _theory_propagate(self, new_relations):
         for new_relation in new_relations:
             # propagate new equalities from new_relations, also should look at symmetric relations
-            for cur_relation in [new_relation, (new_relation[0], new_relation[2], new_relation[1])]:
-                if cur_relation in self._subterm_to_tseitin_variable:
-                    pass
+            if new_relation not in self._subterm_to_tseitin_variable:
+                new_relation = (new_relation[0], new_relation[2], new_relation[1])
+                if new_relation not in self._subterm_to_tseitin_variable:
+                    continue
+            self._solver._assign(None, self._subterm_to_tseitin_variable[new_relation])
 
     def _congruence_closure(self):
         assignment = self._solver.get_assignment()

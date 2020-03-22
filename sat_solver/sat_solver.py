@@ -126,6 +126,9 @@ class SATSolver:
                 return frozenset(conflict_clause), last_literal, prev_max_level
 
             # Resolve the conflict clause with the clause on the incoming edge
+            # Might be the case that the last literal was assigned because of the
+            # theory, and in that case it is impossible to do resolution
+            # TODO: should somehow test this
             clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
             conflict_clause |= clause_on_incoming_edge
             conflict_clause.remove(last_literal)
