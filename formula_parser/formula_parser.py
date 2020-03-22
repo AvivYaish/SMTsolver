@@ -421,13 +421,14 @@ class FormulaParser:
         if operator not in FormulaParser.BOOLEAN_OPS:
             # Base cases: 1. A constant, 2. Only one variable, 3. A non-boolean operator (like "=")
             if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
-                if ((operator not in FormulaParser.ALL_OPS) or (operator not in FormulaParser.ALL_SYMMETRIC_OPS) or
-                        # If this is a symmetric operator, make sure that the symmetric formula was not already handled
-                        ((operator in FormulaParser.ALL_SYMMETRIC_OPS) and
-                         ((operator, parsed_formula[2], parsed_formula[1]) not in abstraction))):
-                    # Introduce a fresh variable, if this is not a constant
-                    abstraction[parsed_formula] = str(len(abstraction) + 1)
-                    non_boolean_clauses.add(parsed_formula)
+                if operator in FormulaParser.ALL_SYMMETRIC_OPS:
+                    # If this is a symmetric operator, make sure that the symmetric formula was not already handled
+                    symmetric_parsed_formula = (operator, parsed_formula[2], parsed_formula[1])
+                    if symmetric_parsed_formula in abstraction:
+                        return abstraction[symmetric_parsed_formula]
+                # Introduce a fresh variable, if this is not a constant
+                abstraction[parsed_formula] = str(len(abstraction) + 1)
+                non_boolean_clauses.add(parsed_formula)
             return abstraction[parsed_formula]
 
         left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction,
