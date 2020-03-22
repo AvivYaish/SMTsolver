@@ -8,8 +8,19 @@ class SMTSolver:
         self._tseitin_variable_to_subterm, self._subterm_to_tseitin_variable = tseitin_mappings
         self._non_boolean_clauses, self._basic_congruence_graph = theory_datastructures
 
-        # TODO: should keep the basic congruence graph updated relative to the BCP at level 0, can save time
+        self._congruence_graph_by_level = []
         self._solver = SATSolver(cnf_formula, max_new_clauses=max_new_clauses, halving_period=halving_period)
+
+    def create_new_decision_level(self):
+        if len(self._congruence_graph_by_level) == 0:
+            graph_to_append = deepcopy(self._basic_congruence_graph)
+        else:
+            graph_to_append = deepcopy(self._congruence_graph_by_level[-1])
+        self._congruence_graph_by_level.append(graph_to_append)
+
+    def backtrack(self, level: int):
+        while len(self._congruence_graph_by_level) > level + 1:
+            self._congruence_graph_by_level.pop()
 
     def _congruence_closure(self):
         assignment = self._solver.get_assignment()
@@ -23,9 +34,7 @@ class SMTSolver:
                 else:
                     negative_relations.append(subterm)
 
-        # TODO: should only deepcopy if the SATSolver did a backjump since last time
-        # TODO: maybe keep a graph for each level, and when backjump erase all unnecessary levels
-        graph = deepcopy(self._basic_congruence_graph)
+        graph = self._congruence_graph_by_level[-1]
         graph.process_positive_relations(positive_relations)
         conflict = graph.process_negative_relations(negative_relations)
         if conflict is None:

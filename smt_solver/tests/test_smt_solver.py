@@ -11,6 +11,7 @@ class TestSMTSolver:
                    '(assert (= f(a, b) a)) ' +
                    '(assert (not (= f(f(a, b), b) a)))')
         solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
         assert solver._congruence_closure() == frozenset({3, -1})
 
@@ -19,6 +20,7 @@ class TestSMTSolver:
                    '(assert (= f(f(f(f(f(a))))) a)) ' +
                    '(assert (not (= f(a) a)))')
         solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 4: {"value": False}}
         assert solver._congruence_closure() == frozenset({4, -1, -2})
 
@@ -26,6 +28,7 @@ class TestSMTSolver:
                    '(assert (= f(x) f(y))) ' +
                    '(assert (not (= x y)))')
         solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
         assert solver._congruence_closure() is None
 
@@ -36,5 +39,13 @@ class TestSMTSolver:
                    '(assert (= f(y) x)) ' +
                    '(assert (not (= g(f(x)) x)))')
         solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
+        assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
+
+        # Verify that creating a new decision level copies the last graph
+        solver.create_new_decision_level()
+        assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
+
+        # Verify that performing congruence closure again using the same data structure still works
         assert solver._congruence_closure() == frozenset({5, -1, -2, -3})

@@ -51,6 +51,8 @@ class CongruenceGraph:
         while relation_queue:
             op, term1, term2 = relation_queue.popleft()
             rep1, rep2 = self._find_representative(term1), self._find_representative(term2)
+            if rep1 == rep2:
+                continue
 
             # Update the representation of parents of rep1
             for parent1, replaced_parent1 in self._graph[rep1]["parents"].items():

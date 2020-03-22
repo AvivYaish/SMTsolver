@@ -227,6 +227,8 @@ class SATSolver:
                 self._unassign(variable)
             for clause in self._satisfaction_by_level.pop():
                 self._satisfied_clauses.remove(clause)
+        if self._theory_solver:
+            self._theory_solver.backtrack()
 
     def _increment_step(self):
         # Maintain data structures related to VSIDS
@@ -248,6 +250,8 @@ class SATSolver:
     def _create_new_decision_level(self):
         self._assignment_by_level.append(list())
         self._satisfaction_by_level.append(list())
+        if self._theory_solver:
+            self._theory_solver.create_new_decision_level()
 
     def _satisfy_unit_clauses(self):
         self._create_new_decision_level()
