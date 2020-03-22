@@ -1,6 +1,7 @@
 import pytest
 from smt_solver.smt_solver import SMTSolver
 from formula_parser.formula_parser import FormulaParser
+from copy import deepcopy
 
 
 class TestSMTSolver:
@@ -39,9 +40,11 @@ class TestSMTSolver:
                    '(assert (= f(y) x)) ' +
                    '(assert (not (= g(f(x)) x)))')
         solver = SMTSolver(*FormulaParser.import_uf(formula))
+        graph = deepcopy(solver._basic_congruence_graph)
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
         assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
+        assert solver._basic_congruence_graph._graph == graph._graph    # Make sure the original graph did not change
 
         # Verify that creating a new decision level copies the last graph
         solver.create_new_decision_level()
