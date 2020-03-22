@@ -36,6 +36,13 @@ class FormulaParser:
     _FUNCTION_COMMA = re.compile(r'\(.*?\)|(,)')
 
     @staticmethod
+    def symmetric_formula(parsed_formula):
+        if ((not parsed_formula) or (len(parsed_formula) < 3) or
+                (parsed_formula[0] not in FormulaParser.ALL_SYMMETRIC_OPS)):
+            return parsed_formula
+        return parsed_formula[0], parsed_formula[2], parsed_formula[1]
+
+    @staticmethod
     def _find_closing_bracket(text: str) -> int:
         """
         :return: the index of the ')' bracket that closes the very first (left-most) '(' bracket.
@@ -158,9 +165,9 @@ class FormulaParser:
             # The first parameter is not enclosed in brackets and is not a function, can split according to the
             # first whitespace
             left_side, right_side = right_side.split(None, 1)
-        return operator, \
-               FormulaParser._parse_formula(left_side, unary_operators, signature), \
-               FormulaParser._parse_formula(right_side, unary_operators, signature)
+        return (operator,
+                FormulaParser._parse_formula(left_side, unary_operators, signature),
+                FormulaParser._parse_formula(right_side, unary_operators, signature))
 
     @staticmethod
     def _is_parameter_not(parameter):
@@ -168,8 +175,7 @@ class FormulaParser:
 
     @staticmethod
     def _is_left_not_right(left_parameter, right_parameter):
-        return (
-            # This case is: op (not x) (x)
+        return (  # This case is: op (not x) (x)
                 (FormulaParser._is_parameter_not(right_parameter) and (right_parameter[1] == left_parameter))
                 or
                 # This case is: op (not x) (x)
@@ -287,26 +293,30 @@ class FormulaParser:
                 continue
 
             left_parameter = cur_formula[1]
-            if operator == FormulaParser.NOT:
-                if left_parameter not in subformulas:
+            if left_parameter not in subformulas:
+                symmetric_left_parameter = FormulaParser.symmetric_formula(left_parameter)
+                if symmetric_left_parameter in subformulas:
+                    left_parameter = symmetric_left_parameter
+                else:
                     subformulas[left_parameter] = len(subformulas) + 1
+                    formula_list.append(left_parameter)
+            if operator == FormulaParser.NOT:
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
                     frozenset({subformulas[cur_formula], subformulas[left_parameter]})
                 }
                 transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
-                formula_list.append(left_parameter)
                 continue
 
             # Binary operator
             right_parameter = cur_formula[2]
-            formula_list.append(left_parameter)
-            formula_list.append(right_parameter)
-            if left_parameter not in subformulas:
-                subformulas[left_parameter] = len(subformulas) + 1
             if right_parameter not in subformulas:
-                subformulas[right_parameter] = len(subformulas) + 1
-
+                symmetric_right_parameter = FormulaParser.symmetric_formula(right_parameter)
+                if symmetric_right_parameter in subformulas:
+                    right_parameter = symmetric_right_parameter
+                else:
+                    subformulas[right_parameter] = len(subformulas) + 1
+                    formula_list.append(right_parameter)
             if operator == FormulaParser.AND:
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], subformulas[left_parameter]}),
@@ -421,11 +431,10 @@ class FormulaParser:
         if operator not in FormulaParser.BOOLEAN_OPS:
             # Base cases: 1. A constant, 2. Only one variable, 3. A non-boolean operator (like "=")
             if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
-                if operator in FormulaParser.ALL_SYMMETRIC_OPS:
-                    # If this is a symmetric operator, make sure that the symmetric formula was not already handled
-                    symmetric_parsed_formula = (operator, parsed_formula[2], parsed_formula[1])
-                    if symmetric_parsed_formula in abstraction:
-                        return abstraction[symmetric_parsed_formula]
+                # If this is a symmetric operator, make sure that the symmetric formula was not already handled
+                symmetric_parsed_formula = FormulaParser.symmetric_formula(parsed_formula)
+                if symmetric_parsed_formula in abstraction:
+                    return abstraction[symmetric_parsed_formula]
                 # Introduce a fresh variable, if this is not a constant
                 abstraction[parsed_formula] = str(len(abstraction) + 1)
                 non_boolean_clauses.add(parsed_formula)
