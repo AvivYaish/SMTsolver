@@ -112,7 +112,7 @@ class TestFormulaParser:
                        (declare-fun q4 () Real)
 
 
-                       ; set goods quantity
+                       ; comment
 
                        (assert ((= 250 (     + q1    q2)))       )"""
         signature = {'cost': {'output_type': 'Real', 'parameter_types': ['Int', 'Int', 'Bool']},

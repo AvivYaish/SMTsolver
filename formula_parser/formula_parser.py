@@ -122,6 +122,7 @@ class FormulaParser:
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it:
         (operator, left side, right side (if exists))
+        And for functions: (function_name, param1, param2, ...)
         """
         if signature is None:
             signature = {}
