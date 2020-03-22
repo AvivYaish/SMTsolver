@@ -47,7 +47,7 @@ class CongruenceGraph:
         return term
 
     def process_positive_relations(self, relations):
-        new_relations = set()
+        new_positive_relations = set()
         relation_queue = deque(relations)
         while relation_queue:
             op, term1, term2 = relation_queue.popleft()
@@ -65,8 +65,8 @@ class CongruenceGraph:
                 replaced_parent2 = self._graph[rep2]["parents"][parent2]
                 if replaced_parent1 == replaced_parent2:
                     new_relation = (op, parent1, parent2)
-                    if (new_relation not in new_relations) and (new_relation not in relations):
-                        new_relations.add(new_relation)
+                    if (new_relation not in new_positive_relations) and (new_relation not in relations):
+                        new_positive_relations.add(new_relation)
                     relation_queue.appendleft(new_relation)
 
             self._graph[rep1]["find"] = rep2
@@ -74,7 +74,7 @@ class CongruenceGraph:
             for parent1, replaced_parent1 in self._graph[rep1]["parents"].items():
                 self._graph[rep2]["parents"][parent1] = replaced_parent1
             self._graph[rep1]["parents"] = {}
-        return new_relations
+        return new_positive_relations
 
     def process_negative_relations(self, relations):
         for op, term1, term2 in relations:

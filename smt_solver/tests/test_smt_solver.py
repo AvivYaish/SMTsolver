@@ -52,3 +52,49 @@ class TestSMTSolver:
 
         # Verify that performing congruence closure again using the same data structure still works
         assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
+
+        formula = ('(declare-fun f (Bool) Bool) ' +
+                   '(assert (= a b)) ' +
+                   '(assert (or (or (not (= a b)) (not (= s t))) (= b c))) ' +
+                   '(assert (or (or (= s t) (not (= t r))) (= f(s) f(t)))) ' +
+                   '(assert (or (or (not (= b c)) (not (= t r))) (= f(s) f(a))))' +
+                   '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.create_new_decision_level()
+        solver._solver._assignment = {
+            1: {"value": True},     # ('=', 'a', 'b')
+            7: {"value": True},     # ('=', 's', 't')
+            4: {"value": True},     # ('=', 'b', 'c')
+            12: {"value": True},   # ('=', 't', 'r')
+            # 10: {"value": },      # ('=', ('f', 's'), ('f', 't'))
+            15: {"value": True},    # ('=', ('f', 's'), ('f', 'a'))
+            20: {"value": False},   # ('=', ('f', 's'), ('f', 'c'))
+        }
+        # assert solver._congruence_closure() == frozenset({20, -1, -4})  # <- this is the minimal
+        assert solver._congruence_closure() == frozenset({-15, -12, 20, -7, -4, -1})
+
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.create_new_decision_level()
+        solver._solver._assignment = {
+            1: {"value": True},  # ('=', 'a', 'b')
+            7: {"value": True},  # ('=', 's', 't')
+            4: {"value": True},  # ('=', 'b', 'c')
+            12: {"value": False},  # ('=', 't', 'r')
+            # 10: {"value": },      # ('=', ('f', 's'), ('f', 't'))
+            15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
+            20: {"value": False},  # ('=', ('f', 's'), ('f', 'c'))
+        }
+        assert solver._congruence_closure() == frozenset({-15, 20, -7, -4, -1})
+
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.create_new_decision_level()
+        solver._solver._assignment = {
+            1: {"value": True},  # ('=', 'a', 'b')
+            7: {"value": True},  # ('=', 's', 't')
+            4: {"value": True},  # ('=', 'b', 'c')
+            12: {"value": False},  # ('=', 't', 'r')
+            10: {"value": True},  # ('=', ('f', 's'), ('f', 't'))
+            15: {"value": False},  # ('=', ('f', 's'), ('f', 'a'))
+            20: {"value": True},  # ('=', ('f', 's'), ('f', 'c'))
+        }
+        assert solver._congruence_closure() is None

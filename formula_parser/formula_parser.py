@@ -3,6 +3,7 @@ import re
 
 
 class FormulaParser:
+    # Assumes variables do not start with a character that is also an operator
     # It would definitely be better to use a Lexer here, but we assumed that parsing was also a part of the project.
 
     TRUE = 'true'
@@ -22,6 +23,7 @@ class FormulaParser:
     EQUALITY = "="
     UF_OPS = frozenset({EQUALITY})
 
+    ALL_SYMMETRIC_OPS = UF_OPS | {AND, OR, BICONDITIONAL}
     ALL_BINARY_OPS = UF_OPS | BOOLEAN_BINARY_OPS
     ALL_OPS = UF_OPS | BOOLEAN_OPS
 
@@ -273,12 +275,14 @@ class FormulaParser:
             cur_formula = formula_list.pop()
             if not cur_formula:
                 continue
-
-            if cur_formula not in subformulas:
-                # + 1 to avoid getting zeros (-0=0)
-                subformulas[cur_formula] = len(subformulas) + 1
-
             operator = cur_formula[0]
+            if cur_formula not in subformulas:
+                if ((operator in FormulaParser.ALL_SYMMETRIC_OPS) and
+                        ((operator, cur_formula[2], cur_formula[1]) in subformulas)):
+                    # If a symmetric clause exists, can reuse it
+                    cur_formula = (operator, cur_formula[2], cur_formula[1])
+                else:
+                    subformulas[cur_formula] = len(subformulas) + 1  # + 1 to avoid getting zeros (-0=0)
             if operator not in FormulaParser.BOOLEAN_OPS:
                 continue
 
@@ -286,12 +290,10 @@ class FormulaParser:
             if operator == FormulaParser.NOT:
                 if left_parameter not in subformulas:
                     subformulas[left_parameter] = len(subformulas) + 1
-
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
                     frozenset({subformulas[cur_formula], subformulas[left_parameter]})
                 }
-
                 transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
                 formula_list.append(left_parameter)
                 continue
@@ -300,7 +302,6 @@ class FormulaParser:
             right_parameter = cur_formula[2]
             formula_list.append(left_parameter)
             formula_list.append(right_parameter)
-
             if left_parameter not in subformulas:
                 subformulas[left_parameter] = len(subformulas) + 1
             if right_parameter not in subformulas:
@@ -420,9 +421,13 @@ class FormulaParser:
         if operator not in FormulaParser.BOOLEAN_OPS:
             # Base cases: 1. A constant, 2. Only one variable, 3. A non-boolean operator (like "=")
             if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
-                # Introduce a fresh variable, if this is not a constant
-                abstraction[parsed_formula] = str(len(abstraction) + 1)
-                non_boolean_clauses.add(parsed_formula)
+                if ((operator not in FormulaParser.ALL_OPS) or (operator not in FormulaParser.ALL_SYMMETRIC_OPS) or
+                        # If this is a symmetric operator, make sure that the symmetric formula was not already handled
+                        ((operator in FormulaParser.ALL_SYMMETRIC_OPS) and
+                         ((operator, parsed_formula[2], parsed_formula[1]) not in abstraction))):
+                    # Introduce a fresh variable, if this is not a constant
+                    abstraction[parsed_formula] = str(len(abstraction) + 1)
+                    non_boolean_clauses.add(parsed_formula)
             return abstraction[parsed_formula]
 
         left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction,

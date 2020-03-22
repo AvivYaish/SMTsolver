@@ -35,18 +35,19 @@ class SMTSolver:
         positive_relations = set()
         negative_relations = []
         for variable in assignment:
-            subterm = self._tseitin_variable_to_subterm[variable]
-            if subterm in self._non_boolean_clauses:    # If the variable represents an equality
-                if assignment[variable]:
-                    positive_relations.add(subterm)
-                else:
-                    negative_relations.append(subterm)
+            if variable in self._tseitin_variable_to_subterm:
+                subterm = self._tseitin_variable_to_subterm[variable]
+                if subterm in self._non_boolean_clauses:    # If the variable represents an equality
+                    if assignment[variable]:
+                        positive_relations.add(subterm)
+                    else:
+                        negative_relations.append(subterm)
 
         graph = self._congruence_graph_by_level[-1]
-        new_relations = graph.process_positive_relations(positive_relations)
+        new_positive_relations = graph.process_positive_relations(positive_relations)
         conflict = graph.process_negative_relations(negative_relations)
         if conflict is None:
-            self._theory_propagate(new_relations)
+            self._theory_propagate(new_positive_relations)
             return None
         return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
                          | {self._subterm_to_tseitin_variable[conflict]})
