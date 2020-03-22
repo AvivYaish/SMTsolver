@@ -126,7 +126,8 @@ class SATSolver:
                 return frozenset(conflict_clause), last_literal, prev_max_level
 
             # Resolve the conflict clause with the clause on the incoming edge
-            conflict_clause |= self._assignment[abs(last_literal)]["clause"]
+            clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
+            conflict_clause |= clause_on_incoming_edge
             conflict_clause.remove(last_literal)
             conflict_clause.remove(-last_literal)
 
