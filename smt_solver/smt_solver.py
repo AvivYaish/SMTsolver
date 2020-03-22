@@ -1,3 +1,4 @@
+from formula_parser.formula_parser import FormulaParser
 from sat_solver.sat_solver import SATSolver
 from copy import deepcopy
 
@@ -26,11 +27,11 @@ class SMTSolver:
         while len(self._congruence_graph_by_level) > level + 1:
             self._congruence_graph_by_level.pop()
 
-    def _theory_propagate(self, new_relations):
+    def _theory_propagation(self, new_relations):
         for new_relation in new_relations:
-            # propagate new equalities from new_relations, also should look at symmetric relations
+            # propagate new equalities from new_relations
             if new_relation not in self._subterm_to_tseitin_variable:
-                new_relation = (new_relation[0], new_relation[2], new_relation[1])
+                new_relation = FormulaParser.symmetric_formula(new_relation)
                 if new_relation not in self._subterm_to_tseitin_variable:
                     continue
             self._solver._assign(None, self._subterm_to_tseitin_variable[new_relation])
@@ -52,7 +53,7 @@ class SMTSolver:
         new_positive_relations = graph.process_positive_relations(positive_relations)
         conflict = graph.process_negative_relations(negative_relations)
         if conflict is None:
-            self._theory_propagate(new_positive_relations)
+            self._theory_propagation(new_positive_relations)
             return None
         return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
                          | {self._subterm_to_tseitin_variable[conflict]})

@@ -37,6 +37,9 @@ class FormulaParser:
 
     @staticmethod
     def symmetric_formula(parsed_formula):
+        """
+        :return: is the formula's operator is symmetric, returns the symmetric formula. Otherwise, returns it as-is.
+        """
         if ((not parsed_formula) or (len(parsed_formula) < 3) or
                 (parsed_formula[0] not in FormulaParser.ALL_SYMMETRIC_OPS)):
             return parsed_formula
