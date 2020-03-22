@@ -1,12 +1,12 @@
-from formula_parser.formula_parser import FormulaParser
 from sat_solver.sat_solver import SATSolver
 from copy import deepcopy
 
 
 class SMTSolver:
-    def __init__(self, formula, max_new_clauses=float('inf'), halving_period=10000):
-        (cnf_formula, (self._tseitin_variable_to_subterm, self._subterm_to_tseitin_variable),
-         (self._non_boolean_clauses, self._basic_congruence_graph)) = FormulaParser.import_uf(formula)
+    def __init__(self, cnf_formula, tseitin_mappings, theory_datastructures,
+                 max_new_clauses=float('inf'), halving_period=10000):
+        self._tseitin_variable_to_subterm, self._subterm_to_tseitin_variable = tseitin_mappings
+        self._non_boolean_clauses, self._basic_congruence_graph = theory_datastructures
 
         # TODO: should keep the basic congruence graph updated relative to the BCP at level 0, can save time
         self._solver = SATSolver(cnf_formula, max_new_clauses=max_new_clauses, halving_period=halving_period)
