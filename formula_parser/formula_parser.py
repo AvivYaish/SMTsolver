@@ -286,10 +286,10 @@ class FormulaParser:
                 continue
             operator = cur_formula[0]
             if cur_formula not in subformulas:
-                if ((operator in FormulaParser.ALL_SYMMETRIC_OPS) and
-                        ((operator, cur_formula[2], cur_formula[1]) in subformulas)):
+                symmetric_cur_formula = FormulaParser.symmetric_formula(cur_formula)
+                if symmetric_cur_formula in subformulas:
                     # If a symmetric clause exists, can reuse it
-                    cur_formula = (operator, cur_formula[2], cur_formula[1])
+                    cur_formula = symmetric_cur_formula
                 else:
                     subformulas[cur_formula] = len(subformulas) + 1  # + 1 to avoid getting zeros (-0=0)
             if operator not in FormulaParser.BOOLEAN_OPS:
@@ -308,43 +308,48 @@ class FormulaParser:
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
                     frozenset({subformulas[cur_formula], subformulas[left_parameter]})
                 }
-                transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
-                continue
-
-            # Binary operator
-            right_parameter = cur_formula[2]
-            if right_parameter not in subformulas:
-                symmetric_right_parameter = FormulaParser.symmetric_formula(right_parameter)
-                if symmetric_right_parameter in subformulas:
-                    right_parameter = symmetric_right_parameter
-                else:
-                    subformulas[right_parameter] = len(subformulas) + 1
-                    formula_list.append(right_parameter)
-            if operator == FormulaParser.AND:
-                transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], subformulas[left_parameter]}),
-                    frozenset({-subformulas[cur_formula], subformulas[right_parameter]}),
-                    frozenset({-subformulas[left_parameter], -subformulas[right_parameter], subformulas[cur_formula]}),
-                }
-            elif operator == FormulaParser.OR:
-                transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
-                    frozenset({-subformulas[left_parameter], subformulas[cur_formula]}),
-                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
-                }
-            elif operator == FormulaParser.IMPLICATION:
-                transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
-                    frozenset({subformulas[left_parameter], subformulas[cur_formula]}),
-                    frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
-                }
-            elif operator == FormulaParser.BICONDITIONAL:
-                transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
-                    frozenset({-subformulas[cur_formula], subformulas[left_parameter], -subformulas[right_parameter]}),
-                    frozenset({subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
-                    frozenset({subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]}),
-                }
+            else:
+                # Binary operator
+                right_parameter = cur_formula[2]
+                if right_parameter not in subformulas:
+                    symmetric_right_parameter = FormulaParser.symmetric_formula(right_parameter)
+                    if symmetric_right_parameter in subformulas:
+                        right_parameter = symmetric_right_parameter
+                    else:
+                        subformulas[right_parameter] = len(subformulas) + 1
+                        formula_list.append(right_parameter)
+                if operator == FormulaParser.AND:
+                    transformed_subformulas[subformulas[cur_formula]] = {
+                        frozenset({-subformulas[cur_formula], subformulas[left_parameter]}),
+                        frozenset({-subformulas[cur_formula], subformulas[right_parameter]}),
+                        frozenset(
+                            {-subformulas[left_parameter], -subformulas[right_parameter], subformulas[cur_formula]}),
+                    }
+                elif operator == FormulaParser.OR:
+                    transformed_subformulas[subformulas[cur_formula]] = {
+                        frozenset(
+                            {-subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
+                        frozenset({-subformulas[left_parameter], subformulas[cur_formula]}),
+                        frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
+                    }
+                elif operator == FormulaParser.IMPLICATION:
+                    transformed_subformulas[subformulas[cur_formula]] = {
+                        frozenset(
+                            {-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
+                        frozenset({subformulas[left_parameter], subformulas[cur_formula]}),
+                        frozenset({-subformulas[right_parameter], subformulas[cur_formula]})
+                    }
+                elif operator == FormulaParser.BICONDITIONAL:
+                    transformed_subformulas[subformulas[cur_formula]] = {
+                        frozenset(
+                            {-subformulas[cur_formula], -subformulas[left_parameter], subformulas[right_parameter]}),
+                        frozenset(
+                            {-subformulas[cur_formula], subformulas[left_parameter], -subformulas[right_parameter]}),
+                        frozenset(
+                            {subformulas[cur_formula], subformulas[left_parameter], subformulas[right_parameter]}),
+                        frozenset(
+                            {subformulas[cur_formula], -subformulas[left_parameter], -subformulas[right_parameter]}),
+                    }
             transformed_formula |= transformed_subformulas[subformulas[cur_formula]]
 
         transformed_formula.add(frozenset({subformulas[parsed_formula]}))  # Always need to satisfy the entire formula
