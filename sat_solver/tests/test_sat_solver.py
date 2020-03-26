@@ -328,7 +328,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, clause_num, clause_length",
-                             [(20, clause_num, 3) for clause_num in list(range(1, 50))])
+                             [(5, clause_num, 3) for clause_num in list(range(1, 100))])
     def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
         # Generates a random CNF and compares our solver to Z3
 

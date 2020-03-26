@@ -28,13 +28,15 @@ class SMTSolver:
             self._congruence_graph_by_level.pop()
 
     def _theory_propagation(self, new_relations):
+        new_assigments = []
         for new_relation in new_relations:
             # propagate new equalities from new_relations
             if new_relation not in self._subterm_to_tseitin_variable:
                 new_relation = FormulaParser.symmetric_formula(new_relation)
                 if new_relation not in self._subterm_to_tseitin_variable:
                     continue
-            self._solver._assign(None, self._subterm_to_tseitin_variable[new_relation])
+            new_assigments.append(self._subterm_to_tseitin_variable[new_relation])
+        return new_assigments
 
     def _congruence_closure(self):
         assignment = self._solver.get_assignment()
@@ -53,7 +55,6 @@ class SMTSolver:
         new_positive_relations = graph.process_positive_relations(positive_relations)
         conflict = graph.process_negative_relations(negative_relations)
         if conflict is None:
-            self._theory_propagation(new_positive_relations)
-            return None
+            return None, self._theory_propagation(new_positive_relations)
         return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
-                         | {self._subterm_to_tseitin_variable[conflict]})
+                         | {self._subterm_to_tseitin_variable[conflict]}), None

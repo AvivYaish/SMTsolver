@@ -14,7 +14,8 @@ class TestSMTSolver:
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
-        assert solver._congruence_closure() == frozenset({3, -1})
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause == frozenset({3, -1})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(f(f(a))) a)) ' +
@@ -23,7 +24,8 @@ class TestSMTSolver:
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 4: {"value": False}}
-        assert solver._congruence_closure() == frozenset({4, -1, -2})
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause == frozenset({4, -1, -2})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(x) f(y))) ' +
@@ -31,7 +33,8 @@ class TestSMTSolver:
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
-        assert solver._congruence_closure() is None
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause is None
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(declare-fun g (Bool) Bool) ' +
@@ -43,15 +46,18 @@ class TestSMTSolver:
         graph = deepcopy(solver._basic_congruence_graph)
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
-        assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause == frozenset({5, -1, -2, -3})
         assert solver._basic_congruence_graph._graph == graph._graph    # Make sure the original graph did not change
 
         # Verify that creating a new decision level copies the last graph
         solver.create_new_decision_level()
-        assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause == frozenset({5, -1, -2, -3})
 
         # Verify that performing congruence closure again using the same data structure still works
-        assert solver._congruence_closure() == frozenset({5, -1, -2, -3})
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause == frozenset({5, -1, -2, -3})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= a b)) ' +
@@ -70,8 +76,9 @@ class TestSMTSolver:
             15: {"value": True},    # ('=', ('f', 's'), ('f', 'a'))
             20: {"value": False},   # ('=', ('f', 'a'), ('f', 'c'))
         }
+        conflict_clause, assignments = solver._congruence_closure()
         # assert solver._congruence_closure() == frozenset({20, -1, -4})  # <- this is the minimal
-        assert solver._congruence_closure() == frozenset({-15, -12, 20, -7, -4, -1})
+        assert conflict_clause == frozenset({-15, -12, 20, -7, -4, -1})
 
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
@@ -84,7 +91,8 @@ class TestSMTSolver:
             15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
             20: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
         }
-        assert solver._congruence_closure() == frozenset({-15, 20, -7, -4, -1})
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause == frozenset({-15, 20, -7, -4, -1})
 
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
@@ -97,7 +105,8 @@ class TestSMTSolver:
             15: {"value": False},  # ('=', ('f', 's'), ('f', 'a'))
             20: {"value": True},  # ('=', ('f', 'a'), ('f', 'c'))
         }
-        assert solver._congruence_closure() is None
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause is None
 
     @staticmethod
     def test_theory_propagation():
@@ -113,12 +122,9 @@ class TestSMTSolver:
             1: {"value": True},  # ('=', 'a', 'b')
             7: {"value": True},  # ('=', 's', 't')
         }
-        assert solver._congruence_closure() is None
-        assert solver._solver.get_assignment() == {
-            1: True,  # ('=', 'a', 'b')
-            7: True,  # ('=', 's', 't')
-            10: True,  # ('=', ('f', 's'), ('f', 't'))
-        }
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause is None
+        assert assignments == [10]
 
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
@@ -126,11 +132,6 @@ class TestSMTSolver:
             10: {"value": True},  # ('=', ('f', 's'), ('f', 't'))
             4: {"value": True},  # ('=', 'b', 'c')
         }
-        assert solver._congruence_closure() is None
-        assert solver._solver.get_assignment() == {
-            1: True,  # ('=', 'a', 'b')
-            7: True,  # ('=', 's', 't')
-            10: True,  # ('=', ('f', 's'), ('f', 't'))
-            4: True,  # ('=', 'b', 'c')
-            20: True,  # ('=', ('f', 'a'), ('f', 'c'))
-        }
+        conflict_clause, assignments = solver._congruence_closure()
+        assert conflict_clause is None
+        assert assignments == [20]
