@@ -23,6 +23,7 @@ class FormulaParser:
     EQUALITY = "="
     UF_OPS = frozenset({EQUALITY})
 
+    NON_BOOLEAN_OPS = UF_OPS
     ALL_SYMMETRIC_OPS = UF_OPS | {AND, OR, BICONDITIONAL}
     ALL_BINARY_OPS = UF_OPS | BOOLEAN_BINARY_OPS
     ALL_OPS = UF_OPS | BOOLEAN_OPS
@@ -397,7 +398,9 @@ class FormulaParser:
             cnf_formula = set()
         simplified_formula = FormulaParser._simplify_formula(parsed_formula)
         if simplified_formula == FormulaParser.FALSE:
-            cnf_formula = frozenset({frozenset({1}), frozenset({-1})})
+            # Create a simple conflict
+            cnf_formula.add(frozenset({1}))
+            cnf_formula.add(frozenset({-1}))
         else:
             FormulaParser._tseitin_transform(simplified_formula,
                                              subformulas=subformulas,
@@ -432,20 +435,21 @@ class FormulaParser:
             abstraction = {}
         if non_boolean_clauses is None:
             non_boolean_clauses = set()
-        if not parsed_formula:
+        if (not parsed_formula) or (parsed_formula in FormulaParser.BOOLEAN_CONSTANTS):
             return parsed_formula
 
         operator = parsed_formula[0]
         if operator not in FormulaParser.BOOLEAN_OPS:
             # Base cases: 1. A constant, 2. Only one variable, 3. A non-boolean operator (like "=")
-            if (operator not in FormulaParser.BOOLEAN_CONSTANTS) and (parsed_formula not in abstraction):
+            if parsed_formula not in abstraction:
                 # If this is a symmetric operator, make sure that the symmetric formula was not already handled
                 symmetric_parsed_formula = FormulaParser.symmetric_formula(parsed_formula)
                 if symmetric_parsed_formula in abstraction:
                     return abstraction[symmetric_parsed_formula]
                 # Introduce a fresh variable, if this is not a constant
                 abstraction[parsed_formula] = str(len(abstraction) + 1)
-                non_boolean_clauses.add(parsed_formula)
+                if operator in FormulaParser.NON_BOOLEAN_OPS:
+                    non_boolean_clauses.add(parsed_formula)
             return abstraction[parsed_formula]
 
         left_parameter = FormulaParser._create_boolean_abstraction(parsed_formula[1], signature, abstraction,
@@ -466,8 +470,9 @@ class FormulaParser:
         abstraction = {}                # A map between subterms to new variables (the "abstractions")
         non_boolean_clauses = set()     # A set of all non_boolean_clauses
         for parsed_formula in parsed_formulas:
+            simplified_formula = FormulaParser._simplify_formula(parsed_formula)
             FormulaParser._convert_to_cnf(
-                FormulaParser._create_boolean_abstraction(parsed_formula, signature, abstraction, non_boolean_clauses),
+                FormulaParser._create_boolean_abstraction(simplified_formula, signature, abstraction, non_boolean_clauses),
                 subformulas=subformulas,
                 transformed_subformulas=transformed_subformulas,
                 cnf_formula=cnf_formula
