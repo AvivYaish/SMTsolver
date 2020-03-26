@@ -152,4 +152,25 @@ class TestSMTSolver:
                    '(assert (not (= f(f(a, b), b) a)))')
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         assert not solver.solve()
-        print(solver.get_assignment())
+
+        formula = ('(declare-fun f (Bool) Bool) ' +
+                   '(assert (= f(f(f(a))) a)) ' +
+                   '(assert (= f(f(f(f(f(a))))) a)) ' +
+                   '(assert (not (= f(a) a)))')
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        assert not solver.solve()
+
+        formula = ('(declare-fun f (Bool) Bool) ' +
+                   '(assert (= f(x) f(y))) ' +
+                   '(assert (not (= x y)))')
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        assert solver.solve()
+
+        formula = ('(declare-fun f (Bool) Bool) ' +
+                   '(declare-fun g (Bool) Bool) ' +
+                   '(assert (= f(g(x)) g(f(x)))) ' +
+                   '(assert (= f(g(f(y))) x)) ' +
+                   '(assert (= f(y) x)) ' +
+                   '(assert (not (= g(f(x)) x)))')
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        assert not solver.solve()
