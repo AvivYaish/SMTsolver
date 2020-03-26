@@ -265,26 +265,27 @@ class SATSolver:
                     if abs(literal) not in self._assignment:
                         self._assign(clause, literal)
 
-    def _theory_propagation(self):
-        assignments, conflict_clause, level_to_jump_to = self._theory_solver.theory_propagate(
-            self.get_assignment()
-        )
-        if level_to_jump_to != -1:
-            # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
-            for literal, clause in assignments:
-                self._assign(clause, literal)
-            # TODO: add the conflict clause! MAYBE ALSO MAKE THIS EXACTLY THE SAME AS BCP
-        return conflict_clause, level_to_jump_to
+    def _theory_propagation_to_exhaustion(self):
+        if self._theory_solver is None:
+            return True
+        conflict_clause, new_assignments = self._theory_solver.congruence_closure()
+        while conflict_clause is not None:
+            max_level_literal_count, max_level, literal_from_max_level = 0, -1, None
+            for literal in conflict_clause:
+                cur_level = self._assignment[abs(literal)]
+                if cur_level > max_level:
+                    max_level_literal_count, max_level, literal_from_max_level = 1, cur_level, literal
+                elif cur_level == max_level:
+                    max_level_literal_count += 1
 
-    def _theory_propagation_to_exhaustion(self) -> bool:
-        if self._theory_solver:
-            conflict_clause, level_to_jump_to = self._theory_propagation()
-            while conflict_clause is not None:
-                if level_to_jump_to == -1:
-                    # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
-                    return False
-                self._backtrack(level_to_jump_to)
-                conflict_clause, level_to_jump_to = self._theory_propagation()
+            self._backtrack(max_level-1)
+            self._add_conflict_clause(conflict_clause)
+            if max_level_literal_count == 1:
+                self._assign(conflict_clause, literal_from_max_level)
+            conflict_clause, new_assignments = self._theory_solver.congruence_closure()
+
+        for literal in new_assignments:
+            self._assign(None, literal)
         return True
 
     def _propagation(self) -> bool:

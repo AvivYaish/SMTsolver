@@ -38,7 +38,7 @@ class SMTSolver:
             new_assigments.append(self._subterm_to_tseitin_variable[new_relation])
         return new_assigments
 
-    def _congruence_closure(self):
+    def congruence_closure(self):
         assignment = self._solver.get_assignment()
         positive_relations = set()
         negative_relations = []
@@ -58,3 +58,6 @@ class SMTSolver:
             return None, self._theory_propagation(new_positive_relations)
         return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
                          | {self._subterm_to_tseitin_variable[conflict]}), None
+
+    def solve(self):
+        return self._solver.solve()
