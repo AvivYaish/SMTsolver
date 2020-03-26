@@ -138,4 +138,18 @@ class TestSMTSolver:
 
     @staticmethod
     def test_integration():
-        pass
+        formula = ('(declare-fun f (Bool) Bool) ' +
+                   '(assert (= a b)) ' +
+                   '(assert (or (or (not (= a b)) (not (= s t))) (= b c))) ' +
+                   '(assert (or (or (= s t) (not (= t r))) (= f(s) f(t)))) ' +
+                   '(assert (or (or (not (= b c)) (not (= t r))) (= f(s) f(a))))' +
+                   '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        assert solver.solve()
+
+        formula = ('(declare-fun f (Bool Bool) Bool) ' +
+                   '(assert (= f(a, b) a)) ' +
+                   '(assert (not (= f(f(a, b), b) a)))')
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        assert not solver.solve()
+        print(solver.get_assignment())

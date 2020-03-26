@@ -59,5 +59,12 @@ class SMTSolver:
         return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
                          | {self._subterm_to_tseitin_variable[conflict]}), None
 
+    def get_assignment(self):
+        assignment = {}
+        for variable, value in self._solver.get_assignment().items():
+            if variable in self._tseitin_variable_to_subterm:
+                assignment[self._tseitin_variable_to_subterm[variable]] = value
+        return assignment
+
     def solve(self):
         return self._solver.solve()

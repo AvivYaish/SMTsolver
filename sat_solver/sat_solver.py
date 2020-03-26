@@ -232,7 +232,7 @@ class SATSolver:
             for clause in self._satisfaction_by_level.pop():
                 self._satisfied_clauses.remove(clause)
         if self._theory_solver:
-            self._theory_solver.backtrack()
+            self._theory_solver.backtrack(level)
 
     def _increment_step(self):
         # Maintain data structures related to VSIDS
@@ -272,13 +272,16 @@ class SATSolver:
         while conflict_clause is not None:
             max_level_literal_count, max_level, literal_from_max_level = 0, -1, None
             for literal in conflict_clause:
-                cur_level = self._assignment[abs(literal)]
+                cur_level = self._assignment[abs(literal)]["level"]
                 if cur_level > max_level:
                     max_level_literal_count, max_level, literal_from_max_level = 1, cur_level, literal
                 elif cur_level == max_level:
                     max_level_literal_count += 1
+            level_to_jump_to = max_level - 1
+            if level_to_jump_to == -1:
+                return False
 
-            self._backtrack(max_level-1)
+            self._backtrack(level_to_jump_to)
             self._add_conflict_clause(conflict_clause)
             if max_level_literal_count == 1:
                 self._assign(conflict_clause, literal_from_max_level)
@@ -296,8 +299,7 @@ class SATSolver:
 
     def _is_sat(self) -> bool:
         return (
-                self._formula.issubset(self._satisfied_clauses) and
-                ((self._theory_solver is None) or self._theory_solver.is_sat())
+                self._formula.issubset(self._satisfied_clauses)
         )
 
     def solve(self) -> bool:
