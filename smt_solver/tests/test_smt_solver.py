@@ -190,18 +190,18 @@ class TestSMTSolver:
         assert SMTSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100))])
+    @pytest.mark.parametrize("variable_num, operator_num", [(3, clause_num) for clause_num in list(range(1, 100))] * 100)
     def test_random_formula(variable_num: int, operator_num: int):
         # Generates a random formula and compares our solver to Z3
-        f = z3.Function('f', z3.BoolSort(), z3.BoolSort())
-        g = z3.Function('g', z3.BoolSort(), z3.BoolSort(), z3.BoolSort())
-        h = z3.Function('h', z3.BoolSort(), z3.BoolSort(), z3.BoolSort(), z3.BoolSort())
+        f = z3.Function('f', z3.IntSort(), z3.IntSort())
+        g = z3.Function('g', z3.IntSort(), z3.IntSort(), z3.IntSort())
+        h = z3.Function('h', z3.IntSort(), z3.IntSort(), z3.IntSort(), z3.IntSort())
 
         # Generate formula
         all_variables = list(range(1, variable_num + 1))
         all_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
         all_subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in all_subformulas_z3])
-        all_uf_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
+        all_uf_subformulas_z3 = [z3.Int("x"+str(cur_literal)) for cur_literal in all_variables]
         all_uf_equations_z3 = []
         all_subformulas_our = [str(cur_literal) for cur_literal in all_variables]
         all_subformulas_our.extend([("not " + cur_literal) for cur_literal in all_subformulas_our])
@@ -308,11 +308,11 @@ class TestSMTSolver:
     @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100)) * 10])
     def test_random_formula_hard(variable_num: int, operator_num: int):
         # Generates a random formula and compares our solver to Z3
-        f = z3.Function('f', z3.BoolSort(), z3.BoolSort())
+        f = z3.Function('f', z3.IntSort(), z3.IntSort())
 
         # Generate formula
         all_variables = list(range(1, variable_num + 1))
-        all_variables_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
+        all_variables_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables]
         all_uf_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
         all_uf_equations_z3 = []
         all_variables_our = [str(cur_literal) for cur_literal in all_variables]
@@ -454,16 +454,14 @@ class TestSMTSolver:
 
     @staticmethod
     def test_bad():
-        formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) " + \
-                  "(assert (not (= (4) (2))) " + \
-                  "(assert (= (5) (5)) " + \
-                  "(assert (not (= (4) (2))) " + \
-                  "(assert (= (5) (5)) " + \
-                  "(assert (not (= (3) (1))) " + \
-                  "(assert (not (= (1) (2))) " + \
-                  "(assert (= (5) (5)) " + \
-                  "(assert (not (= (1) (4))) " + \
-                  "(assert (not (= (4) (f(5))))"
+        formula = """Z3 formula:  And(3 != 1,
+    1 != 5,
+    1 == 1,
+    4 != 2,
+    5 != 3,
+    f(3) == If(3, 1, 0))
+Our formula:  (declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (not (= (3) (1))) (assert (not (= (1) (5))) (assert (= (1) (1)) (assert (not (= (4) (2))) (assert (not (= (5) (3))) (assert (= (f(3)) (3))
+"""
         solver = SMTSolver(*FormulaParser.import_uf(formula))
         solver.solve()
         print(solver.get_assignment())

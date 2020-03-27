@@ -472,7 +472,10 @@ class FormulaParser:
         for parsed_formula in parsed_formulas:
             simplified_formula = FormulaParser._simplify_formula(parsed_formula)
             FormulaParser._convert_to_cnf(
-                FormulaParser._create_boolean_abstraction(simplified_formula, signature, abstraction, non_boolean_clauses),
+                FormulaParser._create_boolean_abstraction(simplified_formula,
+                                                          signature,
+                                                          abstraction,
+                                                          non_boolean_clauses),
                 subformulas=subformulas,
                 transformed_subformulas=transformed_subformulas,
                 cnf_formula=cnf_formula
@@ -482,8 +485,9 @@ class FormulaParser:
         tseitin_variable_to_subterm = {}
         subterm_to_tseitin_variable = {}
         for subterm, abstracted_subterm in abstraction.items():
-            tseitin_variable_to_subterm[subformulas[abstracted_subterm]] = subterm
-            subterm_to_tseitin_variable[subterm] = subformulas[abstracted_subterm]
+            if abstracted_subterm in subformulas:
+                tseitin_variable_to_subterm[subformulas[abstracted_subterm]] = subterm
+                subterm_to_tseitin_variable[subterm] = subformulas[abstracted_subterm]
         return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses
 
     @staticmethod
