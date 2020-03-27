@@ -180,14 +180,14 @@ class TestSMTSolver:
 
     @staticmethod
     def test_boolean_formulas():
-        formula1 = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (and (not 1) (1)))"
-        assert not SMTSolver(*FormulaParser.import_uf(formula1)).solve()
+        formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (and (not 1) (1)))"
+        assert not SMTSolver(*FormulaParser.import_uf(formula)).solve()
 
-        formula2 = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (or (1) (not 2)))"
-        assert SMTSolver(*FormulaParser.import_uf(formula2)).solve()
+        formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (or (1) (not 2)))"
+        assert SMTSolver(*FormulaParser.import_uf(formula)).solve()
 
-        formula3 = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (or (not (not 4)) (not 4)))"
-        assert SMTSolver(*FormulaParser.import_uf(formula3)).solve()
+        formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (or (not (not 4)) (not 4)))"
+        assert SMTSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100))])
@@ -380,3 +380,90 @@ class TestSMTSolver:
         print("Z3 formula: ", formula_z3)
         print("Our formula: ", formula_our_text)
         assert is_sat_our is is_sat_z3
+
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 2500))])
+    def test_random_boolean_formula(variable_num: int, operator_num: int):
+        # Generates a random formula and compares our solver to Z3
+
+        # Generate formula
+        all_variables = list(range(1, variable_num + 1))
+        all_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
+        all_subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in all_subformulas_z3])
+        all_subformulas_our_text = [str(cur_literal) for cur_literal in all_variables]
+        all_subformulas_our_text.extend([("not " + cur_literal) for cur_literal in all_subformulas_our_text])
+
+        for cur_operator_idx in range(operator_num):
+            cur_subformula_z3 = None
+            cur_subformula_our_text = None
+            random_operator = random.randint(1, 5)
+
+            first_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
+            first_parameter_z3 = all_subformulas_z3[first_parameter_idx]
+            first_parameter_our_text = all_subformulas_our_text[first_parameter_idx]
+            if random_operator == 1:
+                cur_subformula_z3 = z3.Not(first_parameter_z3)
+                cur_subformula_our_text = "not (" + first_parameter_our_text + ")"
+            else:
+                # Binary operators
+                second_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
+                second_parameter_z3 = all_subformulas_z3[second_parameter_idx]
+                second_parameter_our_text = all_subformulas_our_text[second_parameter_idx]
+                if random_operator == 2:
+                    cur_subformula_z3 = z3.And(first_parameter_z3, second_parameter_z3)
+                    cur_subformula_our_text = "and (" + first_parameter_our_text + ") (" + second_parameter_our_text \
+                                              + ")"
+                elif random_operator == 3:
+                    cur_subformula_z3 = z3.Or(first_parameter_z3, second_parameter_z3)
+                    cur_subformula_our_text = "or (" + first_parameter_our_text + ") (" + second_parameter_our_text \
+                                              + ")"
+                elif random_operator == 4:
+                    cur_subformula_z3 = z3.Implies(first_parameter_z3, second_parameter_z3)
+                    cur_subformula_our_text = "=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
+                                              + ")"
+                elif random_operator == 5:
+                    cur_subformula_z3 = (first_parameter_z3 == second_parameter_z3)
+                    cur_subformula_our_text = "<=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
+                                              + ")"
+            all_subformulas_z3.append(cur_subformula_z3)
+            all_subformulas_our_text.append(cur_subformula_our_text)
+
+        formula_z3 = cur_subformula_z3
+        formula_our_text = "(assert (" + cur_subformula_our_text + "))"
+
+        # Solve with Z3
+        z3_solver = z3.Solver()
+        z3_solver.add(formula_z3)
+        start_time_z3 = time.time()
+        is_sat_z3 = (z3_solver.check() == z3.sat)
+        end_time_z3 = time.time()
+
+        # Solve with ours
+        start_time_our = time.time()
+        our_solver = SMTSolver(*FormulaParser.import_uf(formula_our_text))
+        is_sat_our = our_solver.solve()
+        end_time_our = time.time()
+
+        print()
+        print("Is sat? ", is_sat_z3)
+        print("Z3:\t\t", end_time_z3 - start_time_z3)
+        print("Our:\t", end_time_our - start_time_our)
+        print("Z3 formula: ", formula_z3)
+        print("Our formula: ", formula_our_text)
+        assert is_sat_our is is_sat_z3
+
+    @staticmethod
+    def test_bad():
+        formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) " + \
+                  "(assert (not (= (4) (2))) " + \
+                  "(assert (= (5) (5)) " + \
+                  "(assert (not (= (4) (2))) " + \
+                  "(assert (= (5) (5)) " + \
+                  "(assert (not (= (3) (1))) " + \
+                  "(assert (not (= (1) (2))) " + \
+                  "(assert (= (5) (5)) " + \
+                  "(assert (not (= (1) (4))) " + \
+                  "(assert (not (= (4) (f(5))))"
+        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver.solve()
+        print(solver.get_assignment())
