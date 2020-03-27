@@ -3,6 +3,11 @@ from itertools import product
 
 
 class CongruenceGraph:
+    """
+    We assume tuple comparision is O(1).
+    If it is not, can replace tuples by a data-structure that contains both the tuple and a hash of it,
+    thus comparisons can be made by comparing hashes.
+    """
     @staticmethod
     def _replace_parameter(term, parameter_to_replace, new_parameter):
         new_term = list(term)
@@ -33,6 +38,9 @@ class CongruenceGraph:
                     if new_parameters:
                         formula_list.append(cur_formula)
                         continue
+                # "parents" is a dictionary that contains a mapping between the "actual" parent, and the
+                # parent where the child is replaced by the representative of the child.
+                # This allows fast comparisons and updating of the data-structure, and saves re-calculating everything.
                 self._graph[cur_formula] = {"parents": {}, "find": cur_formula}
             else:
                 formula_list.append(cur_formula[1])
