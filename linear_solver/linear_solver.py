@@ -5,44 +5,35 @@ from numba import jit
 class LinearSolver:
 
     def __init__(self, A, b, c):
-        self._rows = A.shape[0]
+        self._rows = np.size(A, 0)
+        self._cols = np.size(A, 1)
         self._A_N = A.astype(np.float64).copy()
         self._B = np.identity(self._rows, dtype=np.float64)
+        self._x_N_vars = np.arange(self._cols)
+        self._x_B_vars = np.arange(self._rows) + self._cols
+        self._x_B_star = b.astype(np.float64).copy()
         self._c_N = c.astype(np.float64).copy()
         self._c_B = np.zeros(self._rows, dtype=np.float64)
-        self._x_B_star = b.astype(np.float64).copy()
 
-    """
-    
-    """
+    @staticmethod
+    def _create_auxiliary_problem(A, b, c):
+        return LinearSolver(A, b, c)
+
+    def get_assignment(self):
+        assignment = {var: 0 for var in range(self._cols)}
+        for var, value in zip(self._x_B_vars, self._x_B_star):
+            if var < self._cols:
+                assignment[var] = value
+        return assignment
+
     def solve(self):
         """
-        # Using some example problems from lecture 12, HW2, and https://cbom.atozmath.com/example/CBOM/Simplex.aspx
-        >>> A = np.array([[1, 1, 2], [2, 0, 3], [2, 1, 3]])
-        >>> b = np.array([4, 5, 7])
-        >>> c = np.array([3, 2, 4])
-        >>> solver = LinearSolver(A, b, c)
-        >>> solver.solve()
-        10.5
-        >>> A = np.array([[3, 2, 1, 2], [1, 1, 1, 1], [4, 3, 3, 4]])
-        >>> b = np.array([225, 117, 420])
-        >>> c = np.array([19, 13, 12, 17])
-        >>> solver = LinearSolver(A, b, c)
-        >>> solver.solve()
-        1827.0
-        >>> A = np.array([[3, 4], [6, 1]])
-        >>> b = np.array([6, 3])
-        >>> c = np.array([2, 1])
-        >>> solver = LinearSolver(A, b, c)
-        >>> solver.solve()
-        1.8571428571428572
-        >>> A = np.array([[1, 0], [0, 1], [3, 2]])
-        >>> b = np.array([4, 6, 18])
-        >>> c = np.array([3, 5])
-        >>> solver = LinearSolver(A, b, c)
-        >>> solver.solve()
-        36.0
+
         """
+        if not np.all(self._c_B >= 0):
+            auxiliary_solver = LinearSolver._create_auxiliary_problem(self._A_N, self._x_B_star, self._c_N)
+            auxiliary_solver.solve()
+
         while True:
             result = self._single_iteration()
             if result is not None:
@@ -65,9 +56,14 @@ class LinearSolver:
         self._A_N[:, A_col_idx] = self._B[:, B_col_idx]
         self._B[:, B_col_idx] = A_col
 
-        # Update current assignments and objective function
+        # Update index placement
+        self._x_B_vars[B_col_idx], self._x_N_vars[A_col_idx] = self._x_N_vars[A_col_idx], self._x_B_vars[B_col_idx]
+
+        # Update the assignment
         self._x_B_star -= t * d
         self._x_B_star[B_col_idx] = t
+
+        # Update the objective function
         self._c_B[B_col_idx], self._c_N[A_col_idx] = self._c_N[A_col_idx], self._c_B[B_col_idx]
         return None
 
