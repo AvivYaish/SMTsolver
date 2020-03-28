@@ -18,9 +18,9 @@ class LinearSolver:
     @staticmethod
     def _solve_auxiliary_problem(A, b):
         new_var = np.size(A, 1)     # Because that number is unused
-        new_A = np.concatenate((A, -np.ones((np.size(A, 0), 1))))
+        new_A = np.concatenate((A, -np.ones((np.size(A, 0), 1))), axis=1)
         solver = LinearSolver(new_A, b, np.array([-new_var]))
-        solver.solve()
+        solver.solve(auxiliary=True)
         if solver.get_assignment()[new_var] != 0:
             return None
         return solver._x_B_vars
@@ -32,11 +32,11 @@ class LinearSolver:
                 assignment[var] = value
         return assignment
 
-    def solve(self):
+    def solve(self, auxiliary=False):
         """
 
         """
-        if not np.all(self._c_B >= 0):
+        if (not auxiliary) and (not np.all(self._x_B_star >= 0)):
             auxiliary_basic_vars = LinearSolver._solve_auxiliary_problem(self._A_N, self._x_B_star)
             if auxiliary_basic_vars is None:
                 return None
@@ -48,28 +48,31 @@ class LinearSolver:
 
     def _single_iteration(self):
         y = self._btran(self._B, self._c_B)
-        A_col_idx = self._choose_entering_var(self._A_N, y, self._c_N)
-        if A_col_idx == -1:
+        entering_var = self._choose_entering_var(self._A_N, y, self._c_N)
+        if entering_var == -1:
             return np.matmul(self._c_B, self._x_B_star)
 
-        d = self._ftran(self._B, self._A_N[:, A_col_idx])
-        B_col_idx, t = self._choose_leaving_var(self._x_B_star, d)
-        if B_col_idx == -1:
+        d = self._ftran(self._B, self._A_N[:, entering_var])
+        leaving_var, t = self._choose_leaving_var(self._x_B_star, d)
+        if leaving_var == -1:
             return float('inf')
 
-        # Update the matrices
-        A_col = self._A_N[:, A_col_idx].copy()
-        self._A_N[:, A_col_idx] = self._B[:, B_col_idx]
-        self._B[:, B_col_idx] = A_col
-
+        self._pivot(entering_var, leaving_var)
         # Update the assignment
         self._x_B_star -= t * d
-        self._x_B_star[B_col_idx] = t
+        self._x_B_star[leaving_var] = t
+        return None
+
+    def _pivot(self, entering_var: int, leaving_var: int):
+        # Update the matrices
+        entering_col = self._A_N[:, entering_var].copy()
+        self._A_N[:, entering_var] = self._B[:, leaving_var]
+        self._B[:, leaving_var] = entering_col
 
         # Update the objective function and index placement
-        self._c_B[B_col_idx], self._c_N[A_col_idx] = self._c_N[A_col_idx], self._c_B[B_col_idx]
-        self._x_B_vars[B_col_idx], self._x_N_vars[A_col_idx] = self._x_N_vars[A_col_idx], self._x_B_vars[B_col_idx]
-        return None
+        self._c_B[leaving_var], self._c_N[entering_var] = self._c_N[entering_var], self._c_B[leaving_var]
+        self._x_B_vars[leaving_var], self._x_N_vars[entering_var] = \
+            self._x_N_vars[entering_var], self._x_B_vars[leaving_var]
 
     @staticmethod
     def _first_positive_index(arr):
