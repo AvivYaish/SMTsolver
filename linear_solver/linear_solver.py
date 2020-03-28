@@ -16,8 +16,14 @@ class LinearSolver:
         self._c_B = np.zeros(self._rows, dtype=np.float64)
 
     @staticmethod
-    def _create_auxiliary_problem(A, b, c):
-        return LinearSolver(A, b, c)
+    def _solve_auxiliary_problem(A, b):
+        new_var = np.size(A, 1)     # Because that number is unused
+        new_A = np.concatenate((A, -np.ones((np.size(A, 0), 1))))
+        solver = LinearSolver(new_A, b, np.array([-new_var]))
+        solver.solve()
+        if solver.get_assignment()[new_var] != 0:
+            return None
+        return solver._x_B_vars
 
     def get_assignment(self):
         assignment = {var: 0 for var in range(self._cols)}
@@ -31,14 +37,14 @@ class LinearSolver:
 
         """
         if not np.all(self._c_B >= 0):
-            auxiliary_solver = LinearSolver._create_auxiliary_problem(self._A_N, self._x_B_star, self._c_N)
-            auxiliary_solver.solve()
+            auxiliary_basic_vars = LinearSolver._solve_auxiliary_problem(self._A_N, self._x_B_star)
+            if auxiliary_basic_vars is None:
+                return None
 
         while True:
             result = self._single_iteration()
             if result is not None:
                 return result
-        return False
 
     def _single_iteration(self):
         y = self._btran(self._B, self._c_B)
