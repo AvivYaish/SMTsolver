@@ -17,13 +17,16 @@ class LinearSolver:
 
     @staticmethod
     def _solve_auxiliary_problem(A, b):
-        new_var = np.size(A, 1)     # Because that number is unused
-        new_A = np.concatenate((A, -np.ones((np.size(A, 0), 1))), axis=1)
-        solver = LinearSolver(new_A, b, np.array([-new_var]))
+        new_A = np.concatenate((-np.ones((np.size(A, 0), 1)), A), axis=1)
+        new_c = np.concatenate((np.array([-1]), np.zeros(np.size(A, 1))))
+        solver = LinearSolver(new_A, b, new_c)
         solver.solve(auxiliary=True)
-        if solver.get_assignment()[new_var] != 0:
+        assignment = solver.get_assignment()
+        # new_var = 0
+        if assignment[0] != 0:
             return None
-        return solver._x_B_vars
+        assignment.pop(0)
+        return solver._x_B_vars, assignment
 
     def get_assignment(self):
         assignment = {var: 0 for var in range(self._cols)}
@@ -32,14 +35,29 @@ class LinearSolver:
                 assignment[var] = value
         return assignment
 
+    def _initial_auxiliary_step(self):
+        # The entering variable is always the new variable created for the aux. problem
+        # The leaving variable is the one corresponding to the minimal b_i
+        # Because this is the first iteration, the B matrix is the identity,
+        # so d = c_B * (B^-1) = A_N[:, 0] = [-1, ..., -1]
+        # And thus t = -min_b_i
+        entering_var, leaving_var = 0, np.argmin(self._x_B_star)
+        t, d = -self._x_B_star[leaving_var], self._A_N[:, entering_var].copy()
+        self._pivot(entering_var, leaving_var, t, d)
+
     def solve(self, auxiliary=False):
         """
 
         """
-        if (not auxiliary) and (not np.all(self._x_B_star >= 0)):
-            auxiliary_basic_vars = LinearSolver._solve_auxiliary_problem(self._A_N, self._x_B_star)
-            if auxiliary_basic_vars is None:
-                return None
+        if not auxiliary:
+            if not np.all(self._x_B_star >= 0):
+                auxiliary_basic_vars, assignment = LinearSolver._solve_auxiliary_problem(self._A_N, self._x_B_star)
+                if auxiliary_basic_vars is None:
+                    return None
+                for var in auxiliary_basic_vars:
+                    pass
+        else:
+            self._initial_auxiliary_step()
 
         while True:
             result = self._single_iteration()
@@ -57,13 +75,10 @@ class LinearSolver:
         if leaving_var == -1:
             return float('inf')
 
-        self._pivot(entering_var, leaving_var)
-        # Update the assignment
-        self._x_B_star -= t * d
-        self._x_B_star[leaving_var] = t
+        self._pivot(entering_var, leaving_var, t, d)
         return None
 
-    def _pivot(self, entering_var: int, leaving_var: int):
+    def _pivot(self, entering_var: int, leaving_var: int, t, d):
         # Update the matrices
         entering_col = self._A_N[:, entering_var].copy()
         self._A_N[:, entering_var] = self._B[:, leaving_var]
@@ -74,12 +89,14 @@ class LinearSolver:
         self._x_B_vars[leaving_var], self._x_N_vars[entering_var] = \
             self._x_N_vars[entering_var], self._x_B_vars[leaving_var]
 
+        # Update the assignment
+        self._x_B_star -= t * d
+        self._x_B_star[leaving_var] = t
+
     @staticmethod
     def _first_positive_index(arr):
-        # Super-fast numba implementation, as seen in:
-        # https://stackoverflow.com/questions/16243955/numpy-first-occurrence-of-value-greater-than-existing-value
         for idx in range(len(arr)):
-            if arr[idx] >= 0:
+            if arr[idx] > 0:
                 return idx
         return -1
 

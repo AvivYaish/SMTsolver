@@ -35,3 +35,10 @@ class TestLinearSolver:
         solver = LinearSolver(A, b, c)
         assert solver.solve() == 36.0
         assert solver.get_assignment() == {0: 2.0, 1: 6.0}
+
+        A = np.array([[-1, 1], [-2, -2], [-1, 4]])
+        b = np.array([-1, -6, 2])
+        c = np.array([1, 3])
+        solver = LinearSolver(A, b, c)
+        assert solver.solve() == 5.0
+        # assert solver.get_assignment() == {0: 2.0, 1: 1.0}
