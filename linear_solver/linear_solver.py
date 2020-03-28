@@ -17,24 +17,31 @@ class LinearSolver:
     """
     def solve(self):
         """
+        # Using some example problems from lecture 12, HW2, and https://cbom.atozmath.com/example/CBOM/Simplex.aspx
         >>> A = np.array([[1, 1, 2], [2, 0, 3], [2, 1, 3]])
         >>> b = np.array([4, 5, 7])
         >>> c = np.array([3, 2, 4])
         >>> solver = LinearSolver(A, b, c)
         >>> solver.solve()
         10.5
-        >>> A = np.array([[3, 4], [6, 1]])
-        >>> b = np.array([6, 3])
-        >>> c = np.array([2, 1])
-        >>> solver = LinearSolver(A, b, c)
-        >>> solver.solve()
-        1.8571428571428572
         >>> A = np.array([[3, 2, 1, 2], [1, 1, 1, 1], [4, 3, 3, 4]])
         >>> b = np.array([225, 117, 420])
         >>> c = np.array([19, 13, 12, 17])
         >>> solver = LinearSolver(A, b, c)
         >>> solver.solve()
         1827.0
+        >>> A = np.array([[3, 4], [6, 1]])
+        >>> b = np.array([6, 3])
+        >>> c = np.array([2, 1])
+        >>> solver = LinearSolver(A, b, c)
+        >>> solver.solve()
+        1.8571428571428572
+        >>> A = np.array([[1, 0], [0, 1], [3, 2]])
+        >>> b = np.array([4, 6, 18])
+        >>> c = np.array([3, 5])
+        >>> solver = LinearSolver(A, b, c)
+        >>> solver.solve()
+        36.0
         """
         while True:
             result = self._single_iteration()
