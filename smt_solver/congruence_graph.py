@@ -4,9 +4,11 @@ from itertools import product
 
 class CongruenceGraph:
     """
+    We use a tuple representation for functions, which we believe is better than the function_name + idx representation
+    seen in class. By using tuples, we are able to support multi-parameter functions.
     We assume tuple comparision is O(1).
     If it is not, can replace tuples by a data-structure that contains both the tuple and a hash of it,
-    thus comparisons can be made by comparing hashes.
+    thus comparisons can be made in O(1) by comparing hashes.
     """
     @staticmethod
     def _replace_parameter(term, parameter_to_replace, new_parameter):
