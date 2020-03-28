@@ -56,15 +56,13 @@ class LinearSolver:
         self._A_N[:, A_col_idx] = self._B[:, B_col_idx]
         self._B[:, B_col_idx] = A_col
 
-        # Update index placement
-        self._x_B_vars[B_col_idx], self._x_N_vars[A_col_idx] = self._x_N_vars[A_col_idx], self._x_B_vars[B_col_idx]
-
         # Update the assignment
         self._x_B_star -= t * d
         self._x_B_star[B_col_idx] = t
 
-        # Update the objective function
+        # Update the objective function and index placement
         self._c_B[B_col_idx], self._c_N[A_col_idx] = self._c_N[A_col_idx], self._c_B[B_col_idx]
+        self._x_B_vars[B_col_idx], self._x_N_vars[A_col_idx] = self._x_N_vars[A_col_idx], self._x_B_vars[B_col_idx]
         return None
 
     @staticmethod
@@ -82,18 +80,16 @@ class LinearSolver:
         return LinearSolver._first_positive_index(c_N - np.matmul(y, A_N))
 
     @staticmethod
-    def _minimal_positive_index(arr):
-        min_idx = -1
-        for idx in range(len(arr)):
-            if (arr[idx] > 0) and ((min_idx == -1) or (arr[idx] < arr[min_idx])):
-                min_idx = idx
-        return min_idx
-
-    @staticmethod
     def _choose_leaving_var(x_B, d):
         all_ts = x_B / d
-        largest_t_idx = LinearSolver._minimal_positive_index(all_ts)
-        return largest_t_idx, all_ts[largest_t_idx]
+        # Cool numpy method for finding smallest positive value, found at:
+        # https://stackoverflow.com/questions/55769522/how-to-find-maximum-negative-and-minimum-positive-number-in-a-numpy-array
+        largest_t_idx = np.where(all_ts > 0, all_ts, np.inf).argmin()
+        largest_t_val = all_ts[largest_t_idx]
+        if largest_t_val == np.inf:
+            # If the minimal positive index is inf, the solution is unbounded
+            largest_t_idx = -1
+        return largest_t_idx, largest_t_val
 
     @staticmethod
     def _btran(B, c_B):
