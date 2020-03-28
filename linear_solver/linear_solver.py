@@ -1,33 +1,33 @@
 import numpy as np
 from numba import jit
-from scipy.linalg import lu_factor
 
 
 class LinearSolver:
 
     def __init__(self, A, b, c):
         self._rows = A.shape[0]
-        self._cols = A.shape[1]
-
-        self._B = np.identity(self._rows, dtype=np.float64)
         self._A_N = A.astype(np.float64).copy()
-
-        self._x_N_star = np.zeros(len(c), dtype=np.float64)
-        self._x_B_star = b.astype(np.float64).copy()
-
+        self._B = np.identity(self._rows, dtype=np.float64)
         self._c_N = c.astype(np.float64).copy()
         self._c_B = np.zeros(self._rows, dtype=np.float64)
+        self._x_B_star = b.astype(np.float64).copy()
 
-    """"
+    """
     >>> A = np.array([[1, 1, 2], [2, 0, 3], [2, 1, 3]])
-        >>> b = np.array([4, 5, 7])
-        >>> c = np.array([3, 2, 4])
-        >>> solver = LinearSolver(A, b, c)
-        >>> solver.solve()
-        10.5
+    >>> b = np.array([4, 5, 7])
+    >>> c = np.array([3, 2, 4])
+    >>> solver = LinearSolver(A, b, c)
+    >>> solver.solve()
+    10.5
     """
     def solve(self):
         """
+        >>> A = np.array([[3, 4], [6, 1]])
+        >>> b = np.array([6, 3])
+        >>> c = np.array([2, 1])
+        >>> solver = LinearSolver(A, b, c)
+        >>> solver.solve()
+        13/7
         >>> A = np.array([[3, 2, 1, 2], [1, 1, 1, 1], [4, 3, 3, 4]])
         >>> b = np.array([225, 117, 420])
         >>> c = np.array([19, 13, 12, 17])
@@ -39,13 +39,13 @@ class LinearSolver:
             result = self._single_iteration()
             if result is not None:
                 return result
-        return True
+        return False
 
     def _single_iteration(self):
         y = self._btran(self._B, self._c_B)
         A_col_idx = self._choose_entering_var(self._A_N, y, self._c_N)   # col in _A_N
         if A_col_idx == -1:
-            return np.matmul(self._c_B, self._x_B_star) + np.matmul(self._c_N, self._x_N_star)
+            return np.matmul(self._c_B, self._x_B_star)
 
         d = self._ftran(self._B, self._A_N[:, A_col_idx])
         B_col_idx, t = self._choose_leaving_var(self._x_B_star, d)    # b is a col in _B
@@ -70,7 +70,7 @@ class LinearSolver:
         # Super-fast numba implementation, as seen in:
         # https://stackoverflow.com/questions/16243955/numpy-first-occurrence-of-value-greater-than-existing-value
         for idx in range(len(arr)):
-            if arr[idx] > 0:
+            if arr[idx] >= 0:
                 return idx
         return -1
 
