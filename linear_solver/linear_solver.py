@@ -4,7 +4,7 @@ from numba import jit
 
 class LinearSolver:
 
-    def __init__(self, A, b, c):
+    def __init__(self, A, b, c, auxiliary=False):
         self._rows = np.size(A, 0)
         self._cols = np.size(A, 1)
         self._A_N = A.astype(np.float64).copy()
@@ -15,18 +15,23 @@ class LinearSolver:
         self._c_N = c.astype(np.float64).copy()
         self._c_B = np.zeros(self._rows, dtype=np.float64)
 
+        if auxiliary:
+            self._initial_auxiliary_step()
+
     @staticmethod
     def _solve_auxiliary_problem(A, b):
         new_A = np.concatenate((-np.ones((np.size(A, 0), 1)), A), axis=1)
         new_c = np.concatenate((np.array([-1]), np.zeros(np.size(A, 1))))
-        solver = LinearSolver(new_A, b, new_c)
-        solver.solve(auxiliary=True)
+        solver = LinearSolver(new_A, b, new_c, auxiliary=True)
+        solver.solve()
         assignment = solver.get_assignment()
         # new_var = 0
         if assignment[0] != 0:
             return None
         assignment.pop(0)
-        return solver._x_B_vars, assignment
+        # The auxiliary problem had an additional first variable,
+        # so all variables (including slack ones) are shifted by 1
+        return solver._x_B_vars - 1, {(var - 1): assignment[var] for var in assignment}
 
     def get_assignment(self):
         assignment = {var: 0 for var in range(self._cols)}
@@ -45,19 +50,16 @@ class LinearSolver:
         t, d = -self._x_B_star[leaving_var], self._A_N[:, entering_var].copy()
         self._pivot(entering_var, leaving_var, t, d)
 
-    def solve(self, auxiliary=False):
+    def solve(self):
         """
 
         """
-        if not auxiliary:
-            if not np.all(self._x_B_star >= 0):
-                auxiliary_basic_vars, assignment = LinearSolver._solve_auxiliary_problem(self._A_N, self._x_B_star)
-                if auxiliary_basic_vars is None:
-                    return None
-                for var in auxiliary_basic_vars:
-                    pass
-        else:
-            self._initial_auxiliary_step()
+        if not np.all(self._x_B_star >= 0):
+            auxiliary_basic_vars, assignment = LinearSolver._solve_auxiliary_problem(self._A_N, self._x_B_star)
+            if auxiliary_basic_vars is None:
+                return None
+            for var in auxiliary_basic_vars:
+                pass
 
         while True:
             result = self._single_iteration()
