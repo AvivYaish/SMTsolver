@@ -275,16 +275,14 @@ class TestUFSolver:
                 equations_our.append(cur_subformula_our)
 
         # Solve with Z3
-        formula_z3 = z3.And(equations_z3)
         z3_solver = z3.Solver()
-        z3_solver.add(formula_z3)
+        z3_solver.add(z3.And(equations_z3))
         start_time_z3 = time.time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
         end_time_z3 = time.time()
 
         # Solve with ours
-        formula_our = "(declare-fun f (Int) Int) " + ' '.join(equations_our)
-        our_solver = UFSolver(*FormulaParser.import_uf(formula_our))
+        our_solver = UFSolver(*FormulaParser.import_uf("(declare-fun f (Int) Int) " + ' '.join(equations_our)))
         start_time_our = time.time()
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
