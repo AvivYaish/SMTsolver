@@ -195,58 +195,50 @@ class TestUFSolver:
         # Generates a random formula and compares our solver to Z3
 
         # Generate formula
-        all_variables = list(range(1, variable_num + 1))
-        all_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
-        all_subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in all_subformulas_z3])
-        all_subformulas_our_text = [str(cur_literal) for cur_literal in all_variables]
-        all_subformulas_our_text.extend([("not " + cur_literal) for cur_literal in all_subformulas_our_text])
+        all_vars = list(range(1, variable_num + 1))
+        subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_vars]
+        subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in subformulas_z3])
+        subformulas_our = [str(cur_literal) for cur_literal in all_vars]
+        subformulas_our.extend([("not " + cur_literal) for cur_literal in subformulas_our])
 
         for cur_operator_idx in range(operator_num):
-            cur_subformula_z3 = None
-            cur_subformula_our_text = None
-            random_operator = random.randint(1, 5)
+            param1_idx = random.randint(1, len(subformulas_z3)) - 1
+            param1_z3 = subformulas_z3[param1_idx]
+            param1_our = subformulas_our[param1_idx]
 
-            first_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
-            first_parameter_z3 = all_subformulas_z3[first_parameter_idx]
-            first_parameter_our_text = all_subformulas_our_text[first_parameter_idx]
+            random_operator = random.randint(1, 5)
             if random_operator == 1:
-                cur_subformula_z3 = z3.Not(first_parameter_z3)
-                cur_subformula_our_text = "not (" + first_parameter_our_text + ")"
-            else:
-                # Binary operators
-                second_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
-                second_parameter_z3 = all_subformulas_z3[second_parameter_idx]
-                second_parameter_our_text = all_subformulas_our_text[second_parameter_idx]
+                cur_subformula_z3 = z3.Not(param1_z3)
+                cur_subformula_our = "not (" + param1_our + ")"
+            else:   # Binary operators
+                param2_idx = random.randint(1, len(subformulas_z3)) - 1
+                param2_z3 = subformulas_z3[param2_idx]
+                param2_our = subformulas_our[param2_idx]
                 if random_operator == 2:
-                    cur_subformula_z3 = z3.And(first_parameter_z3, second_parameter_z3)
-                    cur_subformula_our_text = "and (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
+                    cur_subformula_z3 = z3.And(param1_z3, param2_z3)
+                    cur_subformula_our = "and (" + param1_our + ") (" + param2_our + ")"
                 elif random_operator == 3:
-                    cur_subformula_z3 = z3.Or(first_parameter_z3, second_parameter_z3)
-                    cur_subformula_our_text = "or (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
+                    cur_subformula_z3 = z3.Or(param1_z3, param2_z3)
+                    cur_subformula_our = "or (" + param1_our + ") (" + param2_our + ")"
                 elif random_operator == 4:
-                    cur_subformula_z3 = z3.Implies(first_parameter_z3, second_parameter_z3)
-                    cur_subformula_our_text = "=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
+                    cur_subformula_z3 = z3.Implies(param1_z3, param2_z3)
+                    cur_subformula_our = "=> (" + param1_our + ") (" + param2_our + ")"
                 elif random_operator == 5:
-                    cur_subformula_z3 = (first_parameter_z3 == second_parameter_z3)
-                    cur_subformula_our_text = "<=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
-            all_subformulas_z3.append(cur_subformula_z3)
-            all_subformulas_our_text.append(cur_subformula_our_text)
+                    cur_subformula_z3 = (param1_z3 == param2_z3)
+                    cur_subformula_our = "<=> (" + param1_our + ") (" + param2_our + ")"
+            subformulas_z3.append(cur_subformula_z3)
+            subformulas_our.append(cur_subformula_our)
 
         # Solve with Z3
-        formula_z3 = cur_subformula_z3
         z3_solver = z3.Solver()
-        z3_solver.add(formula_z3)
+        z3_solver.add(subformulas_z3[-1])
         start_time_z3 = time.time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
         end_time_z3 = time.time()
 
         # Solve with ours
-        formula_our_text = "(assert (" + cur_subformula_our_text + "))"
-        our_solver = UFSolver(*FormulaParser.import_uf(formula_our_text))
+        formula_our = "(assert (" + subformulas_our[-1] + "))"
+        our_solver = UFSolver(*FormulaParser.import_uf(formula_our))
         start_time_our = time.time()
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
@@ -261,38 +253,38 @@ class TestUFSolver:
         # Generate formula
         all_variables = list(range(1, variable_num + 1))
         z3_f = z3.Function('f', z3.IntSort(), z3.IntSort())
-        all_uf_subformulas_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables]
-        all_uf_equations_z3 = []
-        all_uf_subformulas_our = [str(cur_literal) for cur_literal in all_variables]
-        all_uf_equations_our = []
+        subformulas_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables]
+        equations_z3 = []
+        subformulas_our = [str(cur_literal) for cur_literal in all_variables]
+        equations_our = []
 
         for cur_operator_idx in range(operator_num):
-            first_parameter_idx = random.randint(1, len(all_uf_subformulas_z3)) - 1
-            first_parameter_z3 = all_uf_subformulas_z3[first_parameter_idx]
-            first_parameter_our = all_uf_subformulas_our[first_parameter_idx]
+            first_parameter_idx = random.randint(1, len(subformulas_z3)) - 1
+            first_parameter_z3 = subformulas_z3[first_parameter_idx]
+            first_parameter_our = subformulas_our[first_parameter_idx]
 
             random_operator = random.randint(1, 3)
             if random_operator == 1:
                 cur_subformula_z3 = z3_f(first_parameter_z3)
                 cur_subformula_our = "f(" + first_parameter_our + ")"
-                all_uf_subformulas_z3.append(cur_subformula_z3)
-                all_uf_subformulas_our.append(cur_subformula_our)
+                subformulas_z3.append(cur_subformula_z3)
+                subformulas_our.append(cur_subformula_our)
             else:
-                second_parameter_idx = random.randint(1, len(all_uf_subformulas_z3)) - 1
-                second_parameter_z3 = all_uf_subformulas_z3[second_parameter_idx]
-                second_parameter_our = all_uf_subformulas_our[second_parameter_idx]
+                param2_idx = random.randint(1, len(subformulas_z3)) - 1
+                param2_z3 = subformulas_z3[param2_idx]
+                param2_our = subformulas_our[param2_idx]
                 if random_operator == 2:
-                    cur_subformula_z3 = (first_parameter_z3 == second_parameter_z3)
-                    cur_subformula_our = "(assert (= (" + first_parameter_our + ") (" + second_parameter_our + "))"
+                    cur_subformula_z3 = (first_parameter_z3 == param2_z3)
+                    cur_subformula_our = "(assert (= (" + first_parameter_our + ") (" + param2_our + "))"
                 elif random_operator == 3:
-                    cur_subformula_z3 = (first_parameter_z3 != second_parameter_z3)
-                    cur_subformula_our = "(assert (not (= (" + first_parameter_our + ") (" + second_parameter_our + \
+                    cur_subformula_z3 = (first_parameter_z3 != param2_z3)
+                    cur_subformula_our = "(assert (not (= (" + first_parameter_our + ") (" + param2_our + \
                                          ")))"
-                all_uf_equations_z3.append(cur_subformula_z3)
-                all_uf_equations_our.append(cur_subformula_our)
+                equations_z3.append(cur_subformula_z3)
+                equations_our.append(cur_subformula_our)
 
         # Solve with Z3
-        formula_z3 = z3.And(all_uf_equations_z3)
+        formula_z3 = z3.And(equations_z3)
         z3_solver = z3.Solver()
         z3_solver.add(formula_z3)
         start_time_z3 = time.time()
@@ -300,8 +292,8 @@ class TestUFSolver:
         end_time_z3 = time.time()
 
         # Solve with ours
-        formula_our_text = "(declare-fun f (Int) Int) " + ' '.join(all_uf_equations_our)
-        our_solver = UFSolver(*FormulaParser.import_uf(formula_our_text))
+        formula_our = "(declare-fun f (Int) Int) " + ' '.join(equations_our)
+        our_solver = UFSolver(*FormulaParser.import_uf(formula_our))
         start_time_our = time.time()
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
