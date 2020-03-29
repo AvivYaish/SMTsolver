@@ -1,10 +1,12 @@
 import numpy as np
-from numba import jit
 
 
 class LinearSolver:
+    Bland = "Bland"
+    Dantzig = "Dantzig"
+    FirstPositive = "FirstPositive"
 
-    def __init__(self, A, b, c, auxiliary=False):
+    def __init__(self, A, b, c, entering_selection_rule=Bland, auxiliary=False):
         self._rows = np.size(A, 0)
         self._cols = np.size(A, 1)
         self._A_N = A.astype(np.float64).copy()
@@ -14,6 +16,13 @@ class LinearSolver:
         self._x_B_star = b.astype(np.float64).copy()
         self._c_N = c.astype(np.float64).copy()
         self._c_B = np.zeros(self._rows, dtype=np.float64)
+
+        if entering_selection_rule == LinearSolver.Bland:
+            self._entering_selection_rule = self._bland_rule
+        elif entering_selection_rule == LinearSolver.Dantzig:
+            self._entering_selection_rule = self._dantzig_rule
+        elif entering_selection_rule == LinearSolver.FirstPositive:
+            self._entering_selection_rule = self._first_positive_rule
 
         if auxiliary:
             self._initial_auxiliary_step()
@@ -111,24 +120,24 @@ class LinearSolver:
         self._x_B_star -= t * d
         self._x_B_star[leaving_var] = t
 
-    @staticmethod
-    def _first_positive_index(arr):
-        for idx in range(len(arr)):
-            if arr[idx] > 0:
+    def _first_positive_rule(self, cur_objective_func):
+        for idx in range(len(cur_objective_func)):
+            if cur_objective_func[idx] > 0:
                 return idx
         return -1
+
+    def _bland_rule(self, cur_objective_func):
+        return np.where(cur_objective_func > 0, self._x_N_vars, np.inf).argmin()
+
+    def _dantzig_rule(self, cur_objective_func):
+        return np.argmax(cur_objective_func)
 
     def _choose_entering_col(self, y):
         cur_objective_func = self._c_N - np.matmul(y, self._A_N)
         positive_indices = cur_objective_func > 0
         if not np.any(positive_indices):
             return -1
-        # First positive column
-        # return LinearSolver._first_positive_index(cur_objective_func)
-        # Bland's rule
-        return np.where(positive_indices, self._x_N_vars, np.inf).argmin()
-        # Dantzig's rule
-        # return np.argmax(cur_objective_func)
+        return self._entering_selection_rule(cur_objective_func)
 
     def _choose_leaving_col(self, d):
         all_ts = self._x_B_star / d
@@ -137,7 +146,7 @@ class LinearSolver:
         # Cool numpy method for finding smallest positive value, found at:
         # https://stackoverflow.com/questions/55769522/how-to-find-maximum-negative-and-minimum-positive-number-in-a-numpy-array
         min_ratio = np.where(all_ts > 0, all_ts, np.inf).min()
-        # Bland's rule, choose var which achieves min-ratio and has the minimal index
+        # Choose var which achieves min-ratio and has the minimal index
         min_ratio_idx = np.where(all_ts == min_ratio, self._x_B_vars, np.inf).argmin()
         return min_ratio_idx, min_ratio
 
