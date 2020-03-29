@@ -18,34 +18,52 @@ class LinearSolver:
         if auxiliary:
             self._initial_auxiliary_step()
 
-    @staticmethod
-    def _solve_auxiliary_problem(A, b):
-        new_A = np.concatenate((-np.ones((np.size(A, 0), 1)), A), axis=1)
-        new_c = np.concatenate((np.array([-1]), np.zeros(np.size(A, 1))))
-        solver = LinearSolver(new_A, b, new_c, auxiliary=True)
-        solver.solve()
-        assignment = solver.get_assignment()
-        # new_var = 0
-        if assignment[0] != 0:
-            return None
-        assignment.pop(0)
-        # The auxiliary problem had an additional first variable,
-        # so all variables (including slack ones) are shifted by 1
-        return solver._x_B_vars - 1, {(var - 1): assignment[var] for var in assignment}
+    def _solve_auxiliary_problem(self) -> bool:
+        new_A = np.concatenate((-np.ones((self._rows, 1)), self._A_N), axis=1)
+        new_c = np.concatenate((np.array([-1]), np.zeros(self._cols)))
+        aux_solver = LinearSolver(new_A, self._x_B_star, new_c, auxiliary=True)
+        aux_solver.solve()
+        # The auxiliary problem had an additional first variable, its ID is 0
+        if aux_solver.get_assignment()[0] != 0:
+            return False
+
+        # Can prove the new variable is not in the basis.
+        self._x_B_vars = aux_solver._x_B_vars - 1   # All variables (including slack ones) are shifted by 1
+        self._x_B_star = aux_solver._x_B_star
+        self._B = aux_solver._B
+
+        # Remove the new variable from all data structures
+        new_var_idx = np.argmin(aux_solver._x_N_vars)
+        self._x_N_vars = np.delete(aux_solver._x_N_vars - 1, new_var_idx)
+        self._A_N = np.delete(aux_solver._A_N, new_var_idx, axis=1)
+
+        # Reorder c_B and c_N accordingly
+        for idx, var in enumerate(self._x_B_vars):
+            if var < self._cols:  # var is not slack
+                self._c_B[idx] = self._c_N[var]
+
+        new_c_N = np.zeros(self._cols, dtype=np.float64)
+        for idx, var in enumerate(self._x_N_vars):
+            if var >= self._cols:   # var is slack
+                new_c_N[idx] = 0
+            else:
+                new_c_N[idx] = self._c_N[var]
+        self._c_N = new_c_N
+        return True
 
     def get_assignment(self):
         assignment = {var: 0 for var in range(self._cols)}
         for var, value in zip(self._x_B_vars, self._x_B_star):
-            if var < self._cols:
+            if var in assignment:
                 assignment[var] = value
         return assignment
 
     def _initial_auxiliary_step(self):
-        # The entering variable is always the new variable created for the aux. problem
-        # The leaving variable is the one corresponding to the minimal b_i
-        # Because this is the first iteration, the B matrix is the identity,
-        # so d = c_B * (B^-1) = A_N[:, 0] = [-1, ..., -1]
-        # And thus t = -min_b_i
+        # The entering variable is always the new variable created for the
+        # aux. problem, so a = A_N[:, 0] = [-1, ..., -1].
+        # The leaving variable is the one corresponding to the minimal b_i.
+        # Because this is the first iteration, the B matrix is I,
+        # so d = a * (B^-1) = a * (I^-1) = a * I = a, thus t = -min_b_i
         entering_var, leaving_var = 0, np.argmin(self._x_B_star)
         t, d = -self._x_B_star[leaving_var], self._A_N[:, entering_var].copy()
         self._pivot(entering_var, leaving_var, t, d)
@@ -54,12 +72,8 @@ class LinearSolver:
         """
 
         """
-        if not np.all(self._x_B_star >= 0):
-            auxiliary_basic_vars, assignment = LinearSolver._solve_auxiliary_problem(self._A_N, self._x_B_star)
-            if auxiliary_basic_vars is None:
-                return None
-            for var in auxiliary_basic_vars:
-                pass
+        if (not np.all(self._x_B_star >= 0)) and (not self._solve_auxiliary_problem()):
+            return None
 
         while True:
             result = self._single_iteration()
@@ -86,8 +100,10 @@ class LinearSolver:
         self._A_N[:, entering_var] = self._B[:, leaving_var]
         self._B[:, leaving_var] = entering_col
 
-        # Update the objective function and index placement
+        # Update the objective function
         self._c_B[leaving_var], self._c_N[entering_var] = self._c_N[entering_var], self._c_B[leaving_var]
+
+        # Update indices
         self._x_B_vars[leaving_var], self._x_N_vars[entering_var] = \
             self._x_N_vars[entering_var], self._x_B_vars[leaving_var]
 
