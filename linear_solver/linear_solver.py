@@ -82,16 +82,16 @@ class LinearSolver:
 
     def _single_iteration(self):
         y = self._btran(self._B, self._c_B)
-        entering_var = self._choose_entering_var(self._A_N, y, self._c_N)
-        if entering_var == -1:
+        entering_col = self._choose_entering_col(y)
+        if entering_col == -1:
             return np.matmul(self._c_B, self._x_B_star)
 
-        d = self._ftran(self._B, self._A_N[:, entering_var])
-        leaving_var, t = self._choose_leaving_var(self._x_B_star, d)
-        if leaving_var == -1:
-            return float('inf')
+        d = self._ftran(self._B, self._A_N[:, entering_col])
+        leaving_col, t = self._choose_leaving_col(d)
+        if t == np.inf:
+            return np.inf
 
-        self._pivot(entering_var, leaving_var, t, d)
+        self._pivot(entering_col, leaving_col, t, d)
         return None
 
     def _pivot(self, entering_var: int, leaving_var: int, t, d):
@@ -118,22 +118,28 @@ class LinearSolver:
                 return idx
         return -1
 
-    @staticmethod
-    def _choose_entering_var(A_N, y, c_N):
+    def _choose_entering_col(self, y):
+        cur_objective_func = self._c_N - np.matmul(y, self._A_N)
+        positive_indices = cur_objective_func > 0
+        if not np.any(positive_indices):
+            return -1
+        # First positive column
+        # return LinearSolver._first_positive_index(cur_objective_func)
         # Bland's rule
-        return LinearSolver._first_positive_index(c_N - np.matmul(y, A_N))
+        return np.where(positive_indices, self._x_N_vars, np.inf).argmin()
+        # Dantzig's rule
+        # return np.argmax(cur_objective_func)
 
-    @staticmethod
-    def _choose_leaving_var(x_B, d):
-        all_ts = x_B / d
+    def _choose_leaving_col(self, d):
+        all_ts = self._x_B_star / d
+        if np.all(all_ts <= 0):
+            return -1, np.inf
         # Cool numpy method for finding smallest positive value, found at:
         # https://stackoverflow.com/questions/55769522/how-to-find-maximum-negative-and-minimum-positive-number-in-a-numpy-array
-        largest_t_idx = np.where(all_ts > 0, all_ts, np.inf).argmin()
-        largest_t_val = all_ts[largest_t_idx]
-        if largest_t_val == np.inf:
-            # If the minimal positive index is inf, the solution is unbounded
-            largest_t_idx = -1
-        return largest_t_idx, largest_t_val
+        min_ratio = np.where(all_ts > 0, all_ts, np.inf).min()
+        # Bland's rule, choose var which achieves min-ratio and has the minimal index
+        min_ratio_idx = np.where(all_ts == min_ratio, self._x_B_vars, np.inf).argmin()
+        return min_ratio_idx, min_ratio
 
     @staticmethod
     def _btran(B, c_B):
