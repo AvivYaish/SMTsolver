@@ -3,7 +3,7 @@ from sat_solver.sat_solver import SATSolver
 from copy import deepcopy
 
 
-class SMTSolver:
+class UFSolver:
     def __init__(self, cnf_formula, tseitin_mappings, theory_datastructures,
                  max_new_clauses=float('inf'), halving_period=10000):
         self._cnf_formula = cnf_formula

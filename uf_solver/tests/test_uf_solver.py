@@ -1,5 +1,5 @@
 import pytest
-from smt_solver.smt_solver import SMTSolver
+from uf_solver.uf_solver import UFSolver
 from formula_parser.formula_parser import FormulaParser
 from copy import deepcopy
 import z3
@@ -7,14 +7,14 @@ import random
 import time
 
 
-class TestSMTSolver:
+class TestUFSolver:
 
     @staticmethod
     def test_congruence_closure():
         formula = ('(declare-fun f (Bool Bool) Bool) ' +
                    '(assert (= f(a, b) a)) ' +
                    '(assert (not (= f(f(a, b), b) a)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
         conflict_clause, assignments = solver.congruence_closure()
@@ -24,7 +24,7 @@ class TestSMTSolver:
                    '(assert (= f(f(f(a))) a)) ' +
                    '(assert (= f(f(f(f(f(a))))) a)) ' +
                    '(assert (not (= f(a) a)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 4: {"value": False}}
         conflict_clause, assignments = solver.congruence_closure()
@@ -33,7 +33,7 @@ class TestSMTSolver:
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(x) f(y))) ' +
                    '(assert (not (= x y)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
         conflict_clause, assignments = solver.congruence_closure()
@@ -45,7 +45,7 @@ class TestSMTSolver:
                    '(assert (= f(g(f(y))) x)) ' +
                    '(assert (= f(y) x)) ' +
                    '(assert (not (= g(f(x)) x)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         graph = deepcopy(solver._basic_congruence_graph)
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
@@ -68,7 +68,7 @@ class TestSMTSolver:
                    '(assert (or (or (= s t) (not (= t r))) (= f(s) f(t)))) ' +
                    '(assert (or (or (not (= b c)) (not (= t r))) (= f(s) f(a))))' +
                    '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},     # ('=', 'a', 'b')
@@ -83,7 +83,7 @@ class TestSMTSolver:
         # assert solver.congruence_closure() == frozenset({20, -1, -4})  # <- this is the minimal
         assert conflict_clause == frozenset({-15, -12, 20, -7, -4, -1})
 
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
@@ -97,7 +97,7 @@ class TestSMTSolver:
         conflict_clause, assignments = solver.congruence_closure()
         assert conflict_clause == frozenset({-15, 20, -7, -4, -1})
 
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
@@ -119,7 +119,7 @@ class TestSMTSolver:
                    '(assert (or (or (= s t) (not (= t r))) (= f(s) f(t)))) ' +
                    '(assert (or (or (not (= b c)) (not (= t r))) (= f(s) f(a))))' +
                    '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         solver._solver._create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
@@ -147,26 +147,26 @@ class TestSMTSolver:
                    '(assert (or (or (= s t) (not (= t r))) (= f(s) f(t)))) ' +
                    '(assert (or (or (not (= b c)) (not (= t r))) (= f(s) f(a))))' +
                    '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         assert solver.solve()
 
         formula = ('(declare-fun f (Bool Bool) Bool) ' +
                    '(assert (= f(a, b) a)) ' +
                    '(assert (not (= f(f(a, b), b) a)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         assert not solver.solve()
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(f(f(a))) a)) ' +
                    '(assert (= f(f(f(f(f(a))))) a)) ' +
                    '(assert (not (= f(a) a)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         assert not solver.solve()
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(x) f(y))) ' +
                    '(assert (not (= x y)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         assert solver.solve()
 
         formula = ('(declare-fun f (Bool) Bool) ' +
@@ -175,23 +175,24 @@ class TestSMTSolver:
                    '(assert (= f(g(f(y))) x)) ' +
                    '(assert (= f(y) x)) ' +
                    '(assert (not (= g(f(x)) x)))')
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
+        solver = UFSolver(*FormulaParser.import_uf(formula))
         assert not solver.solve()
 
     @staticmethod
     def test_boolean_formulas():
         formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (and (not 1) (1)))"
-        assert not SMTSolver(*FormulaParser.import_uf(formula)).solve()
+        assert not UFSolver(*FormulaParser.import_uf(formula)).solve()
 
         formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (or (1) (not 2)))"
-        assert SMTSolver(*FormulaParser.import_uf(formula)).solve()
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
         formula = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (or (not (not 4)) (not 4)))"
-        assert SMTSolver(*FormulaParser.import_uf(formula)).solve()
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(3, clause_num) for clause_num in list(range(1, 100))] * 100)
+    @pytest.mark.parametrize("variable_num, operator_num", [(3, clause_num) for clause_num in list(range(1, 100))])
     def test_random_formula(variable_num: int, operator_num: int):
+        return
         # Generates a random formula and compares our solver to Z3
         f = z3.Function('f', z3.IntSort(), z3.IntSort())
         g = z3.Function('g', z3.IntSort(), z3.IntSort(), z3.IntSort())
@@ -278,12 +279,8 @@ class TestSMTSolver:
             all_subformulas_z3.append(cur_subformula_z3)
             all_subformulas_our.append(cur_subformula_our)
 
-        formula_z3 = z3.And(*all_uf_equations_z3)
-        formula_our_text = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) " + \
-                           ' '.join(all_uf_equations_our)
-        print(formula_our_text)
-
         # Solve with Z3
+        formula_z3 = z3.And(all_uf_equations_z3)
         z3_solver = z3.Solver()
         z3_solver.add(formula_z3)
         start_time_z3 = time.time()
@@ -291,8 +288,10 @@ class TestSMTSolver:
         end_time_z3 = time.time()
 
         # Solve with ours
+        formula_our_text = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) " + \
+                           ' '.join(all_uf_equations_our)
+        our_solver = UFSolver(*FormulaParser.import_uf(formula_our_text))
         start_time_our = time.time()
-        our_solver = SMTSolver(*FormulaParser.import_uf(formula_our_text))
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
 
@@ -305,7 +304,7 @@ class TestSMTSolver:
         assert is_sat_our is is_sat_z3
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100)) * 10])
+    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100))])
     def test_random_formula_hard(variable_num: int, operator_num: int):
         # Generates a random formula and compares our solver to Z3
         f = z3.Function('f', z3.IntSort(), z3.IntSort())
@@ -355,12 +354,8 @@ class TestSMTSolver:
                 all_uf_equations_z3.append(cur_subformula_z3)
                 all_uf_equations_our.append(cur_subformula_our)
 
-        formula_z3 = z3.And(*all_uf_equations_z3)
-        formula_our_text = "(declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) " + \
-                           ' '.join(all_uf_equations_our)
-        print(formula_our_text)
-
         # Solve with Z3
+        formula_z3 = z3.And(all_uf_equations_z3)
         z3_solver = z3.Solver()
         z3_solver.add(formula_z3)
         start_time_z3 = time.time()
@@ -368,8 +363,9 @@ class TestSMTSolver:
         end_time_z3 = time.time()
 
         # Solve with ours
+        formula_our_text = "(declare-fun f (Int) Int) " + ' '.join(all_uf_equations_our)
+        our_solver = UFSolver(*FormulaParser.import_uf(formula_our_text))
         start_time_our = time.time()
-        our_solver = SMTSolver(*FormulaParser.import_uf(formula_our_text))
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
 
@@ -382,7 +378,7 @@ class TestSMTSolver:
         assert is_sat_our is is_sat_z3
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 2500))])
+    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 500))])
     def test_random_boolean_formula(variable_num: int, operator_num: int):
         # Generates a random formula and compares our solver to Z3
 
@@ -428,10 +424,8 @@ class TestSMTSolver:
             all_subformulas_z3.append(cur_subformula_z3)
             all_subformulas_our_text.append(cur_subformula_our_text)
 
-        formula_z3 = cur_subformula_z3
-        formula_our_text = "(assert (" + cur_subformula_our_text + "))"
-
         # Solve with Z3
+        formula_z3 = cur_subformula_z3
         z3_solver = z3.Solver()
         z3_solver.add(formula_z3)
         start_time_z3 = time.time()
@@ -439,8 +433,9 @@ class TestSMTSolver:
         end_time_z3 = time.time()
 
         # Solve with ours
+        formula_our_text = "(assert (" + cur_subformula_our_text + "))"
+        our_solver = UFSolver(*FormulaParser.import_uf(formula_our_text))
         start_time_our = time.time()
-        our_solver = SMTSolver(*FormulaParser.import_uf(formula_our_text))
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
 
@@ -451,17 +446,3 @@ class TestSMTSolver:
         print("Z3 formula: ", formula_z3)
         print("Our formula: ", formula_our_text)
         assert is_sat_our is is_sat_z3
-
-    @staticmethod
-    def test_bad():
-        formula = """Z3 formula:  And(3 != 1,
-    1 != 5,
-    1 == 1,
-    4 != 2,
-    5 != 3,
-    f(3) == If(3, 1, 0))
-Our formula:  (declare-fun f (Bool) Bool) (declare-fun g (Bool Bool) Bool) (assert (not (= (3) (1))) (assert (not (= (1) (5))) (assert (= (1) (1)) (assert (not (= (4) (2))) (assert (not (= (5) (3))) (assert (= (f(3)) (3))
-"""
-        solver = SMTSolver(*FormulaParser.import_uf(formula))
-        solver.solve()
-        print(solver.get_assignment())

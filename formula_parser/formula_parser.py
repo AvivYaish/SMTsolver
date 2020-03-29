@@ -1,4 +1,4 @@
-from smt_solver.congruence_graph import CongruenceGraph
+from uf_solver.congruence_graph import CongruenceGraph
 import re
 
 
