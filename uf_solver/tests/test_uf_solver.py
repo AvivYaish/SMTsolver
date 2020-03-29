@@ -203,29 +203,25 @@ class TestUFSolver:
 
         for cur_operator_idx in range(operator_num):
             param1_idx = random.randint(1, len(subformulas_z3)) - 1
-            param1_z3 = subformulas_z3[param1_idx]
-            param1_our = subformulas_our[param1_idx]
-
+            param1_z3, param1_our = subformulas_z3[param1_idx], subformulas_our[param1_idx]
             random_operator = random.randint(1, 5)
             if random_operator == 1:
-                cur_subformula_z3 = z3.Not(param1_z3)
-                cur_subformula_our = "not (" + param1_our + ")"
+                cur_subformula_z3, cur_subformula_our = z3.Not(param1_z3), "not (" + param1_our + ")"
             else:   # Binary operators
                 param2_idx = random.randint(1, len(subformulas_z3)) - 1
-                param2_z3 = subformulas_z3[param2_idx]
-                param2_our = subformulas_our[param2_idx]
+                param2_z3, param2_our = subformulas_z3[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
-                    cur_subformula_z3 = z3.And(param1_z3, param2_z3)
-                    cur_subformula_our = "and (" + param1_our + ") (" + param2_our + ")"
+                    cur_subformula_z3, cur_subformula_our = z3.And(param1_z3, param2_z3), \
+                                                            "and (" + param1_our + ") (" + param2_our + ")"
                 elif random_operator == 3:
-                    cur_subformula_z3 = z3.Or(param1_z3, param2_z3)
-                    cur_subformula_our = "or (" + param1_our + ") (" + param2_our + ")"
+                    cur_subformula_z3, cur_subformula_our = z3.Or(param1_z3, param2_z3), \
+                                                            "or (" + param1_our + ") (" + param2_our + ")"
                 elif random_operator == 4:
-                    cur_subformula_z3 = z3.Implies(param1_z3, param2_z3)
-                    cur_subformula_our = "=> (" + param1_our + ") (" + param2_our + ")"
+                    cur_subformula_z3, cur_subformula_our = z3.Implies(param1_z3, param2_z3), \
+                                                            "=> (" + param1_our + ") (" + param2_our + ")"
                 elif random_operator == 5:
-                    cur_subformula_z3 = (param1_z3 == param2_z3)
-                    cur_subformula_our = "<=> (" + param1_our + ") (" + param2_our + ")"
+                    cur_subformula_z3, cur_subformula_our = (param1_z3 == param2_z3), \
+                                                            "<=> (" + param1_our + ") (" + param2_our + ")"
             subformulas_z3.append(cur_subformula_z3)
             subformulas_our.append(cur_subformula_our)
 
@@ -253,33 +249,28 @@ class TestUFSolver:
         # Generate formula
         all_variables = list(range(1, variable_num + 1))
         z3_f = z3.Function('f', z3.IntSort(), z3.IntSort())
-        subformulas_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables]
-        equations_z3 = []
-        subformulas_our = [str(cur_literal) for cur_literal in all_variables]
-        equations_our = []
+        subformulas_z3, equations_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables], []
+        subformulas_our, equations_our = [str(cur_literal) for cur_literal in all_variables], []
 
         for cur_operator_idx in range(operator_num):
-            first_parameter_idx = random.randint(1, len(subformulas_z3)) - 1
-            first_parameter_z3 = subformulas_z3[first_parameter_idx]
-            first_parameter_our = subformulas_our[first_parameter_idx]
-
+            param1_idx = random.randint(1, len(subformulas_z3)) - 1
+            param1_z3, param1_our = subformulas_z3[param1_idx], subformulas_our[param1_idx]
             random_operator = random.randint(1, 3)
             if random_operator == 1:
-                cur_subformula_z3 = z3_f(first_parameter_z3)
-                cur_subformula_our = "f(" + first_parameter_our + ")"
+                cur_subformula_z3, cur_subformula_our = z3_f(param1_z3), "f(" + param1_our + ")"
                 subformulas_z3.append(cur_subformula_z3)
                 subformulas_our.append(cur_subformula_our)
             else:
                 param2_idx = random.randint(1, len(subformulas_z3)) - 1
-                param2_z3 = subformulas_z3[param2_idx]
-                param2_our = subformulas_our[param2_idx]
+                param2_z3, param2_our = subformulas_z3[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
-                    cur_subformula_z3 = (first_parameter_z3 == param2_z3)
-                    cur_subformula_our = "(assert (= (" + first_parameter_our + ") (" + param2_our + "))"
+                    cur_subformula_z3, cur_subformula_our = (param1_z3 == param2_z3), \
+                                                            "(assert (= (" + param1_our + ") (" + param2_our + "))"
                 elif random_operator == 3:
-                    cur_subformula_z3 = (first_parameter_z3 != param2_z3)
-                    cur_subformula_our = "(assert (not (= (" + first_parameter_our + ") (" + param2_our + \
-                                         ")))"
+                    cur_subformula_z3, cur_subformula_our = (
+                        (param1_z3 != param2_z3),
+                        "(assert (not (= (" + param1_our + ") (" + param2_our + ")))"
+                    )
                 equations_z3.append(cur_subformula_z3)
                 equations_our.append(cur_subformula_our)
 

@@ -277,13 +277,13 @@ class TestSATSolver:
         ])
         different_colors_per_edge = [item for sublist in different_colors_per_edge for item in sublist]
 
-        all_clauses = []
-        all_clauses.extend(vertices_are_colored)
-        all_clauses.extend(one_color_per_vertex)
-        all_clauses.extend(different_colors_per_edge)
-        all_clauses = frozenset(clause for clause in all_clauses)
+        clauses = []
+        clauses.extend(vertices_are_colored)
+        clauses.extend(one_color_per_vertex)
+        clauses.extend(different_colors_per_edge)
+        clauses = frozenset(clause for clause in clauses)
 
-        return all_clauses
+        return clauses
 
     @staticmethod
     @pytest.mark.parametrize("color_num, edges, is_sat",
@@ -336,14 +336,14 @@ class TestSATSolver:
         formula_z3 = []
         formula_our = set()
 
-        all_variables_z3 = numpy.array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal)))) for cur_literal
+        variables_z3 = numpy.array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal)))) for cur_literal
                                         in range(1, variable_num + 1)]).flatten()
-        all_variables_our = numpy.array([(variable, -variable) for variable in range(1, variable_num + 1)]).flatten()
+        variables_our = numpy.array([(variable, -variable) for variable in range(1, variable_num + 1)]).flatten()
 
         for cur_clause_idx in range(clause_num):
-            chosen_literals = numpy.random.randint(0, len(all_variables_our), size=clause_length)
-            formula_z3.append(z3.Or(*all_variables_z3[chosen_literals]))
-            formula_our.add(frozenset(all_variables_our[chosen_literals]))
+            chosen_literals = numpy.random.randint(0, len(variables_our), size=clause_length)
+            formula_z3.append(z3.Or(*variables_z3[chosen_literals]))
+            formula_our.add(frozenset(variables_our[chosen_literals]))
 
         # Solve with Z3
         z3_solver = z3.Solver()
@@ -374,90 +374,69 @@ class TestSATSolver:
         # Generates a random formula and compares our solver to Z3
 
         # Generate formula
-        all_variables = list(range(1, variable_num + 1))
-        all_subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_variables]
-        all_subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in all_subformulas_z3])
-        all_subformulas_our_text = [str(cur_literal) for cur_literal in all_variables]
-        all_subformulas_our_text.extend([("not " + cur_literal) for cur_literal in all_subformulas_our_text])
-        all_subformulas_our = [str(cur_literal) for cur_literal in all_variables]
-        all_subformulas_our.extend([("not", cur_literal) for cur_literal in all_subformulas_our])
+        variables = list(range(1, variable_num + 1))
+        subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in variables]
+        subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in subformulas_z3])
+        subformulas_our_txt = [str(cur_literal) for cur_literal in variables]
+        subformulas_our_txt.extend([("not " + cur_literal) for cur_literal in subformulas_our_txt])
+        subformulas_our = [str(cur_literal) for cur_literal in variables]
+        subformulas_our.extend([("not", cur_literal) for cur_literal in subformulas_our])
 
         for cur_operator_idx in range(operator_num):
-            cur_subformula_z3 = None
-            cur_subformula_our_text = None
-            cur_subformula_our = None
+            param1_idx = random.randint(1, len(subformulas_z3)) - 1
+            param1_z3, param1_our_txt, param1_our = \
+                subformulas_z3[param1_idx], subformulas_our_txt[param1_idx], subformulas_our[param1_idx]
             random_operator = random.randint(1, 5)
-
-            first_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
-            first_parameter_z3 = all_subformulas_z3[first_parameter_idx]
-            first_parameter_our_text = all_subformulas_our_text[first_parameter_idx]
-            first_parameter_our = all_subformulas_our[first_parameter_idx]
             if random_operator == 1:
-                cur_subformula_z3 = z3.Not(first_parameter_z3)
-                cur_subformula_our_text = "not (" + first_parameter_our_text + ")"
-                cur_subformula_our = "not", first_parameter_our
-            else:
-                # Binary operators
-                second_parameter_idx = random.randint(1, len(all_subformulas_z3)) - 1
-                second_parameter_z3 = all_subformulas_z3[second_parameter_idx]
-                second_parameter_our_text = all_subformulas_our_text[second_parameter_idx]
-                second_parameter_our = all_subformulas_our[second_parameter_idx]
+                cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our \
+                    = z3.Not(param1_z3), "not (" + param1_our_txt + ")", ("not", param1_our)
+            else:   # Binary operators
+                param2_idx = random.randint(1, len(subformulas_z3)) - 1
+                param2_z3, param2_our_txt, param2_our = \
+                    subformulas_z3[param2_idx], subformulas_our_txt[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
-                    cur_subformula_z3 = z3.And(first_parameter_z3, second_parameter_z3)
-                    cur_subformula_our_text = "and (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
-                    cur_subformula_our = "and", first_parameter_our, second_parameter_our
+                    cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our \
+                        = z3.And(param1_z3, param2_z3), "and (" + param1_our_txt + ") (" + param2_our_txt + ")",\
+                          ("and", param1_our, param2_our)
                 elif random_operator == 3:
-                    cur_subformula_z3 = z3.Or(first_parameter_z3, second_parameter_z3)
-                    cur_subformula_our_text = "or (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
-                    cur_subformula_our = "or", first_parameter_our, second_parameter_our
+                    cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
+                        z3.Or(param1_z3, param2_z3), "or (" + param1_our_txt + ") (" + param2_our_txt + ")", \
+                        ("or", param1_our, param2_our)
                 elif random_operator == 4:
-                    cur_subformula_z3 = z3.Implies(first_parameter_z3, second_parameter_z3)
-                    cur_subformula_our_text = "=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
-                    cur_subformula_our = "=>", first_parameter_our, second_parameter_our
+                    cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
+                        z3.Implies(param1_z3, param2_z3), "=> (" + param1_our_txt + ") (" + param2_our_txt + ")", \
+                        ("=>", param1_our, param2_our)
                 elif random_operator == 5:
-                    cur_subformula_z3 = (first_parameter_z3 == second_parameter_z3)
-                    cur_subformula_our_text = "<=> (" + first_parameter_our_text + ") (" + second_parameter_our_text \
-                                              + ")"
-                    cur_subformula_our = "<=>", first_parameter_our, second_parameter_our
-            all_subformulas_z3.append(cur_subformula_z3)
-            all_subformulas_our_text.append(cur_subformula_our_text)
-            all_subformulas_our.append(cur_subformula_our)
-
-        formula_z3 = cur_subformula_z3
-        formula_our_text = cur_subformula_our_text
-        formula_our = cur_subformula_our
+                    cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
+                        (param1_z3 == param2_z3), "<=> (" + param1_our_txt + ") (" + param2_our_txt + ")", \
+                        ("<=>", param1_our, param2_our)
+            subformulas_z3.append(cur_subformula_z3)
+            subformulas_our_txt.append(cur_subformula_our_txt)
+            subformulas_our.append(cur_subformula_our)
 
         # Solve with Z3
         z3_solver = z3.Solver()
-        z3_solver.add(formula_z3)
+        z3_solver.add(subformulas_z3[-1])
         start_time_z3 = time.time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
         end_time_z3 = time.time()
 
         # Solve with ours
         if test_import:
-            formula_our = FormulaParser.import_formula(formula_our_text)
+            formula_our = FormulaParser.import_formula(subformulas_our_txt[-1])
         else:
-            formula_our = FormulaParser._convert_to_cnf(formula_our)
+            formula_our = FormulaParser._convert_to_cnf(subformulas_our[-1])
         start_time_our = time.time()
         our_solver = SATSolver(formula_our)
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
 
-        print()
-        print("Is sat? ", is_sat_z3)
         print("Z3:\t\t", end_time_z3 - start_time_z3)
         print("Our:\t", end_time_our - start_time_our)
-        print("Z3 formula: ", formula_z3)
-        print("Our formula: ", formula_our_text)
         assert is_sat_our is is_sat_z3
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(5, clause_num, True) for clause_num in list(range(1, 300))]
-                             )
+                             [(5, clause_num, True) for clause_num in list(range(1, 300))])
     def test_simple_random_formula(variable_num: int, operator_num: int, test_import):
         TestSATSolver.test_random_formula(variable_num, operator_num, test_import)
