@@ -223,11 +223,11 @@ class TestUFSolver:
                     subformulas_z3[param2_idx], subformulas_our_txt[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
-                        (param1_z3 == param2_z3), "(= (" + param1_our_txt + ") (" + param2_our_txt + ")", \
+                        (param1_z3 == param2_z3), "= (" + param1_our_txt + ") (" + param2_our_txt + ")", \
                         ("=", param1_our, param2_our)
                 elif random_operator == 3:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
-                        (param1_z3 != param2_z3), "(not (= (" + param1_our_txt + ") (" + param2_our_txt + "))", \
+                        (param1_z3 != param2_z3), "not (= (" + param1_our_txt + ") (" + param2_our_txt + "))", \
                         ("not", ("=", param1_our, param2_our))
                 equations_z3.append(cur_subformula_z3)
                 equations_our_txt.append(cur_subformula_our_txt)
