@@ -288,10 +288,13 @@ class SATSolver:
                 decision_literal = -decision_literal
             self._backtrack(cur_level - 1)
             self._add_conflict_clause(conflict_clause)
+            assigned_literal = False
             if len(conflict_clause) == 1:
                 for literal in conflict_clause:
-                    self._assign(conflict_clause, literal)
-            else:
+                    if abs(literal) not in self._assignment:
+                        self._assign(conflict_clause, literal)
+                        assigned_literal = True
+            if not assigned_literal:
                 self._assign(None, -decision_literal)
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
