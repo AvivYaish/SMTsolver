@@ -365,14 +365,16 @@ class TestSATSolver:
         assert is_sat_our is is_sat_z3
 
     @staticmethod
-    def generate_random_formula(variable_num: int, operator_num: int):
-        variables = list(range(1, variable_num + 1))
-        subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in variables]
-        subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in subformulas_z3])
-        subformulas_our_txt = [str(cur_literal) for cur_literal in variables]
-        subformulas_our_txt.extend([("not " + cur_literal) for cur_literal in subformulas_our_txt])
-        subformulas_our = [str(cur_literal) for cur_literal in variables]
-        subformulas_our.extend([("not", cur_literal) for cur_literal in subformulas_our])
+    def generate_random_formula(variable_num: int, operator_num: int,
+                                subformulas_z3=None, subformulas_our_txt=None, subformulas_our=None):
+        if (subformulas_z3 is None) or (subformulas_our_txt is None) or (subformulas_our is None):
+            variables = list(range(1, variable_num + 1))
+            subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in variables]
+            subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in subformulas_z3])
+            subformulas_our_txt = [str(cur_literal) for cur_literal in variables]
+            subformulas_our_txt.extend([("not " + cur_literal) for cur_literal in subformulas_our_txt])
+            subformulas_our = [str(cur_literal) for cur_literal in variables]
+            subformulas_our.extend([("not", cur_literal) for cur_literal in subformulas_our])
 
         for cur_operator_idx in range(operator_num):
             param1_idx = random.randint(1, len(subformulas_z3)) - 1
@@ -422,6 +424,8 @@ class TestSATSolver:
         end_time_our = time.time()
 
         if print_time:
+            print()
+            print("Is SAT?", is_sat_z3)
             print("Z3:\t\t", end_time_z3 - start_time_z3)
             print("Our:\t", end_time_our - start_time_our)
         return is_sat_our is is_sat_z3

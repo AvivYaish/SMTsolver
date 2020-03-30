@@ -203,32 +203,45 @@ class TestUFSolver:
         all_variables = list(range(1, variable_num + 1))
         z3_f = z3.Function('f', z3.IntSort(), z3.IntSort())
         subformulas_z3, equations_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables], []
+        subformulas_our_txt, equations_our_txt = [str(cur_literal) for cur_literal in all_variables], []
         subformulas_our, equations_our = [str(cur_literal) for cur_literal in all_variables], []
 
         for cur_operator_idx in range(operator_num):
             param1_idx = random.randint(1, len(subformulas_z3)) - 1
-            param1_z3, param1_our = subformulas_z3[param1_idx], subformulas_our[param1_idx]
+            param1_z3, param1_our_txt, param1_our = \
+                subformulas_z3[param1_idx], subformulas_our_txt[param1_idx], subformulas_our[param1_idx]
             random_operator = random.randint(1, 3)
             if random_operator == 1:
-                cur_subformula_z3, cur_subformula_our = z3_f(param1_z3), "f(" + param1_our + ")"
+                cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
+                    z3_f(param1_z3), "f(" + param1_our_txt + ")", ("f", param1_our)
                 subformulas_z3.append(cur_subformula_z3)
+                subformulas_our_txt.append(cur_subformula_our_txt)
                 subformulas_our.append(cur_subformula_our)
             else:
                 param2_idx = random.randint(1, len(subformulas_z3)) - 1
-                param2_z3, param2_our = subformulas_z3[param2_idx], subformulas_our[param2_idx]
+                param2_z3, param2_our_txt, param2_our = \
+                    subformulas_z3[param2_idx], subformulas_our_txt[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
-                    cur_subformula_z3, cur_subformula_our = (param1_z3 == param2_z3), \
-                                                            "(assert (= (" + param1_our + ") (" + param2_our + "))"
+                    cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
+                        (param1_z3 == param2_z3), "(= (" + param1_our_txt + ") (" + param2_our_txt + ")", \
+                        ("=", param1_our, param2_our)
                 elif random_operator == 3:
-                    cur_subformula_z3, cur_subformula_our = (
-                        (param1_z3 != param2_z3), "(assert (not (= (" + param1_our + ") (" + param2_our + ")))")
+                    cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
+                        (param1_z3 != param2_z3), "(not (= (" + param1_our_txt + ") (" + param2_our_txt + "))", \
+                        ("not", ("=", param1_our, param2_our))
                 equations_z3.append(cur_subformula_z3)
+                equations_our_txt.append(cur_subformula_our_txt)
                 equations_our.append(cur_subformula_our)
-        return equations_z3, equations_our
+        return equations_z3, equations_our_txt, equations_our
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100)) * 10])
     def test_random_uf_formula(variable_num: int, operator_num: int):
-        equations_z3, equations_our = TestUFSolver.generate_random_equations(variable_num, operator_num)
-        formula_our = "(declare-fun f (Int) Int) " + ' '.join(equations_our)
-        assert TestSATSolver.compare_to_z3(z3.And(equations_z3), UFSolver(*FormulaParser.import_uf(formula_our)))
+        equations_z3, equations_our_txt, equations_our = \
+            TestUFSolver.generate_random_equations(variable_num, operator_num)
+        formula_z3, formula_our_txt, formula_our = \
+            TestSATSolver.generate_random_formula(0, operator_num, equations_z3, equations_our_txt, equations_our)
+        formula_our_txt = "(declare-fun f (Int) Int) (assert (" + formula_our_txt + "))"
+        print("Z3 formula: ", formula_z3)
+        print("Our formula: ", formula_our_txt)
+        assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
