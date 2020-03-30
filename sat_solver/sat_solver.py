@@ -281,14 +281,18 @@ class SATSolver:
         conflict_clause, new_assignments = self._theory_solver.congruence_closure()
         while conflict_clause is not None:
             cur_level = len(self._assignment_by_level) - 1
-            if cur_level <= 0:
+            if cur_level == 0:
                 return False
             decision_literal = self._assignment_by_level[cur_level][0]
-            if self._assignment[abs(decision_literal)]["value"] is False:
+            if not self._assignment[abs(decision_literal)]["value"]:
                 decision_literal = -decision_literal
             self._backtrack(cur_level - 1)
             self._add_conflict_clause(conflict_clause)
-            self._assign(None, -decision_literal)
+            if len(conflict_clause) == 1:
+                for literal in conflict_clause:
+                    self._assign(conflict_clause, literal)
+            else:
+                self._assign(None, -decision_literal)
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
         for literal in new_assignments:
