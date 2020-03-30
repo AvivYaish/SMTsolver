@@ -97,6 +97,9 @@ class SATSolver:
         """
         return {var: val for var, val in self.iterable_assignment()}
 
+    def get_variable_assignment(self, variable):
+        return self._assignment.get(variable, {"value": None})["value"]
+
     def iterable_assignment(self):
         """
         :return: a (variable, value) tuple for every assigned variable.

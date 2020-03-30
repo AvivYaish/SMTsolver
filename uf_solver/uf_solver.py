@@ -42,6 +42,7 @@ class UFSolver:
         positive_relations = set()
         negative_relations = []
         for variable, value in self._solver.iterable_assignment():
+            # Under the assumption that all literals are equations, this is faster than going over all equations
             if variable in self._tseitin_variable_to_subterm:
                 subterm = self._tseitin_variable_to_subterm[variable]
                 if subterm in self._non_boolean_clauses:    # If the variable represents an equality
