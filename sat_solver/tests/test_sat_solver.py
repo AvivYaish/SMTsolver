@@ -365,15 +365,7 @@ class TestSATSolver:
         assert is_sat_our is is_sat_z3
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(variable_num, variable_num ** 4, True) for variable_num in list(range(1, 15))]
-                             # +
-                             # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
-                             )
-    def test_random_formula(variable_num: int, operator_num: int, test_import):
-        # Generates a random formula and compares our solver to Z3
-
-        # Generate formula
+    def generate_random_formula(variable_num: int, operator_num: int):
         variables = list(range(1, variable_num + 1))
         subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in variables]
         subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in subformulas_z3])
@@ -390,13 +382,13 @@ class TestSATSolver:
             if random_operator == 1:
                 cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our \
                     = z3.Not(param1_z3), "not (" + param1_our_txt + ")", ("not", param1_our)
-            else:   # Binary operators
+            else:  # Binary operators
                 param2_idx = random.randint(1, len(subformulas_z3)) - 1
                 param2_z3, param2_our_txt, param2_our = \
                     subformulas_z3[param2_idx], subformulas_our_txt[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our \
-                        = z3.And(param1_z3, param2_z3), "and (" + param1_our_txt + ") (" + param2_our_txt + ")",\
+                        = z3.And(param1_z3, param2_z3), "and (" + param1_our_txt + ") (" + param2_our_txt + ")", \
                           ("and", param1_our, param2_our)
                 elif random_operator == 3:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
@@ -413,27 +405,42 @@ class TestSATSolver:
             subformulas_z3.append(cur_subformula_z3)
             subformulas_our_txt.append(cur_subformula_our_txt)
             subformulas_our.append(cur_subformula_our)
+        return subformulas_z3[-1], subformulas_our_txt[-1], subformulas_our[-1]
 
+    @staticmethod
+    def compare_to_z3(z3_formula, our_solver, print_time=True):
         # Solve with Z3
         z3_solver = z3.Solver()
-        z3_solver.add(subformulas_z3[-1])
+        z3_solver.add(z3_formula)
         start_time_z3 = time.time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
         end_time_z3 = time.time()
 
         # Solve with ours
-        if test_import:
-            formula_our = FormulaParser.import_formula(subformulas_our_txt[-1])
-        else:
-            formula_our = FormulaParser._convert_to_cnf(subformulas_our[-1])
         start_time_our = time.time()
-        our_solver = SATSolver(formula_our)
         is_sat_our = our_solver.solve()
         end_time_our = time.time()
 
-        print("Z3:\t\t", end_time_z3 - start_time_z3)
-        print("Our:\t", end_time_our - start_time_our)
-        assert is_sat_our is is_sat_z3
+        if print_time:
+            print("Z3:\t\t", end_time_z3 - start_time_z3)
+            print("Our:\t", end_time_our - start_time_our)
+        return is_sat_our is is_sat_z3
+
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, operator_num, test_import",
+                             [(variable_num, variable_num ** 4, True) for variable_num in list(range(1, 15))]
+                             # +
+                             # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
+                             )
+    def test_random_formula(variable_num: int, operator_num: int, test_import):
+        # Generates a random formula and compares our solver to Z3
+        formula_z3, formula_our_txt, formula_our_parsed = TestSATSolver.generate_random_formula(variable_num,
+                                                                                                operator_num)
+        if test_import:
+            formula_our = FormulaParser.import_formula(formula_our_txt)
+        else:
+            formula_our = FormulaParser._convert_to_cnf(formula_our_parsed)
+        assert TestSATSolver.compare_to_z3(formula_z3, SATSolver(formula_our))
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",

@@ -1,6 +1,7 @@
 import pytest
 from uf_solver.uf_solver import UFSolver
 from formula_parser.formula_parser import FormulaParser
+from sat_solver.tests.test_sat_solver import TestSATSolver
 from copy import deepcopy
 import z3
 import random
@@ -192,61 +193,13 @@ class TestUFSolver:
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 500))])
     def test_random_boolean_formula(variable_num: int, operator_num: int):
-        # Generates a random formula and compares our solver to Z3
-
-        # Generate formula
-        all_vars = list(range(1, variable_num + 1))
-        subformulas_z3 = [z3.Bool(str(cur_literal)) for cur_literal in all_vars]
-        subformulas_z3.extend([z3.Not(cur_literal) for cur_literal in subformulas_z3])
-        subformulas_our = [str(cur_literal) for cur_literal in all_vars]
-        subformulas_our.extend([("not " + cur_literal) for cur_literal in subformulas_our])
-
-        for cur_operator_idx in range(operator_num):
-            param1_idx = random.randint(1, len(subformulas_z3)) - 1
-            param1_z3, param1_our = subformulas_z3[param1_idx], subformulas_our[param1_idx]
-            random_operator = random.randint(1, 5)
-            if random_operator == 1:
-                cur_subformula_z3, cur_subformula_our = z3.Not(param1_z3), "not (" + param1_our + ")"
-            else:   # Binary operators
-                param2_idx = random.randint(1, len(subformulas_z3)) - 1
-                param2_z3, param2_our = subformulas_z3[param2_idx], subformulas_our[param2_idx]
-                if random_operator == 2:
-                    cur_subformula_z3, cur_subformula_our = z3.And(param1_z3, param2_z3), \
-                                                            "and (" + param1_our + ") (" + param2_our + ")"
-                elif random_operator == 3:
-                    cur_subformula_z3, cur_subformula_our = z3.Or(param1_z3, param2_z3), \
-                                                            "or (" + param1_our + ") (" + param2_our + ")"
-                elif random_operator == 4:
-                    cur_subformula_z3, cur_subformula_our = z3.Implies(param1_z3, param2_z3), \
-                                                            "=> (" + param1_our + ") (" + param2_our + ")"
-                elif random_operator == 5:
-                    cur_subformula_z3, cur_subformula_our = (param1_z3 == param2_z3), \
-                                                            "<=> (" + param1_our + ") (" + param2_our + ")"
-            subformulas_z3.append(cur_subformula_z3)
-            subformulas_our.append(cur_subformula_our)
-
-        # Solve with Z3
-        z3_solver = z3.Solver()
-        z3_solver.add(subformulas_z3[-1])
-        start_time_z3 = time.time()
-        is_sat_z3 = (z3_solver.check() == z3.sat)
-        end_time_z3 = time.time()
-
-        # Solve with ours
-        formula_our = "(assert (" + subformulas_our[-1] + "))"
-        our_solver = UFSolver(*FormulaParser.import_uf(formula_our))
-        start_time_our = time.time()
-        is_sat_our = our_solver.solve()
-        end_time_our = time.time()
-
-        print("Z3:\t\t", end_time_z3 - start_time_z3)
-        print("Our:\t", end_time_our - start_time_our)
-        assert is_sat_our is is_sat_z3
+        formula_z3, formula_our_txt, formula_our_parsed = TestSATSolver.generate_random_formula(variable_num,
+                                                                                                operator_num)
+        formula_our = "(assert (" + formula_our_txt + "))"
+        assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our)))
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100)) * 10])
-    def test_random_uf_formula(variable_num: int, operator_num: int):
-        # Generate formula
+    def generate_random_equations(variable_num: int, operator_num: int):
         all_variables = list(range(1, variable_num + 1))
         z3_f = z3.Function('f', z3.IntSort(), z3.IntSort())
         subformulas_z3, equations_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables], []
@@ -268,25 +221,14 @@ class TestUFSolver:
                                                             "(assert (= (" + param1_our + ") (" + param2_our + "))"
                 elif random_operator == 3:
                     cur_subformula_z3, cur_subformula_our = (
-                        (param1_z3 != param2_z3),
-                        "(assert (not (= (" + param1_our + ") (" + param2_our + ")))"
-                    )
+                        (param1_z3 != param2_z3), "(assert (not (= (" + param1_our + ") (" + param2_our + ")))")
                 equations_z3.append(cur_subformula_z3)
                 equations_our.append(cur_subformula_our)
+        return equations_z3, equations_our
 
-        # Solve with Z3
-        z3_solver = z3.Solver()
-        z3_solver.add(z3.And(equations_z3))
-        start_time_z3 = time.time()
-        is_sat_z3 = (z3_solver.check() == z3.sat)
-        end_time_z3 = time.time()
-
-        # Solve with ours
-        our_solver = UFSolver(*FormulaParser.import_uf("(declare-fun f (Int) Int) " + ' '.join(equations_our)))
-        start_time_our = time.time()
-        is_sat_our = our_solver.solve()
-        end_time_our = time.time()
-
-        print("Z3:\t\t", end_time_z3 - start_time_z3)
-        print("Our:\t", end_time_our - start_time_our)
-        assert is_sat_our is is_sat_z3
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 100)) * 10])
+    def test_random_uf_formula(variable_num: int, operator_num: int):
+        equations_z3, equations_our = TestUFSolver.generate_random_equations(variable_num, operator_num)
+        formula_our = "(declare-fun f (Int) Int) " + ' '.join(equations_our)
+        assert TestSATSolver.compare_to_z3(z3.And(equations_z3), UFSolver(*FormulaParser.import_uf(formula_our)))
