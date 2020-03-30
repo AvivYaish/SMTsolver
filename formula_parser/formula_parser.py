@@ -269,6 +269,19 @@ class FormulaParser:
         return operator, left_parameter, right_parameter
 
     @staticmethod
+    def _get_from_subformulas(subformulas, formula):
+        in_subformulas = True
+        if formula not in subformulas:
+            symmetric_cur_formula = FormulaParser.symmetric_formula(formula)
+            if symmetric_cur_formula in subformulas:
+                # If a symmetric clause exists, can reuse it
+                formula = symmetric_cur_formula
+            else:
+                in_subformulas = False
+                subformulas[formula] = len(subformulas) + 1  # + 1 to avoid getting zeros (-0=0)
+        return formula, in_subformulas
+
+    @staticmethod
     def _tseitin_transform(parsed_formula,
                            output_all=False,
                            subformulas=None,
@@ -286,43 +299,25 @@ class FormulaParser:
 
         formula_list = [parsed_formula]
         while formula_list:
-            cur_formula = formula_list.pop()
+            cur_formula, in_subformulas = FormulaParser._get_from_subformulas(subformulas, formula_list.pop())
             if not cur_formula:
                 continue
             operator = cur_formula[0]
-            if cur_formula not in subformulas:
-                symmetric_cur_formula = FormulaParser.symmetric_formula(cur_formula)
-                if symmetric_cur_formula in subformulas:
-                    # If a symmetric clause exists, can reuse it
-                    cur_formula = symmetric_cur_formula
-                else:
-                    subformulas[cur_formula] = len(subformulas) + 1  # + 1 to avoid getting zeros (-0=0)
             if operator not in FormulaParser.BOOLEAN_OPS:
                 continue
 
-            left_parameter = cur_formula[1]
-            if left_parameter not in subformulas:
-                symmetric_left_parameter = FormulaParser.symmetric_formula(left_parameter)
-                if symmetric_left_parameter in subformulas:
-                    left_parameter = symmetric_left_parameter
-                else:
-                    subformulas[left_parameter] = len(subformulas) + 1
-                    formula_list.append(left_parameter)
+            left_parameter, in_subformulas = FormulaParser._get_from_subformulas(subformulas, cur_formula[1])
+            if not in_subformulas:
+                formula_list.append(left_parameter)
             if operator == FormulaParser.NOT:
                 transformed_subformulas[subformulas[cur_formula]] = {
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
                     frozenset({subformulas[cur_formula], subformulas[left_parameter]})
                 }
-            else:
-                # Binary operator
-                right_parameter = cur_formula[2]
-                if right_parameter not in subformulas:
-                    symmetric_right_parameter = FormulaParser.symmetric_formula(right_parameter)
-                    if symmetric_right_parameter in subformulas:
-                        right_parameter = symmetric_right_parameter
-                    else:
-                        subformulas[right_parameter] = len(subformulas) + 1
-                        formula_list.append(right_parameter)
+            else:   # Binary operator
+                right_parameter, in_subformulas = FormulaParser._get_from_subformulas(subformulas, cur_formula[2])
+                if not in_subformulas:
+                    formula_list.append(right_parameter)
                 if operator == FormulaParser.AND:
                     transformed_subformulas[subformulas[cur_formula]] = {
                         frozenset({-subformulas[cur_formula], subformulas[left_parameter]}),
@@ -376,11 +371,8 @@ class FormulaParser:
                     # Remove trivial clauses, if the same variable appears twice with different signs in the same clause
                     trivial_clause = True
                     break
-
-            if trivial_clause or (len(clause) == 0):
-                # Remove empty clauses
+            if trivial_clause or (len(clause) == 0):    # Remove empty clauses
                 continue
-
             preprocessed_formula.append(clause)
         return frozenset(preprocessed_formula)
 
