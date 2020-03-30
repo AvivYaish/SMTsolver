@@ -333,36 +333,16 @@ class TestSATSolver:
         # Generates a random CNF and compares our solver to Z3
 
         # Generate formula
-        formula_z3 = []
-        formula_our = set()
-
-        variables_z3 = numpy.array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal)))) for cur_literal
-                                        in range(1, variable_num + 1)]).flatten()
+        formula_z3, formula_our = [], set()
+        variables_z3 = numpy.array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal))))
+                                    for cur_literal in range(1, variable_num + 1)]).flatten()
         variables_our = numpy.array([(variable, -variable) for variable in range(1, variable_num + 1)]).flatten()
-
         for cur_clause_idx in range(clause_num):
             chosen_literals = numpy.random.randint(0, len(variables_our), size=clause_length)
             formula_z3.append(z3.Or(*variables_z3[chosen_literals]))
             formula_our.add(frozenset(variables_our[chosen_literals]))
 
-        # Solve with Z3
-        z3_solver = z3.Solver()
-        z3_solver.add(z3.And(*formula_z3))
-        start_time_z3 = time.time()
-        is_sat_z3 = (z3_solver.check() == z3.sat)
-        end_time_z3 = time.time()
-
-        # Solve with our
-        start_time_our = time.time()
-        our_solver = SATSolver(formula_our)
-        is_sat_our = our_solver.solve()
-        end_time_our = time.time()
-
-        print()
-        print("Is sat? ", is_sat_z3)
-        print("Z3:\t\t", end_time_z3 - start_time_z3)
-        print("Our:\t", end_time_our - start_time_our)
-        assert is_sat_our is is_sat_z3
+        assert TestSATSolver.compare_to_z3(formula_z3, SATSolver(formula_our))
 
     @staticmethod
     def generate_random_formula(variable_num: int, operator_num: int,
