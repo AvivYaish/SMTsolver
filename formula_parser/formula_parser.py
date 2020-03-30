@@ -497,9 +497,10 @@ class FormulaParser:
     @staticmethod
     def import_uf(formula: str):
         signature, parsed_formulas = FormulaParser._parse_uf(formula)
+        simplified_formulas = [FormulaParser._simplify_formula(formula) for formula in parsed_formulas]
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
-            FormulaParser._convert_non_boolean_formulas_to_cnf(signature, parsed_formulas)
-        congruence_graph = CongruenceGraph(signature, parsed_formulas,
+            FormulaParser._convert_non_boolean_formulas_to_cnf(signature, simplified_formulas)
+        congruence_graph = CongruenceGraph(signature, simplified_formulas,
                                            FormulaParser.ALL_OPS, FormulaParser.ALL_BINARY_OPS)
         return (
             frozenset(cnf_formula),
