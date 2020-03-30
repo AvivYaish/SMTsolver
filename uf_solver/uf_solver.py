@@ -39,14 +39,13 @@ class UFSolver:
         return new_assigments
 
     def congruence_closure(self):
-        assignment = self._solver.get_assignment()
         positive_relations = set()
         negative_relations = []
-        for variable in assignment:
+        for variable, value in self._solver.iterable_assignment():
             if variable in self._tseitin_variable_to_subterm:
                 subterm = self._tseitin_variable_to_subterm[variable]
                 if subterm in self._non_boolean_clauses:    # If the variable represents an equality
-                    if assignment[variable]:
+                    if value:
                         positive_relations.add(subterm)
                     else:
                         negative_relations.append(subterm)
@@ -61,7 +60,7 @@ class UFSolver:
 
     def get_assignment(self):
         assignment = {}
-        for variable, value in self._solver.get_assignment().items():
+        for variable, value in self._solver.iterable_assignment():
             if variable in self._tseitin_variable_to_subterm:
                 assignment[self._tseitin_variable_to_subterm[variable]] = value
         return assignment

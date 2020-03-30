@@ -95,7 +95,14 @@ class SATSolver:
         """
         Returns the current assignment (variable-value pairs only).
         """
-        return {variable: self._assignment[variable]["value"] for variable in self._assignment}
+        return {var: val for var, val in self.iterable_assignment()}
+
+    def iterable_assignment(self):
+        """
+        :return: a (variable, value) tuple for every assigned variable.
+        """
+        for var in self._assignment:
+            yield var, self._assignment[var]["value"]
 
     def _conflict_resolution(self, conflict_clause):
         """
@@ -119,9 +126,9 @@ class SATSolver:
 
             clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
             if (max_level_count == 1) or (clause_on_incoming_edge is None):
-                # The last assigned literal is the only one from the last decision level,
-                # or if it was assigned because of the theory:
-                # Return the conflict clause, the next literal to assign (which should be the
+                # If the last assigned literal is the only one from the last decision level,
+                # or if it was assigned because of the theory (thus, the incoming clause is None):
+                # return the conflict clause, the next literal to assign (which should be the
                 # watch literal of the conflict clause), and the decision level to jump to
                 if (prev_max_level == -1) and (max_level != -1):
                     prev_max_level = max_level - 1
@@ -270,27 +277,24 @@ class SATSolver:
             return True
         conflict_clause, new_assignments = self._theory_solver.congruence_closure()
         while conflict_clause is not None:
-            max_level_literal_count, max_level, literal_from_max_level = 0, -1, None
+            max_level = -1
             for literal in conflict_clause:
                 cur_level = self._assignment[abs(literal)]["level"]
                 if cur_level > max_level:
-                    max_level_literal_count, max_level, literal_from_max_level = 1, cur_level, literal
-                elif cur_level == max_level:
-                    max_level_literal_count += 1
-            level_to_jump_to = max_level - 1
-            if level_to_jump_to == -1:
+                    max_level = cur_level
+            if max_level - 1 <= -1:
                 return False
 
-            self._backtrack(level_to_jump_to)
+            decision_literal = self._assignment_by_level[max_level][0]
+            if self._assignment[abs(decision_literal)]["value"] is False:
+                decision_literal = -decision_literal
+            self._backtrack(max_level - 1)
             self._add_conflict_clause(conflict_clause)
-            if max_level_literal_count == 1:
-                if abs(literal_from_max_level) not in self._assignment:
-                    self._assign(conflict_clause, literal_from_max_level)
+            self._assign(None, -decision_literal)
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
         for literal in new_assignments:
-            if abs(literal) not in self._assignment:
-                self._assign(None, literal)
+            self._assign(None, literal)
         return True
 
     def _propagation(self) -> bool:
