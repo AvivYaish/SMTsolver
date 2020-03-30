@@ -117,10 +117,12 @@ class SATSolver:
                 elif level > prev_max_level:
                     prev_max_level = level
 
-            if max_level_count == 1:
-                # The last assigned literal is the only one from the last decision level
-                # Return the conflict clause, the next literal to assign (which should be the watch literal of the
-                # conflict clause), and the decision level to jump to
+            clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
+            if (max_level_count == 1) or (clause_on_incoming_edge is None):
+                # The last assigned literal is the only one from the last decision level,
+                # or if it was assigned because of the theory:
+                # Return the conflict clause, the next literal to assign (which should be the
+                # watch literal of the conflict clause), and the decision level to jump to
                 if (prev_max_level == -1) and (max_level != -1):
                     prev_max_level = max_level - 1
                 return frozenset(conflict_clause), last_literal, prev_max_level
@@ -128,8 +130,6 @@ class SATSolver:
             # Resolve the conflict clause with the clause on the incoming edge
             # Might be the case that the last literal was assigned because of the
             # theory, and in that case it is impossible to do resolution
-            # TODO: should somehow test this
-            clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
             conflict_clause |= clause_on_incoming_edge
             conflict_clause.remove(last_literal)
             conflict_clause.remove(-last_literal)
@@ -284,11 +284,13 @@ class SATSolver:
             self._backtrack(level_to_jump_to)
             self._add_conflict_clause(conflict_clause)
             if max_level_literal_count == 1:
-                self._assign(conflict_clause, literal_from_max_level)
+                if abs(literal_from_max_level) not in self._assignment:
+                    self._assign(conflict_clause, literal_from_max_level)
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
         for literal in new_assignments:
-            self._assign(None, literal)
+            if abs(literal) not in self._assignment:
+                self._assign(None, literal)
         return True
 
     def _propagation(self) -> bool:
@@ -298,9 +300,7 @@ class SATSolver:
         return True
 
     def _is_sat(self) -> bool:
-        return (
-                self._formula.issubset(self._satisfied_clauses)
-        )
+        return self._formula.issubset(self._satisfied_clauses)
 
     def solve(self) -> bool:
         """

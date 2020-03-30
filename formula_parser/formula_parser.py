@@ -193,7 +193,7 @@ class FormulaParser:
             return FormulaParser.TRUE
 
         operator = parsed_formula[0]
-        if operator not in FormulaParser.BOOLEAN_OPS:
+        if operator not in FormulaParser.ALL_OPS:
             # Base case, only one variable/boolean value
             return parsed_formula
 
@@ -211,7 +211,11 @@ class FormulaParser:
         # Binary operator
         right_parameter = FormulaParser._simplify_formula(parsed_formula[2])
         if left_parameter == right_parameter:
-            if (operator == FormulaParser.IMPLICATION) or (operator == FormulaParser.BICONDITIONAL):
+            if (
+                    (operator == FormulaParser.EQUALITY) or
+                    (operator == FormulaParser.IMPLICATION) or
+                    (operator == FormulaParser.BICONDITIONAL)
+            ):
                 return FormulaParser.TRUE
             return left_parameter
         elif (operator == FormulaParser.OR) or (operator == FormulaParser.AND):

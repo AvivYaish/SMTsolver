@@ -448,6 +448,6 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(5, clause_num, True) for clause_num in list(range(1, 300))])
+                             [(5, clause_num, True) for clause_num in list(range(1, 500)) * 10])
     def test_simple_random_formula(variable_num: int, operator_num: int, test_import):
         TestSATSolver.test_random_formula(variable_num, operator_num, test_import)

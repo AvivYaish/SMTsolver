@@ -235,7 +235,7 @@ class TestUFSolver:
         return equations_z3, equations_our_txt, equations_our
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(2, 100)) * 10])
+    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 400)) * 50])
     def test_random_uf_formula(variable_num: int, operator_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, operator_num)
@@ -244,6 +244,6 @@ class TestUFSolver:
         formula_z3, formula_our_txt, formula_our = \
             TestSATSolver.generate_random_formula(0, operator_num, equations_z3, equations_our_txt, equations_our)
         formula_our_txt = "(declare-fun f (Int) Int) (assert (" + formula_our_txt + "))"
+        assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
         print("Z3 formula: ", formula_z3)
         print("Our formula: ", formula_our_txt)
-        assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
