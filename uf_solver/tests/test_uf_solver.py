@@ -52,7 +52,7 @@ class TestUFSolver:
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
         conflict_clause, assignments = solver.congruence_closure()
         assert conflict_clause == frozenset({5, -1, -2, -3})
-        assert solver._basic_congruence_graph._graph == graph._graph    # Make sure the original graph did not change
+        assert solver._basic_congruence_graph._graph == graph._graph  # Make sure the original graph did not change
 
         # Verify that creating a new decision level copies the last graph
         solver.create_new_decision_level()
@@ -72,13 +72,13 @@ class TestUFSolver:
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {
-            1: {"value": True},     # ('=', 'a', 'b')
-            7: {"value": True},     # ('=', 's', 't')
-            4: {"value": True},     # ('=', 'b', 'c')
-            12: {"value": True},   # ('=', 't', 'r')
+            1: {"value": True},  # ('=', 'a', 'b')
+            7: {"value": True},  # ('=', 's', 't')
+            4: {"value": True},  # ('=', 'b', 'c')
+            12: {"value": True},  # ('=', 't', 'r')
             # 10: {"value": },      # ('=', ('f', 's'), ('f', 't'))
-            15: {"value": True},    # ('=', ('f', 's'), ('f', 'a'))
-            20: {"value": False},   # ('=', ('f', 'a'), ('f', 'c'))
+            15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
+            20: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
         }
         conflict_clause, assignments = solver.congruence_closure()
         # assert solver.congruence_closure() == frozenset({20, -1, -4})  # <- this is the minimal
@@ -553,14 +553,35 @@ Our:	 0.0025734901428222656
         assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
+    def test_bad11():
+        """
+        FAILED [ 84%]
+Z3 formula:  3 != g(3) ==
+And(Implies(g(3) == g(g(g(3))), g(g(3)) == 3),
+    (g(g(g(3))) == g(g(g(3)))) ==
+    Or(g(3) == g(g(g(3))), g(g(3)) == 3))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (<=> (not (= (3) (g(3)))) (and (=> (= (g(3)) (g(g(g(3))))) (= (g(g(3))) (3))) (<=> (= (g(g(g(3)))) (g(g(g(3))))) (or (= (g(3)) (g(g(g(3))))) (= (g(g(3))) (3)))))))
+
+Is SAT? True
+Z3:		 0.01025700569152832
+Our:	 0.00821232795715332
+
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (<=> (not (= (3) (g(3)))) (and (=> (= (g(3)) (g(g(g(3))))) (= (g(g(3))) (3))) (<=> (= (g(g(g(3)))) (g(g(g(3))))) (or (= (g(3)) (g(g(g(3))))) (= (g(g(3))) (3)))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, operator_num, 1) for operator_num in list(range(2000, 3000))])
+                             [(3, operator_num, 1) for operator_num in list(range(10, 50)) * 100])
     def test_random_uf_equations(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, operator_num, function_num)
         if not equations_z3:
             return
-        formula_z3 = z3.And(equations_z3)
+        try:    # Might be the case that the formula is not valid
+            formula_z3 = z3.And(equations_z3)
+        except z3.Z3Exception:
+            return
         formula_our_txt = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) " + \
                           ' '.join(["(assert (" + eq + "))" for eq in equations_our_txt])
         print()
@@ -570,17 +591,19 @@ Our:	 0.0025734901428222656
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, clause_num, 2) for clause_num in list(range(2000, 3000))])
+                             [(3, clause_num, 2) for clause_num in list(range(10, 50)) * 100])
     def test_random_uf_formula(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, 10, function_num)
         if not equations_z3:
             return
-        formula_z3, formula_our_txt, formula_our = \
-            TestSATSolver.generate_random_formula(0, operator_num, equations_z3, equations_our_txt, equations_our)
+        try:    # Might be the case that the formula is not valid
+            formula_z3, formula_our_txt, formula_our = \
+                TestSATSolver.generate_random_formula(0, operator_num, equations_z3, equations_our_txt, equations_our)
+        except z3.Z3Exception:
+            return
         formula_our_txt = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (" + formula_our_txt + "))"
         print()
         print("Z3 formula: ", formula_z3)
         print("Our formula: ", formula_our_txt)
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
-

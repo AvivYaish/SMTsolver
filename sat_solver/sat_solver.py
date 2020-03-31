@@ -288,20 +288,20 @@ class SATSolver:
         if self._theory_solver is None:
             return True
         conflict_clause, new_assignments = self._theory_solver.congruence_closure()
-        if conflict_clause is not None:
+        while conflict_clause is not None:
             # Backtrack to the previous decision level
             cur_level = len(self._assignment_by_level) - 1
             if cur_level == 0:
                 return False
-            decision_literal = self._assignment_by_level[cur_level][0]
-            decision_variable = abs(decision_literal)
-            if not self._assignment[decision_variable]["value"]:
-                decision_literal = -decision_literal
-            self._backtrack(cur_level - 1)
+            # decision_literal = self._assignment_by_level[cur_level][0]
+            # decision_variable = abs(decision_literal)
+            # if not self._assignment[decision_variable]["value"]:
+            #     decision_literal = -decision_literal
+            # self._backtrack(cur_level - 1)
             self._add_conflict_clause(conflict_clause)
-            # Case-splitting: assign a new value to the decision literal.
-            if decision_variable not in self._assignment:
-                self._decide(-decision_literal)
+            # # Case-splitting: assign a new value to the decision literal.
+            # if decision_variable not in self._assignment:
+            #     self._decide(-decision_literal)
 
             # If the clause is already satisfied, add it to the appropriate data structures
             # Otherwise, if it is a unit-clause - satisfy it
@@ -323,8 +323,9 @@ class SATSolver:
             # If the clause is a unit clause, assign the only literal (if possible)
             if unassigned_count == 1:
                 self._assign(conflict_clause, unassigned_literal)
-
-            return True
+                conflict_clause, new_assignments = self._theory_solver.congruence_closure()
+            else:
+                return True
 
         # Theory propagation
         for literal in new_assignments:
