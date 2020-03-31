@@ -107,7 +107,7 @@ class SATSolver:
         for var in self._assignment:
             yield var, self._assignment[var]["value"]
 
-    def _conflict_resolution(self, conflict_clause, limit=float('inf')):
+    def _conflict_resolution(self, conflict_clause, limit=500):
         """
         Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
         """
@@ -288,7 +288,7 @@ class SATSolver:
         if self._theory_solver is None:
             return True
         conflict_clause, new_assignments = self._theory_solver.congruence_closure()
-        while conflict_clause is not None:
+        if conflict_clause is not None:
             # Backtrack to the previous decision level
             cur_level = len(self._assignment_by_level) - 1
             if cur_level == 0:
@@ -324,7 +324,7 @@ class SATSolver:
             if unassigned_count == 1:
                 self._assign(conflict_clause, unassigned_literal)
 
-            conflict_clause, new_assignments = self._theory_solver.congruence_closure()
+            return True
 
         # Theory propagation
         for literal in new_assignments:
