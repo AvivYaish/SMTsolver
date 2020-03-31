@@ -107,17 +107,17 @@ class SATSolver:
         for var in self._assignment:
             yield var, self._assignment[var]["value"]
 
-    def _conflict_resolution(self, conflict_clause):
+    def _conflict_resolution(self, conflict_clause, limit=500):
         """
         Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
         """
+        count = 0
         conflict_clause = set(conflict_clause)
         while True:
+            count += 1
             last_literal, prev_max_level, max_level, max_idx, max_level_count = None, -1, -1, -1, 0
             for literal in conflict_clause:
                 variable = abs(literal)
-                # if variable not in self._assignment:
-                #     continue
                 level, idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
                 if level > max_level:
                     prev_max_level = max_level
@@ -130,7 +130,7 @@ class SATSolver:
                     prev_max_level = level
 
             clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
-            if (max_level_count == 1) or (clause_on_incoming_edge is None):
+            if (max_level_count == 1) or (clause_on_incoming_edge is None) or (count >= limit):
                 # If the last assigned literal is the only one from the last decision level,
                 # or if it was assigned because of the theory (thus, the incoming clause is None):
                 # return the conflict clause, the next literal to assign (which should be the
