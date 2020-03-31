@@ -132,10 +132,8 @@ class SATSolver:
             clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
             if (max_level_count == 1) or (clause_on_incoming_edge is None) or (count >= limit):
                 if clause_on_incoming_edge is None:
-                    cur_level = len(self._assignment_by_level) - 1
-                    last_literal = self._assignment_by_level[cur_level][0]
-                    last_var = abs(last_literal)
-                    if not self._assignment[last_var]["value"]:
+                    last_literal = self._assignment_by_level[max_level][0]
+                    if not self._assignment[abs(last_literal)]["value"]:
                         last_literal = -last_literal
                     conflict_clause.add(last_literal)
                     last_literal = -last_literal
