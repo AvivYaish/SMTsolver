@@ -116,6 +116,8 @@ class SATSolver:
             last_literal, prev_max_level, max_level, max_idx, max_level_count = None, -1, -1, -1, 0
             for literal in conflict_clause:
                 variable = abs(literal)
+                # if variable not in self._assignment:
+                #     continue
                 level, idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
                 if level > max_level:
                     prev_max_level = max_level
@@ -280,6 +282,7 @@ class SATSolver:
             return True
         conflict_clause, new_assignments = self._theory_solver.congruence_closure()
         while conflict_clause is not None:
+            # Backtrack to the previous decision level
             cur_level = len(self._assignment_by_level) - 1
             if cur_level == 0:
                 return False
@@ -288,6 +291,22 @@ class SATSolver:
                 decision_literal = -decision_literal
             self._backtrack(cur_level - 1)
             self._add_conflict_clause(conflict_clause)
+
+            # If the clause is already satisfied, add to the appropriate data structures
+            min_sat_literal, min_level, min_idx = None, float('inf'), float('inf')
+            for literal in conflict_clause:
+                variable = abs(literal)
+                if variable in self._assignment:
+                    cur_level, cur_idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
+                    if ((self._assignment[variable]["value"] == literal > 0) and
+                            (cur_level < min_level) or ((cur_level == min_level) and (cur_idx < min_idx))):
+                        min_sat_literal, min_level, min_idx = literal, cur_level, cur_idx
+            if min_sat_literal is not None:
+                self._satisfaction_by_level[min_level].add(conflict_clause)
+                self._satisfied_clauses.add(conflict_clause)
+
+            # If the clause is a unit clause, assign the only literal (if possible),
+            # otherwise assign the decision literal
             assigned_literal = False
             if len(conflict_clause) == 1:
                 for literal in conflict_clause:
@@ -296,8 +315,10 @@ class SATSolver:
                         assigned_literal = True
             if not assigned_literal:
                 self._assign(None, -decision_literal)
+
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
+        # Theory propagation
         for literal in new_assignments:
             self._assign(None, literal)
         return True

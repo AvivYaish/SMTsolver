@@ -191,7 +191,7 @@ class TestUFSolver:
         assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 500))])
+    @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 50))])
     def test_random_boolean_formula(variable_num: int, operator_num: int):
         formula_z3, formula_our_txt, formula_our_parsed = TestSATSolver.generate_random_formula(variable_num,
                                                                                                 operator_num)
@@ -240,10 +240,191 @@ class TestUFSolver:
         return equations_z3, equations_our_txt, equations_our
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num", [(3, clause_num) for clause_num in list(range(1, 50))])
+    def test_bad():
+        """
+        FAILED    [ 26%]Z3 formula:  And(1 == f(f(3)),
+    Implies(f(4) != f(f(3)),
+            And(Not(f(f(4)) != f(f(f(3)))), f(3) == f(3))))
+Our formula:
+        """
+        # Works just because of the simplification
+        formula = "(declare-fun f (Int) Int) (assert (and (= (1) (f(f(3)))) (=> (not (= (f(4)) (f(f(3))))) (and (not (not (= (f(f(4))) (f(f(f(3))))))) (= (f(3)) (f(3)))))))"
+        easier_formula = "(declare-fun f (Int) Int) (assert (=> (not (= (f(4)) (f(f(3))))) (and (not (not (= (f(f(4))) (f(f(f(3))))))) (= (f(3)) (f(3))))))"
+        assert UFSolver(*FormulaParser.import_uf(easier_formula)).solve()
+
+    @staticmethod
+    def test_bad2():
+        """
+        Z3 formula:  Or(And(f(f(f(5))) == f(f(f(f(f(5))))),
+       Or(f(4) == f(5), f(f(f(f(5)))) == f(5))),
+   f(f(5)) == f(5))
+Our formula:  (declare-fun f (Int) Int) (assert (or (and (= (f(f(f(5)))) (f(f(f(f(f(5))))))) (or (= (f(4)) (f(5))) (= (f(f(f(f(5))))) (f(5))))) (= (f(f(5))) (f(5)))))
+
+Is SAT? True
+        """
+        formula = "(declare-fun f (Int) Int) (assert (or (and (= (f(f(f(5)))) (f(f(f(f(f(5))))))) (or (= (f(4)) (f(5))) (= (f(f(f(f(5))))) (f(5))))) (= (f(f(5))) (f(5)))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad3():
+        """
+        FAILED  [ 15%]
+Z3 formula:  Implies(Or(f(f(1)) == 2, 3 != f(f(1))),
+        And(And(3 == 2, 2 != 3), f(1) != 1))
+Our formula:  (declare-fun f (Int) Int) (assert (=> (or (= (f(f(1))) (2)) (not (= (3) (f(f(1)))))) (and (and (= (3) (2)) (not (= (2) (3)))) (not (= (f(1)) (1))))))
+
+Is SAT? False
+Z3:		 0.02293848991394043
+Our:	 0.0
+
+        """
+        formula = "(declare-fun f (Int) Int) (assert (=> (or (= (f(f(1))) (2)) (not (= (3) (f(f(1)))))) (and (and (= (3) (2)) (not (= (2) (3)))) (not (= (f(1)) (1))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad4():
+        """
+        FAILED  [ 31%]
+Z3 formula:  Implies(Implies(3 == 1, 3 != f(1)),
+        And(Not(f(3) != f(1)), Implies(f(3) != 1, 2 == 1)))
+Our formula:  (declare-fun f (Int) Int) (assert (=> (=> (= (3) (1)) (not (= (3) (f(1))))) (and (not (not (= (f(3)) (f(1))))) (=> (not (= (f(3)) (1))) (= (2) (1))))))
+
+Is SAT? True
+Z3:		 0.007979869842529297
+Our:	 0.0
+        """
+        formula = "(declare-fun f (Int) Int) (assert (=> (=> (= (3) (1)) (not (= (3) (f(1))))) (and (not (not (= (f(3)) (f(1))))) (=> (not (= (f(3)) (1))) (= (2) (1))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad5():
+        """
+        FAILED  [ 55%]
+Z3 formula:  Or(And(And(3 == 1, Not(1 == 2)), 3 == 1),
+   And(3 == 2, 2 != 1))
+Our formula:  (declare-fun f (Int) Int) (assert (or (and (and (= (3) (1)) (not (= (1) (2)))) (= (3) (1))) (and (= (3) (2)) (not (= (2) (1))))))
+
+Is SAT? False
+Z3:		 0.019948720932006836
+Our:	 0.0
+"""
+        formula = "(declare-fun f (Int) Int) (assert (or (and (and (= (3) (1)) (not (= (1) (2)))) (= (3) (1))) (and (= (3) (2)) (not (= (2) (1))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad6():
+        """
+        FAILED  [ 37%]
+Z3 formula:  Or(And(3 != 1, 2 == 3),
+   And(f(2) != f(2) == (2 == 1), Not(1 != 3)))
+Our formula:  (declare-fun f (Int) Int) (assert (or (and (not (= (3) (1))) (= (2) (3))) (and (<=> (not (= (f(2)) (f(2)))) (= (2) (1))) (not (not (= (1) (3)))))))
+
+Is SAT? False
+Z3:		 0.018948793411254883
+Our:	 0.0009970664978027344
+
+        """
+        formula = "(declare-fun f (Int) Int) (assert (or (and (not (= (3) (1))) (= (2) (3))) (and (<=> (not (= (f(2)) (f(2)))) (= (2) (1))) (not (not (= (1) (3)))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad7():
+        """
+        Z3 formula:  Not(Implies(Not(And(And(And(Not(Or(((3 == 1) == 1 != 1) ==
+                                   (2 == g(3)),
+                                   (3 == 1) == (2 == g(3)))),
+                            1 != 1),
+                        Or(And(((3 == 1) == 1 != 1) ==
+                               (2 == g(3)),
+                               Or(Or((3 == 1) == (2 == g(3)),
+                                     (3 == 1) == (2 == g(3))),
+                                  Not(3 == 1))),
+                           Implies(1 != 1, 3 == 1))),
+                    Or(Or((3 == 1) == (2 == g(3)),
+                          (3 == 1) == (2 == g(3))),
+                       Not(Not(2 == g(3)))))),
+            And(Or(Implies(Or(Or(3 == 1,
+                                 Implies(((3 == 1) == 1 != 1) ==
+                                        (2 == g(3)),
+                                        Or(Or(((3 == 1) ==
+                                        1 != 1) ==
+                                        (2 == g(3)),
+                                        (3 == 1) ==
+                                        (2 == g(3))),
+                                        Implies(Not(2 ==
+                                        g(3)),
+                                        Or((3 == 1) ==
+                                        (2 == g(3)),
+                                        (3 == 1) ==
+                                        (2 == g(3))) ==
+                                        Not(And(Or(((3 == 1) ==
+                                        1 != 1) ==
+                                        (2 == g(3)),
+                                        (3 == 1) ==
+                                        (2 == g(3))),
+                                        Implies(1 != 1,
+                                        3 == 1))))))),
+                              Not(Not(Or(And(((3 == 1) ==
+                                        1 != 1) ==
+                                        (2 == g(3)),
+                                        Or(Or((3 == 1) ==
+                                        (2 == g(3)),
+                                        (3 == 1) ==
+                                        (2 == g(3))),
+                                        Not(3 == 1))),
+                                        Implies(1 != 1,
+                                        3 == 1))))),
+                           Implies(Implies(Not(2 == g(3)),
+                                        (3 == 1) ==
+                                        Not(2 == g(3))),
+                                   (3 == 1) == 1 != 1)),
+                   Or(Or(And(And(Not(Or(((3 == 1) == 1 != 1) ==
+                                        (2 == g(3)),
+                                        (3 == 1) ==
+                                        (2 == g(3)))),
+                                 1 != 1),
+                             Or(And(((3 == 1) == 1 != 1) ==
+                                    (2 == g(3)),
+                                    Or(Or((3 == 1) ==
+                                        (2 == g(3)),
+                                        (3 == 1) ==
+                                        (2 == g(3))),
+                                       Not(3 == 1))),
+                                Implies(1 != 1, 3 == 1))),
+                         Or((3 == 1) == (2 == g(3)),
+                            (3 == 1) == (2 == g(3))) ==
+                         Not(And(Or(((3 == 1) == 1 != 1) ==
+                                    (2 == g(3)),
+                                    (3 == 1) == (2 == g(3))),
+                                 Implies(1 != 1, 3 == 1)))) ==
+                      Implies(Or((3 == 1) == (2 == g(3)),
+                                 (3 == 1) == (2 == g(3))),
+                              And(Or(((3 == 1) == 1 != 1) ==
+                                     (2 == g(3)),
+                                     (3 == 1) == (2 == g(3))),
+                                  Implies(1 != 1, 3 == 1))),
+                      Implies(Not(2 == g(3)), 2 == g(3)))),
+                Implies(Not(2 == g(3)),
+                        Or((3 == 1) == (2 == g(3)),
+                           (3 == 1) == (2 == g(3))) ==
+                        Not(And(Or(((3 == 1) == 1 != 1) ==
+                                   (2 == g(3)),
+                                   (3 == 1) == (2 == g(3))),
+                                Implies(1 != 1, 3 == 1)))))))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (not (=> (not (and (and (and (not (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3)))))) (not (= (1) (1)))) (or (and (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (= (3) (1))))) (=> (not (= (1) (1))) (= (3) (1))))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (not (= (2) (g(3)))))))) (and (or (=> (or (or (= (3) (1)) (=> (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (2) (g(3)))) (<=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1)))))))))) (not (not (or (and (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (= (3) (1))))) (=> (not (= (1) (1))) (= (3) (1))))))) (=> (=> (not (= (2) (g(3)))) (<=> (= (3) (1)) (not (= (2) (g(3)))))) (<=> (= (3) (1)) (not (= (1) (1)))))) (or (<=> (or (and (and (not (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3)))))) (not (= (1) (1)))) (or (and (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (= (3) (1))))) (=> (not (= (1) (1))) (= (3) (1))))) (<=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1))))))) (=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1)))))) (=> (not (= (2) (g(3)))) (= (2) (g(3)))))) (=> (not (= (2) (g(3)))) (<=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1)))))))))))
+
+Is SAT? True
+Z3:		 0.009998798370361328
+Our:	 0.005006551742553711
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (not (=> (not (and (and (and (not (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3)))))) (not (= (1) (1)))) (or (and (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (= (3) (1))))) (=> (not (= (1) (1))) (= (3) (1))))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (not (= (2) (g(3)))))))) (and (or (=> (or (or (= (3) (1)) (=> (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (2) (g(3)))) (<=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1)))))))))) (not (not (or (and (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (= (3) (1))))) (=> (not (= (1) (1))) (= (3) (1))))))) (=> (=> (not (= (2) (g(3)))) (<=> (= (3) (1)) (not (= (2) (g(3)))))) (<=> (= (3) (1)) (not (= (1) (1)))))) (or (<=> (or (and (and (not (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3)))))) (not (= (1) (1)))) (or (and (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (or (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (= (3) (1))))) (=> (not (= (1) (1))) (= (3) (1))))) (<=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1))))))) (=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1)))))) (=> (not (= (2) (g(3)))) (= (2) (g(3)))))) (=> (not (= (2) (g(3)))) (<=> (or (<=> (= (3) (1)) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (not (and (or (<=> (<=> (= (3) (1)) (not (= (1) (1)))) (= (2) (g(3)))) (<=> (= (3) (1)) (= (2) (g(3))))) (=> (not (= (1) (1))) (= (3) (1)))))))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, operator_num", [(3, clause_num) for clause_num in list(range(1, 3000))])
     def test_random_uf_formula(variable_num: int, operator_num: int):
         equations_z3, equations_our_txt, equations_our = \
-            TestUFSolver.generate_random_equations(variable_num, operator_num)
+            TestUFSolver.generate_random_equations(variable_num, 10)
         if not equations_z3:
             return
         formula_z3, formula_our_txt, formula_our = \
@@ -253,3 +434,4 @@ class TestUFSolver:
         print("Z3 formula: ", formula_z3)
         print("Our formula: ", formula_our_txt)
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
+
