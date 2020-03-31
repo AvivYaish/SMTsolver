@@ -292,7 +292,7 @@ class SATSolver:
             self._backtrack(cur_level - 1)
             self._add_conflict_clause(conflict_clause)
 
-            # If the clause is already satisfied, add to the appropriate data structures
+            # If the clause is already satisfied, add it to the appropriate data structures
             min_sat_literal, min_level, min_idx = None, float('inf'), float('inf')
             for literal in conflict_clause:
                 variable = abs(literal)
@@ -307,14 +307,13 @@ class SATSolver:
 
             # If the clause is a unit clause, assign the only literal (if possible),
             # otherwise assign the decision literal
-            assigned_literal = False
             if len(conflict_clause) == 1:
                 for literal in conflict_clause:
                     if abs(literal) not in self._assignment:
                         self._assign(conflict_clause, literal)
-                        assigned_literal = True
-            if not assigned_literal:
-                self._assign(None, -decision_literal)
+
+            # Case-splitting: assign a new value to the decision literal.
+            self._assign(None, -decision_literal)
 
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
