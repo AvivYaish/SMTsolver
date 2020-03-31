@@ -397,6 +397,9 @@ class TestSATSolver:
         start_time_z3 = time.time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
         end_time_z3 = time.time()
+        if (is_sat_z3 is not True) and (is_sat_z3 is not False):
+            # Malformed formula
+            return True
 
         # Solve with ours
         start_time_our = time.time()
