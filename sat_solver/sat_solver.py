@@ -287,12 +287,15 @@ class SATSolver:
             if cur_level == 0:
                 return False
             decision_literal = self._assignment_by_level[cur_level][0]
-            if not self._assignment[abs(decision_literal)]["value"]:
+            decision_variable = abs(decision_literal)
+            if not self._assignment[decision_variable]["value"]:
                 decision_literal = -decision_literal
             self._backtrack(cur_level - 1)
             self._add_conflict_clause(conflict_clause)
 
             # If the clause is already satisfied, add it to the appropriate data structures
+            # Otherwise, if it is a unit-clause - satisfy it
+            unassigned_count, unassigned_literal = 0, None
             min_sat_literal, min_level, min_idx = None, float('inf'), float('inf')
             for literal in conflict_clause:
                 variable = abs(literal)
@@ -301,19 +304,19 @@ class SATSolver:
                     if ((self._assignment[variable]["value"] == literal > 0) and
                             (cur_level < min_level) or ((cur_level == min_level) and (cur_idx < min_idx))):
                         min_sat_literal, min_level, min_idx = literal, cur_level, cur_idx
+                else:
+                    unassigned_count, unassigned_literal = unassigned_count + 1, literal
             if min_sat_literal is not None:
-                self._satisfaction_by_level[min_level].add(conflict_clause)
+                self._satisfaction_by_level[min_level].append(conflict_clause)
                 self._satisfied_clauses.add(conflict_clause)
 
-            # If the clause is a unit clause, assign the only literal (if possible),
-            # otherwise assign the decision literal
-            if len(conflict_clause) == 1:
-                for literal in conflict_clause:
-                    if abs(literal) not in self._assignment:
-                        self._assign(conflict_clause, literal)
+            # If the clause is a unit clause, assign the only literal (if possible)
+            if unassigned_count == 1:
+                self._assign(conflict_clause, unassigned_literal)
 
             # Case-splitting: assign a new value to the decision literal.
-            self._assign(None, -decision_literal)
+            if decision_variable not in self._assignment:
+                self._assign(None, -decision_literal)
 
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
