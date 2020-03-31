@@ -525,8 +525,36 @@ E               KeyError: 25
         assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
+    def test_bad9():
+        """
+        FAILED [ 80%]
+Z3 formula:  And((2 == 1) ==
+    ((3 == f(2)) == Or((2 == 1) == (1 == f(2)), 1 == f(2))),
+    Not(And(2 == 3, 3 == f(2))))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (and (<=> (= (2) (1)) (<=> (= (3) (f(2))) (or (<=> (= (2) (1)) (= (1) (f(2)))) (= (1) (f(2)))))) (not (and (= (2) (3)) (= (3) (f(2)))))))
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (and (<=> (= (2) (1)) (<=> (= (3) (f(2))) (or (<=> (= (2) (1)) (= (1) (f(2)))) (= (1) (f(2)))))) (not (and (= (2) (3)) (= (3) (f(2)))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad_10():
+        """
+        FAILED [ 96%]
+Z3 formula:  Or(f(1) != 1 == (g(f(1)) == g(1)),
+   And(Not(3 != f(1)),
+       Implies(Not(3 != f(1)), And(3 != f(1), f(1) != 1))))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (or (<=> (not (= (f(1)) (1))) (= (g(f(1))) (g(1)))) (and (not (not (= (3) (f(1))))) (=> (not (not (= (3) (f(1))))) (and (not (= (3) (f(1)))) (not (= (f(1)) (1))))))))
+
+Is SAT? True
+Z3:		 0.014582395553588867
+Our:	 0.0025734901428222656
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (or (<=> (not (= (f(1)) (1))) (= (g(f(1))) (g(1)))) (and (not (not (= (3) (f(1))))) (=> (not (not (= (3) (f(1))))) (and (not (= (3) (f(1)))) (not (= (f(1)) (1))))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, operator_num, 1) for operator_num in list(range(1, 500))])
+                             [(3, operator_num, 1) for operator_num in list(range(2000, 3000))])
     def test_random_uf_equations(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, operator_num, function_num)
@@ -542,7 +570,7 @@ E               KeyError: 25
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, clause_num, 2) for clause_num in list(range(1, 3000))])
+                             [(3, clause_num, 2) for clause_num in list(range(2000, 3000))])
     def test_random_uf_formula(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, 10, function_num)

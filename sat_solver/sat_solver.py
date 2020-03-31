@@ -107,7 +107,7 @@ class SATSolver:
         for var in self._assignment:
             yield var, self._assignment[var]["value"]
 
-    def _conflict_resolution(self, conflict_clause, limit=500):
+    def _conflict_resolution(self, conflict_clause, limit=float('inf')):
         """
         Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
         """
@@ -131,6 +131,14 @@ class SATSolver:
 
             clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
             if (max_level_count == 1) or (clause_on_incoming_edge is None) or (count >= limit):
+                if clause_on_incoming_edge is None:
+                    cur_level = len(self._assignment_by_level) - 1
+                    last_literal = self._assignment_by_level[cur_level][0]
+                    last_var = abs(last_literal)
+                    if not self._assignment[last_var]["value"]:
+                        last_literal = -last_literal
+                    conflict_clause.add(last_literal)
+                    last_literal = -last_literal
                 # If the last assigned literal is the only one from the last decision level,
                 # or if it was assigned because of the theory (thus, the incoming clause is None):
                 # return the conflict clause, the next literal to assign (which should be the
@@ -255,12 +263,13 @@ class SATSolver:
             for literal in self._assigned_vsids_count:
                 self._assigned_vsids_count[literal] /= 2
 
-    def _decide(self):
+    def _decide(self, literal=None):
         """
         Decides which literal to assign next, using the VSIDS decision heuristic.
         """
         self._create_new_decision_level()
-        literal, count = self._unassigned_vsids_count.most_common(1).pop()
+        if literal is None:
+            literal, count = self._unassigned_vsids_count.most_common(1).pop()
         self._assign(None, literal)
 
     def _create_new_decision_level(self):
@@ -292,6 +301,9 @@ class SATSolver:
                 decision_literal = -decision_literal
             self._backtrack(cur_level - 1)
             self._add_conflict_clause(conflict_clause)
+            # Case-splitting: assign a new value to the decision literal.
+            if decision_variable not in self._assignment:
+                self._decide(-decision_literal)
 
             # If the clause is already satisfied, add it to the appropriate data structures
             # Otherwise, if it is a unit-clause - satisfy it
@@ -302,7 +314,7 @@ class SATSolver:
                 if variable in self._assignment:
                     cur_level, cur_idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
                     if ((self._assignment[variable]["value"] == literal > 0) and
-                            (cur_level < min_level) or ((cur_level == min_level) and (cur_idx < min_idx))):
+                            ((cur_level < min_level) or ((cur_level == min_level) and (cur_idx < min_idx)))):
                         min_sat_literal, min_level, min_idx = literal, cur_level, cur_idx
                 else:
                     unassigned_count, unassigned_literal = unassigned_count + 1, literal
@@ -313,10 +325,6 @@ class SATSolver:
             # If the clause is a unit clause, assign the only literal (if possible)
             if unassigned_count == 1:
                 self._assign(conflict_clause, unassigned_literal)
-
-            # Case-splitting: assign a new value to the decision literal.
-            if decision_variable not in self._assignment:
-                self._assign(None, -decision_literal)
 
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
