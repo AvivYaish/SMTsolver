@@ -5,7 +5,6 @@ from sat_solver.tests.test_sat_solver import TestSATSolver
 from copy import deepcopy
 import z3
 import random
-import time
 
 
 class TestUFSolver:
@@ -201,11 +200,10 @@ class TestUFSolver:
     @staticmethod
     def generate_random_equations(variable_num: int, operator_num: int, function_num):
         all_variables = list(range(1, variable_num + 1))
-        z3_f = z3.Function('f', z3.IntSort(), z3.IntSort())
-        z3_g = z3.Function('g', z3.IntSort(), z3.IntSort())
-        subformulas_z3, equations_z3 = [z3.Int(str(cur_literal)) for cur_literal in all_variables], []
-        subformulas_our_txt, equations_our_txt = [str(cur_literal) for cur_literal in all_variables], []
-        subformulas_our, equations_our = [str(cur_literal) for cur_literal in all_variables], []
+        subformulas_z3, equations_z3 = [z3.Int("x" + str(cur_literal)) for cur_literal in all_variables], []
+        subformulas_our_txt, equations_our_txt = ["x" + str(cur_literal) for cur_literal in all_variables], []
+        subformulas_our, equations_our = ["x" + str(cur_literal) for cur_literal in all_variables], []
+        f, g = z3.Function('f', z3.IntSort(), z3.IntSort()), z3.Function('g', z3.IntSort(), z3.IntSort())
 
         for cur_operator_idx in range(operator_num):
             param1_idx = random.randint(1, len(subformulas_z3)) - 1
@@ -215,10 +213,10 @@ class TestUFSolver:
             if random_operator <= 2:
                 if (random_operator == 1) or (function_num <= 1):
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
-                        z3_f(param1_z3), "f(" + param1_our_txt + ")", ("f", param1_our)
+                        f(param1_z3), "f(" + param1_our_txt + ")", ("f", param1_our)
                 elif random_operator == 2:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
-                        z3_g(param1_z3), "g(" + param1_our_txt + ")", ("g", param1_our)
+                        g(param1_z3), "g(" + param1_our_txt + ")", ("g", param1_our)
                 subformulas_z3.append(cur_subformula_z3)
                 subformulas_our_txt.append(cur_subformula_our_txt)
                 subformulas_our.append(cur_subformula_our)
@@ -537,7 +535,7 @@ Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (and (
         assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
-    def test_bad_10():
+    def test_bad10():
         """
         FAILED [ 96%]
 Z3 formula:  Or(f(1) != 1 == (g(f(1)) == g(1)),
@@ -567,12 +565,60 @@ Z3:		 0.01025700569152832
 Our:	 0.00821232795715332
 
         """
+        Not, And, Or, Implies = z3.Not, z3.And, z3.Or, z3.Implies
+        f, g = z3.Function('f', z3.IntSort(), z3.IntSort()), z3.Function('g', z3.IntSort(), z3.IntSort())
+        x1, x2, x3 = z3.Int("x1"), z3.Int("x2"), z3.Int("x3")
+        z3_solver = z3.Solver()
+        z3_solver.add((x3 != g(x3)) ==
+                      And(Implies(g(x3) == g(g(g(x3))), g(g(x3)) == x3),
+                          (g(g(g(x3))) == g(g(g(x3)))) ==
+                          Or(g(x3) == g(g(g(x3))), g(g(x3)) == x3)))
+        print(z3_solver.check())
         formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (<=> (not (= (3) (g(3)))) (and (=> (= (g(3)) (g(g(g(3))))) (= (g(g(3))) (3))) (<=> (= (g(g(g(3)))) (g(g(g(3))))) (or (= (g(3)) (g(g(g(3))))) (= (g(g(3))) (3)))))))"
-        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve() == (z3_solver.check() == z3.sat)
+
+    @staticmethod
+    def test_bad13():
+        """
+        FAILED [ 84%]
+Z3 formula:  And(And(f(3) == f(2), And(f(2) != g(f(3)), f(2) != g(f(2)))) ==
+    Not(f(2) != g(f(3))),
+    And(f(3) == f(2),
+        Not(f(2) != g(f(3))) == f(2) != g(f(2))))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (and (<=> (and (= (f(3)) (f(2))) (and (not (= (f(2)) (g(f(3))))) (not (= (f(2)) (g(f(2))))))) (not (not (= (f(2)) (g(f(3))))))) (and (= (f(3)) (f(2))) (<=> (not (not (= (f(2)) (g(f(3)))))) (not (= (f(2)) (g(f(2)))))))))
+
+Is SAT? False
+Z3:		 0.015210628509521484
+Our:	 0.0025670528411865234
+
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (and (<=> (and (= (f(3)) (f(2))) (and (not (= (f(2)) (g(f(3))))) (not (= (f(2)) (g(f(2))))))) (not (not (= (f(2)) (g(f(3))))))) (and (= (f(3)) (f(2))) (<=> (not (not (= (f(2)) (g(f(3)))))) (not (= (f(2)) (g(f(2)))))))))"
+        assert not UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad14():
+        """
+        FAILED  [ 53%]
+Z3 formula:  Not(And(Implies(1 == 2, Implies(3 != 1 == (2 == 3), 3 != 1)),
+        Or(And(And(3 == 1, 3 == 1),
+               And(1 == 2, 2 == 3) ==
+               Implies(3 != 1 == (2 == 3), 3 != 1)),
+           Implies((1 == 2) == 3 != 1,
+                   Implies(Implies((1 == 2) == 3 != 1,
+                                   2 == 3),
+                           1 == 2)))))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (not (and (=> (= (1) (2)) (=> (<=> (not (= (3) (1))) (= (2) (3))) (not (= (3) (1))))) (or (and (and (= (3) (1)) (= (3) (1))) (<=> (and (= (1) (2)) (= (2) (3))) (=> (<=> (not (= (3) (1))) (= (2) (3))) (not (= (3) (1)))))) (=> (<=> (= (1) (2)) (not (= (3) (1)))) (=> (=> (<=> (= (1) (2)) (not (= (3) (1)))) (= (2) (3))) (= (1) (2))))))))
+
+Is SAT? False
+Z3:		 0.020142793655395508
+Our:	 0.0
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (not (and (=> (= (1) (2)) (=> (<=> (not (= (3) (1))) (= (2) (3))) (not (= (3) (1))))) (or (and (and (= (3) (1)) (= (3) (1))) (<=> (and (= (1) (2)) (= (2) (3))) (=> (<=> (not (= (3) (1))) (= (2) (3))) (not (= (3) (1)))))) (=> (<=> (= (1) (2)) (not (= (3) (1)))) (=> (=> (<=> (= (1) (2)) (not (= (3) (1)))) (= (2) (3))) (= (1) (2))))))))"
+        assert not UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, operator_num, 1) for operator_num in list(range(10, 50)) * 100])
+                             [(3, operator_num, 1) for operator_num in list(range(10, 50))])
     def test_random_uf_equations(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, operator_num, function_num)
@@ -591,7 +637,7 @@ Our:	 0.00821232795715332
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, clause_num, 2) for clause_num in list(range(10, 50)) * 100])
+                             [(3, clause_num, 2) for clause_num in list(range(10, 50))])
     def test_random_uf_formula(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, 10, function_num)
