@@ -1,5 +1,4 @@
 from uf_solver.congruence_graph import CongruenceGraph
-import numpy as np
 import re
 
 
@@ -36,7 +35,7 @@ class FormulaParser:
     _CLOSING_BRACKET = ')'
     _PARAMETER_SEPARATOR = ','
 
-    _DECLARATION = re.compile(r'\(\s*declare-fun\s+(\w+)\s+\(([^\)]*)\)\s+(\w+)\s*\)')
+    _DECLARATION = re.compile(r'\(\s*declare-fun\s+(\w+)\s+\(([^)]*)\)\s+(\w+)\s*\)')
     _ASSERTION = re.compile(r'\(\s*assert\s*')
     _FUNCTION_COMMA = re.compile(r'\(.*?\)|(,)')
 
@@ -195,6 +194,7 @@ class FormulaParser:
             left_side, right_side = right_side.split(None, 1)
 
         if operator in FormulaParser.TQ_OPS:
+            # All done according to https://moodle2.cs.huji.ac.il/nu19/mod/forum/discuss.php?d=40323
             # Assumes all TQ literals are of the form: "<= left_side right_side":
             # left_side is enclosed in brackets if it includes multiple parameters, and cannot include whitespace.
             # right_side is always a single number.
@@ -530,7 +530,7 @@ class FormulaParser:
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, simplified_formulas)
         return signature, frozenset(cnf_formula), simplified_formulas, \
-               tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
+            tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
 
     @staticmethod
     def import_uf(formula: str):
