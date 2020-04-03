@@ -148,12 +148,10 @@ class FormulaParser:
         A is the coefficient matrix, according to the order defined in the signature.
         b is the upper bound on the left side.
         """
-        coefficients = np.zeros(len(signature), dtype=np.float64)
+        coefficients = [0] * len(signature)
         for match in re.finditer(FormulaParser._SINGLE_COEFFICIENT_AND_VARIABLE, left_side):
-            coefficients[signature[match.group(2)]["index"]] += np.float64(match.group(1))
-        return FormulaParser.LESS_EQ, \
-               np.array([coefficients], dtype=np.float64), \
-               np.array([np.float64(right_side)], dtype=np.float64)
+            coefficients[signature[match.group(2)]["index"]] += float(match.group(1))
+        return FormulaParser.LESS_EQ, tuple(coefficients), float(right_side)
 
     @staticmethod
     def _parse_formula(formula: str, signature=None):
@@ -232,8 +230,8 @@ class FormulaParser:
             return FormulaParser.TRUE
 
         operator = parsed_formula[0]
-        if operator not in FormulaParser.ALL_OPS:
-            # Base case, only one variable/boolean value
+        if (operator not in FormulaParser.ALL_OPS) or (operator in FormulaParser.TQ_OPS):
+            # Base case, only one variable/boolean value or a linear equation
             return parsed_formula
 
         left_parameter = FormulaParser._simplify_formula(parsed_formula[1])

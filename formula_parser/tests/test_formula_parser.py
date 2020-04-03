@@ -274,25 +274,19 @@ class TestFormulaParser:
     def test_parse_linear_equation():
         signature = {"x1": {"index": 0}, "x2": {"index": 1}, "x3": {"index": 2}}
         _, A, b = FormulaParser._parse_linear_equation("-5x1", "-6", signature)
-        assert np.allclose(A, np.array([[-5., 0., 0.]]))
+        assert np.allclose(A, np.array([-5., 0., 0.]))
         assert np.allclose(b, np.array([-6.]))
 
         _, A, b = FormulaParser._parse_linear_equation("1*x1+6*x2-5*x3-1.1*x1", "0.52", signature)
-        assert np.allclose(A, np.array([[-0.1, 6., -5.]]))
+        assert np.allclose(A, np.array([-0.1, 6., -5.]))
         assert np.allclose(b, np.array([0.52]))
 
     @staticmethod
     def test_import_linear_equation():
         formula = "(declare-fun x1 () Int) (assert (<= 5x1 1))"
-        signature, parsed_formulas = FormulaParser._parse_smt_lib_v2(formula)
-        assert signature == {'x1': {'parameter_types': [], 'output_type': 'Int', 'index': 0}}
-        assert parsed_formulas == [('<=', np.array([[5.]]), np.array([1.]))]
+        _, (_, _), non_boolean_clauses = FormulaParser.import_tq(formula)
+        assert non_boolean_clauses == {('<=', (5., ), 1.)}
 
         formula = "(declare-fun x1 () Int) (declare-fun x2 () Int) (assert (<= 5x1 1)) (assert (<= (1x1 + 6x2) 0.5))"
-        signature, parsed_formulas = FormulaParser._parse_smt_lib_v2(formula)
-        assert signature == {'x1': {'parameter_types': [], 'output_type': 'Int', 'index': 0},
-                             'x2': {'parameter_types': [], 'output_type': 'Int', 'index': 1}}
-        assert np.allclose(parsed_formulas[0][1], np.array([[5., 0.]]))
-        assert np.allclose(parsed_formulas[0][2], np.array([1.]))
-        assert np.allclose(parsed_formulas[1][1], np.array([[1., 6.]]))
-        assert np.allclose(parsed_formulas[1][2], np.array([0.5]))
+        _, (_, _), non_boolean_clauses = FormulaParser.import_tq(formula)
+        assert non_boolean_clauses == {('<=', (5.0, 0), 1.0), ('<=', (1.0, 6.0), 0.5)}
