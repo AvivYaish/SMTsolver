@@ -1,4 +1,5 @@
 from uf_solver.congruence_graph import CongruenceGraph
+import numpy as np
 import re
 
 
@@ -39,6 +40,8 @@ class FormulaParser:
     _ASSERTION = re.compile(r'\(\s*assert\s*')
     _FUNCTION_COMMA = re.compile(r'\(.*?\)|(,)')
 
+    _SINGLE_COEFFICIENT_AND_VARIABLE = re.compile(r'\s*([-+]?\s*\d?\s*(?:\.\s*\d+)?)\s*(?:\*)?\s*([\w.]+)\s*')
+
     @staticmethod
     def symmetric_formula(parsed_formula):
         """
@@ -65,6 +68,10 @@ class FormulaParser:
             if flag and (counter == 0):
                 return idx + 1
         return -1
+
+    @staticmethod
+    def _remove_whitespace(text: str) -> str:
+        return ''.join(text.split())
 
     @staticmethod
     def _prepare_formula(formula: str) -> str:
@@ -134,15 +141,16 @@ class FormulaParser:
         return signature, parsed_formulas
 
     @staticmethod
-    def _parse_linear_equation(formula: str):
-        return None
-
-    @staticmethod
-    def _parse_theory_literal(formula: str, signature=None):
-        parsed_formula = FormulaParser._parse_function_call(formula, signature)
-        if parsed_formula is None:
-            parsed_formula = FormulaParser._parse_linear_equation(formula)
-        return parsed_formula
+    def _parse_linear_equation(left_side, right_side, signature):
+        """
+        :return: A, b, where
+        A is the coefficient matrix, according to the order defined in the signature.
+        b is the upper bound on the left side.
+        """
+        coefficients = np.zeros(len(signature), dtype=np.float64)
+        for match in re.finditer(FormulaParser._SINGLE_COEFFICIENT_AND_VARIABLE, left_side):
+            coefficients[signature[match.group(2)]] += np.float64(match.group(1))
+        return np.array([coefficients], dtype=np.float64), np.array([np.float64(right_side)], dtype=np.float64)
 
     @staticmethod
     def _parse_formula(formula: str, signature=None):
@@ -158,9 +166,10 @@ class FormulaParser:
         if not formula:
             return None
 
-        parsed_theory_literal = FormulaParser._parse_theory_literal(formula, signature)
-        if parsed_theory_literal is not None:
-            return parsed_theory_literal
+        # Functions must be declared beforehand and included in the "signature" parameter.
+        parsed_function_call = FormulaParser._parse_function_call(formula, signature)
+        if parsed_function_call is not None:
+            return parsed_function_call
 
         split_cur_formula = formula.split(None, 1)  # Assumes operators are always followed by whitespace
         right_side = split_cur_formula.pop()
@@ -183,6 +192,19 @@ class FormulaParser:
             # The first parameter is not enclosed in brackets and is not a function, can split according to the
             # first whitespace
             left_side, right_side = right_side.split(None, 1)
+
+        if operator in FormulaParser.TQ_OPS:
+            # Assumes all TQ literals are of the form: "<= left_side right_side":
+            # left_side is enclosed in brackets if it includes multiple parameters, and cannot include whitespace.
+            # right_side is always a single number.
+            # Coefficients are either an int (e.g. "68"), or an int followed by a dot followed by an int (e.g. "68.52").
+            # Variables must be declared beforehand and included in the "signature" parameter.
+            # Variables and coefficients can include a single leading operator, either '-' or '+'.
+            # Variables must be preceded by a single coefficient, and can be separated from the coefficient by a '*'.
+            return FormulaParser._parse_linear_equation(FormulaParser._remove_whitespace(left_side),
+                                                        FormulaParser._remove_whitespace(right_side),
+                                                        signature)
+
         return (operator,
                 FormulaParser._parse_formula(left_side, signature),
                 FormulaParser._parse_formula(right_side, signature))

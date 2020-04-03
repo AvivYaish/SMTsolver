@@ -1,6 +1,7 @@
 import pytest
 from formula_parser.formula_parser import FormulaParser
 from sat_solver.sat_solver import SATSolver
+import numpy as np
 
 
 class TestFormulaParser:
@@ -266,3 +267,14 @@ class TestFormulaParser:
             frozenset({2, 3}),
             frozenset({-3, -2})
         })
+
+    @staticmethod
+    def test_parse_linear_equation():
+        signature = {"x1": 0, "x2": 1, "x3": 2}
+        A, b = FormulaParser._parse_linear_equation("-5x1", "-6", signature)
+        assert np.allclose(A, np.array([[-5., 0., 0.]]))
+        assert np.allclose(b, np.array([-6.]))
+
+        A, b = FormulaParser._parse_linear_equation("1*x1+6*x2-5*x3-1.1*x1", "0.52", signature)
+        assert np.allclose(A, np.array([[-0.1, 6., -5.]]))
+        assert np.allclose(b, np.array([0.52]))
