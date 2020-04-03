@@ -135,8 +135,8 @@ class SATSolver:
                     last_literal = self._assignment_by_level[max_level][0]
                     if not self._assignment[abs(last_literal)]["value"]:
                         last_literal = -last_literal
-                    conflict_clause.add(last_literal)
                     last_literal = -last_literal
+                    conflict_clause.add(last_literal)
                 # If the last assigned literal is the only one from the last decision level,
                 # or if it was assigned because of the theory (thus, the incoming clause is None):
                 # return the conflict clause, the next literal to assign (which should be the
@@ -324,7 +324,6 @@ class SATSolver:
             # Case-splitting: assign a new value to the decision literal.
             if decision_variable not in self._assignment:
                 self._decide(-decision_literal)
-
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
         # Theory propagation

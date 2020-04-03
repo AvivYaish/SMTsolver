@@ -617,6 +617,84 @@ Our:	 0.0
         assert not UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
+    def test_bad15():
+        """
+        Z3 formula:  Implies(Or(((x2 == g(g(x3))) == x1 != g(x3)) ==
+           (x3 == g(x3)),
+           Or(x3 == g(x3), g(x3) != g(x3))),
+        Not(Or(Implies(Or(x3 == g(x3), g(x3) != g(x3)) ==
+                       x1 != g(x3),
+                       Or(x1 != g(x3) ==
+                          ((x2 == g(g(x3))) == Not(x3 != x2)),
+                          Implies(Or(g(x3) != g(x3),
+                                     x2 == g(g(x3))),
+                                  Or(x3 == g(x3),
+                                     g(x3) != g(x3))))),
+               Or(x1 != g(x3), Not(x3 != x2)))))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (=> (or (<=> (<=> (= (x2) (g(g(x3)))) (not (= (x1) (g(x3))))) (= (x3) (g(x3)))) (or (= (x3) (g(x3))) (not (= (g(x3)) (g(x3)))))) (not (or (=> (<=> (or (= (x3) (g(x3))) (not (= (g(x3)) (g(x3))))) (not (= (x1) (g(x3))))) (or (<=> (not (= (x1) (g(x3)))) (<=> (= (x2) (g(g(x3)))) (not (not (= (x3) (x2)))))) (=> (or (not (= (g(x3)) (g(x3)))) (= (x2) (g(g(x3))))) (or (= (x3) (g(x3))) (not (= (g(x3)) (g(x3)))))))) (or (not (= (x1) (g(x3)))) (not (not (= (x3) (x2)))))))))
+
+Is SAT? False
+Z3:		 0.017950773239135742
+Our:	 0.001993894577026367
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (=> (or (<=> (<=> (= (x2) (g(g(x3)))) (not (= (x1) (g(x3))))) (= (x3) (g(x3)))) (or (= (x3) (g(x3))) (not (= (g(x3)) (g(x3)))))) (not (or (=> (<=> (or (= (x3) (g(x3))) (not (= (g(x3)) (g(x3))))) (not (= (x1) (g(x3))))) (or (<=> (not (= (x1) (g(x3)))) (<=> (= (x2) (g(g(x3)))) (not (not (= (x3) (x2)))))) (=> (or (not (= (g(x3)) (g(x3)))) (= (x2) (g(g(x3))))) (or (= (x3) (g(x3))) (not (= (g(x3)) (g(x3)))))))) (or (not (= (x1) (g(x3)))) (not (not (= (x3) (x2)))))))))"
+        assert not UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad16():
+        """
+        Z3 formula:  Or(Not(Or(Or(And(Implies(Implies(g(x1) == x2, g(x1) != x3),
+                         Implies(g(x1) == x2, g(x1) != x3)),
+                 Implies(g(x1) == x2, g(x1) != x3)),
+             And(Implies(Implies(g(x1) == x2, g(x1) != x3),
+                         Implies(g(x1) == x2, g(x1) != x3)),
+                 Implies(g(x1) == x2, g(x1) != x3))) ==
+          Implies(f(x1) == x1,
+                  And(Implies(Implies(g(x1) == x2,
+                                      g(x1) != x3),
+                              Implies(g(x1) == x2,
+                                      g(x1) != x3)),
+                      Implies(g(x1) == x2, g(x1) != x3))),
+          Implies(f(x1) == x1,
+                  And(Implies(Implies(g(x1) == x2,
+                                      g(x1) != x3),
+                              Implies(g(x1) == x2,
+                                      g(x1) != x3)),
+                      Implies(g(x1) == x2, g(x1) != x3))))),
+   Or(And(Implies(Implies(g(x1) == x2, g(x1) != x3),
+                  Implies(g(x1) == x2, g(x1) != x3)),
+          Implies(g(x1) == x2, g(x1) != x3)),
+      And(Implies(Implies(g(x1) == x2, g(x1) != x3),
+                  Implies(g(x1) == x2, g(x1) != x3)),
+          Implies(g(x1) == x2, g(x1) != x3))))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (or (not (or (<=> (or (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))))) (=> (= (f(x1)) (x1)) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))))) (=> (= (f(x1)) (x1)) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))))))) (or (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))))))
+
+Is SAT? False
+Z3:		 0.01995706558227539
+Our:	 0.001994609832763672
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (or (not (or (<=> (or (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))))) (=> (= (f(x1)) (x1)) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))))) (=> (= (f(x1)) (x1)) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))))))) (or (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (and (=> (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3)))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))) (=> (= (g(x1)) (x2)) (not (= (g(x1)) (x3))))))))"
+        assert not UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
+    def test_bad17():
+        """
+        Z3 formula:  Or(Or(Or(x3 == x2, x1 != x2),
+      Not(Or(Or(x1 != x2, x3 == x2), x1 != x2))),
+   Or(x3 == x2, Or(x3 == x1, x3 == x2)) == (x3 == f(f(x1)))) ==
+(x1 != x2 ==
+ Implies(Or(Or(x1 != x2, x3 == x2), x1 != x2),
+         Or(x1 != x2, x3 == x2)))
+Our formula:  (declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (<=> (or (or (or (= (x3) (x2)) (not (= (x1) (x2)))) (not (or (or (not (= (x1) (x2))) (= (x3) (x2))) (not (= (x1) (x2)))))) (<=> (or (= (x3) (x2)) (or (= (x3) (x1)) (= (x3) (x2)))) (= (x3) (f(f(x1)))))) (<=> (not (= (x1) (x2))) (=> (or (or (not (= (x1) (x2))) (= (x3) (x2))) (not (= (x1) (x2)))) (or (not (= (x1) (x2))) (= (x3) (x2)))))))
+
+Is SAT? True
+Z3:		 0.016955137252807617
+Our:	 0.0009975433349609375
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (<=> (or (or (or (= (x3) (x2)) (not (= (x1) (x2)))) (not (or (or (not (= (x1) (x2))) (= (x3) (x2))) (not (= (x1) (x2)))))) (<=> (or (= (x3) (x2)) (or (= (x3) (x1)) (= (x3) (x2)))) (= (x3) (f(f(x1)))))) (<=> (not (= (x1) (x2))) (=> (or (or (not (= (x1) (x2))) (= (x3) (x2))) (not (= (x1) (x2)))) (or (not (= (x1) (x2))) (= (x3) (x2)))))))"
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
                              [(3, operator_num, 1) for operator_num in list(range(10, 50))])
     def test_random_uf_equations(variable_num: int, operator_num: int, function_num: int):
