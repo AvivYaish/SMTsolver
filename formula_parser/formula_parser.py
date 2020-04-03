@@ -134,6 +134,17 @@ class FormulaParser:
         return signature, parsed_formulas
 
     @staticmethod
+    def _parse_linear_equation(formula: str):
+        return None
+
+    @staticmethod
+    def _parse_theory_literal(formula: str, signature=None):
+        parsed_formula = FormulaParser._parse_function_call(formula, signature)
+        if parsed_formula is None:
+            parsed_formula = FormulaParser._parse_linear_equation(formula)
+        return parsed_formula
+
+    @staticmethod
     def _parse_formula(formula: str, signature=None):
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it:
@@ -147,9 +158,9 @@ class FormulaParser:
         if not formula:
             return None
 
-        parsed_function_call = FormulaParser._parse_function_call(formula, signature)
-        if parsed_function_call is not None:
-            return parsed_function_call
+        parsed_theory_literal = FormulaParser._parse_theory_literal(formula, signature)
+        if parsed_theory_literal is not None:
+            return parsed_theory_literal
 
         split_cur_formula = formula.split(None, 1)  # Assumes operators are always followed by whitespace
         right_side = split_cur_formula.pop()
