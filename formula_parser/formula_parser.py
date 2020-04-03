@@ -157,7 +157,8 @@ class FormulaParser:
         """
         :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it:
         (operator, left side, right side (if exists))
-        And for functions: (function_name, param1, param2, ...)
+        For functions: (function_name, param1, param2, ...)
+        For linear inequalities of the form "<= (a1*x1+a2*x2+...) b": (inequality_type, (a1, a2, ...), b)
         """
         if signature is None:
             signature = {}
@@ -446,6 +447,10 @@ class FormulaParser:
 
     @staticmethod
     def import_formula(formula: str, output_all=False):
+        """
+        Assumes formulas are given in left Polish notation, and all parameters are enclosed by brackets.
+        For example: "not (and (a) (or (a) (b)))"
+        """
         return FormulaParser._convert_to_cnf(FormulaParser._parse_formula(formula), output_all)
 
     @staticmethod
@@ -534,6 +539,14 @@ class FormulaParser:
 
     @staticmethod
     def import_uf(formula: str):
+        """
+        Assumes functions are declared using: "(declare-fun func_name (param1_type, param2_type, ...) return_type)"
+        Function names and parameter types cannot contain whitespace.
+        Assumes all requirements are given using asserts: "(assert (boolean_formula))"
+        Where boolean_formula is valid according to import_formula's rules, and can only contain
+        literals of the form: "= param1 param2", and parameters are either variables or functions.
+        Functions can only be of the form: "func_name(param1,param2,...)"
+        """
         signature, cnf_formula, simplified_formulas, \
             tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
             non_boolean_clauses = FormulaParser._import_non_boolean(formula)
@@ -547,6 +560,13 @@ class FormulaParser:
 
     @staticmethod
     def import_tq(formula: str):
+        """
+        Assumes variables are declared using: "(declare-fun var_name () Int)"
+        Variable names cannot contain whitespace.
+        Assumes all requirements are given using asserts: "(assert (boolean_formula))"
+        Where boolean_formula is valid according to import_formula's rules, and can only contain
+        literals of the form: "<= (coeff1*var1+coeff2*var2+...) b"
+        """
         # Importing is "smart" - does not create multiple abstractions for the same linear equation.
         signature, cnf_formula, simplified_formulas, \
             tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
