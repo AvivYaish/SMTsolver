@@ -116,42 +116,44 @@ class TestFormulaParser:
                        ; comment
 
                        (assert ((= 250 (     + q1    q2)))       )"""
-        signature = {'cost': {'output_type': 'Real', 'parameter_types': ['Int', 'Int', 'Bool']},
-                     's1': {'output_type': 'Bool', 'parameter_types': []},
-                     's2': {'output_type': 'Bool', 'parameter_types': []},
-                     's3': {'output_type': 'Bool', 'parameter_types': []},
-                     's4': {'output_type': 'Bool', 'parameter_types': []},
-                     'q1': {'output_type': 'Real', 'parameter_types': []},
-                     'q2': {'output_type': 'Real', 'parameter_types': ['Int', 'Bool', 'a']},
-                     'q3': {'output_type': 'Real', 'parameter_types': []},
-                     'q4': {'output_type': 'Real', 'parameter_types': []}}
+        signature = {'cost': {'index': 0,
+                              'output_type': 'Real',
+                              'parameter_types': ['Int', 'Int', 'Bool']},
+                     'q1': {'index': 5, 'output_type': 'Real', 'parameter_types': []},
+                     'q2': {'index': 6,
+                            'output_type': 'Real',
+                            'parameter_types': ['Int', 'Bool', 'a']},
+                     'q3': {'index': 7, 'output_type': 'Real', 'parameter_types': []},
+                     'q4': {'index': 8, 'output_type': 'Real', 'parameter_types': []},
+                     's1': {'index': 1, 'output_type': 'Bool', 'parameter_types': []},
+                     's2': {'index': 2, 'output_type': 'Bool', 'parameter_types': []},
+                     's3': {'index': 3, 'output_type': 'Bool', 'parameter_types': []},
+                     's4': {'index': 4, 'output_type': 'Bool', 'parameter_types': []}}
         parsed_formulas = [('=', '250', ('+', ('q1', ('q1', '5', ('q2',)), '8'), '7')),
                            ('=',
                             '250',
                             ('+', ('and', ('q1',), 'x'), ('q2', '2', ('q2', '1', 'true', '2'), '8'))),
                            ('=', '250', ('+', ('q1',), ('q2',)))]
-        assert FormulaParser._parse_uf(formula) == (signature, parsed_formulas)
+        assert FormulaParser._parse_smt_lib_v2(formula) == (signature, parsed_formulas)
 
         # Uses a weird one-line input
         formula = ("(declare-fun q1 () Real) (   assert    (= 250 (+    q1   (    q1   (5   , q2 ) , 8 )     7   )))" +
                    "(  assert (= 260 (+ (And (q1    )   (x   )   )" +
                    " (  q1(2,q1(1,true,2),8)  )   ))   )  (declare-fun q3 () Real)       " +
                    "(  assert (    - 50 ( + (            Or q3       (  not x   )   )  12 ) )   )          ")
-        signature = {
-            'q1': {'output_type': 'Real', 'parameter_types': []},
-            'q3': {'output_type': 'Real', 'parameter_types': []}
-        }
+        signature = {'q1': {'index': 0, 'output_type': 'Real', 'parameter_types': []},
+                     'q3': {'index': 1, 'output_type': 'Real', 'parameter_types': []}}
         parsed_formulas = [('=', '250', ('+', ('q1', ('q1', '5', 'q2'), '8'), '7')),
                            ('=',
                             '260',
                             ('+', ('and', ('q1',), 'x'), ('q1', '2', ('q1', '1', 'true', '2'), '8'))),
                            ('-', '50', ('+', ('or', ('q3',), ('not', 'x')), '12'))]
-        assert FormulaParser._parse_uf(formula) == (signature, parsed_formulas)
+        assert FormulaParser._parse_smt_lib_v2(formula) == (signature, parsed_formulas)
 
         formula = '(declare-fun f () Bool) (assert (=> (= a b) f(1)))'
-        signature = {'f': {'output_type': 'Bool', 'parameter_types': []}}
+        signature = {'f': {'index': 0, 'output_type': 'Bool', 'parameter_types': []}}
         parsed_formulas = [('=>', ('=', 'a', 'b'), ('f', '1'))]
-        assert FormulaParser._parse_uf(formula) == (signature, parsed_formulas)
+        assert FormulaParser._parse_smt_lib_v2(formula) == (signature, parsed_formulas)
 
     @staticmethod
     def test_create_boolean_abstraction():
@@ -172,7 +174,7 @@ class TestFormulaParser:
 
         formula = '(declare-fun f (Int Int) Bool) (assert ((and (= (not a) f ( 1 , 2 ) ) (a))))'
         abstraction = {}
-        signature, parsed_formula = FormulaParser._parse_uf(formula)
+        signature, parsed_formula = FormulaParser._parse_smt_lib_v2(formula)
         abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
         assert abstracted_formula == ('and', '1', '2')
         assert abstraction == {'a': '2', ('=', ('not', 'a'), ('f', '1', '2')): '1'}
@@ -181,7 +183,7 @@ class TestFormulaParser:
                    '(declare-fun g (Int) Bool) '
                    '(assert (and (and (= g(a) c) (or (not (= f(g(a)) f(c))) (= g(a) d))) (not (= c d)))')
         abstraction = {}
-        signature, parsed_formula = FormulaParser._parse_uf(formula)
+        signature, parsed_formula = FormulaParser._parse_smt_lib_v2(formula)
         abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
         assert abstracted_formula == ('and', ('and', '1', ('or', ('not', '2'), '3')), ('not', '4'))
         assert abstraction == {('=', ('f', ('g', 'a')), ('f', 'c')): '2',
@@ -191,7 +193,7 @@ class TestFormulaParser:
 
         formula = '(declare-fun f () Bool) (assert (=> (= a b) f(1)))'
         abstraction = {}
-        signature, parsed_formula = FormulaParser._parse_uf(formula)
+        signature, parsed_formula = FormulaParser._parse_smt_lib_v2(formula)
         abstracted_formula = FormulaParser._create_boolean_abstraction(parsed_formula.pop(), signature, abstraction)
         assert abstracted_formula == ('=>', '1', '2')
         assert abstraction == {('=', 'a', 'b'): '1', ('f', '1'): '2'}
@@ -270,11 +272,27 @@ class TestFormulaParser:
 
     @staticmethod
     def test_parse_linear_equation():
-        signature = {"x1": 0, "x2": 1, "x3": 2}
-        A, b = FormulaParser._parse_linear_equation("-5x1", "-6", signature)
+        signature = {"x1": {"index": 0}, "x2": {"index": 1}, "x3": {"index": 2}}
+        _, A, b = FormulaParser._parse_linear_equation("-5x1", "-6", signature)
         assert np.allclose(A, np.array([[-5., 0., 0.]]))
         assert np.allclose(b, np.array([-6.]))
 
-        A, b = FormulaParser._parse_linear_equation("1*x1+6*x2-5*x3-1.1*x1", "0.52", signature)
+        _, A, b = FormulaParser._parse_linear_equation("1*x1+6*x2-5*x3-1.1*x1", "0.52", signature)
         assert np.allclose(A, np.array([[-0.1, 6., -5.]]))
         assert np.allclose(b, np.array([0.52]))
+
+    @staticmethod
+    def test_import_linear_equation():
+        formula = "(declare-fun x1 () Int) (assert (<= 5x1 1))"
+        signature, parsed_formulas = FormulaParser._parse_smt_lib_v2(formula)
+        assert signature == {'x1': {'parameter_types': [], 'output_type': 'Int', 'index': 0}}
+        assert parsed_formulas == [('<=', np.array([[5.]]), np.array([1.]))]
+
+        formula = "(declare-fun x1 () Int) (declare-fun x2 () Int) (assert (<= 5x1 1)) (assert (<= (1x1 + 6x2) 0.5))"
+        signature, parsed_formulas = FormulaParser._parse_smt_lib_v2(formula)
+        assert signature == {'x1': {'parameter_types': [], 'output_type': 'Int', 'index': 0},
+                             'x2': {'parameter_types': [], 'output_type': 'Int', 'index': 1}}
+        assert np.allclose(parsed_formulas[0][1], np.array([[5., 0.]]))
+        assert np.allclose(parsed_formulas[0][2], np.array([1.]))
+        assert np.allclose(parsed_formulas[1][1], np.array([[1., 6.]]))
+        assert np.allclose(parsed_formulas[1][2], np.array([0.5]))

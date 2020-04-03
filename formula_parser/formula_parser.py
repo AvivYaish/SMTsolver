@@ -115,7 +115,7 @@ class FormulaParser:
         return None
 
     @staticmethod
-    def _parse_uf(formula: str):
+    def _parse_smt_lib_v2(formula: str):
         """
         Assumes asserts and declarations are enclosed by a single ( and ).
         """
@@ -129,7 +129,8 @@ class FormulaParser:
             output = match.group(3)
             signature[name] = {
                 "parameter_types": parameters.split(),
-                "output_type": output
+                "output_type": output,
+                "index": len(signature)
             }
 
         # Parsing assertions
@@ -143,14 +144,16 @@ class FormulaParser:
     @staticmethod
     def _parse_linear_equation(left_side, right_side, signature):
         """
-        :return: A, b, where
+        :return: "<=", A, b, where
         A is the coefficient matrix, according to the order defined in the signature.
         b is the upper bound on the left side.
         """
         coefficients = np.zeros(len(signature), dtype=np.float64)
         for match in re.finditer(FormulaParser._SINGLE_COEFFICIENT_AND_VARIABLE, left_side):
-            coefficients[signature[match.group(2)]] += np.float64(match.group(1))
-        return np.array([coefficients], dtype=np.float64), np.array([np.float64(right_side)], dtype=np.float64)
+            coefficients[signature[match.group(2)]["index"]] += np.float64(match.group(1))
+        return FormulaParser.LESS_EQ, \
+               np.array([coefficients], dtype=np.float64), \
+               np.array([np.float64(right_side)], dtype=np.float64)
 
     @staticmethod
     def _parse_formula(formula: str, signature=None):
@@ -523,20 +526,30 @@ class FormulaParser:
         return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses
 
     @staticmethod
-    def import_uf(formula: str):
-        signature, parsed_formulas = FormulaParser._parse_uf(formula)
+    def _import_non_boolean(formula: str):
+        signature, parsed_formulas = FormulaParser._parse_smt_lib_v2(formula)
         simplified_formulas = [FormulaParser._simplify_formula(formula) for formula in parsed_formulas]
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, simplified_formulas)
+        return signature, frozenset(cnf_formula), simplified_formulas, \
+               tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
+
+    @staticmethod
+    def import_uf(formula: str):
+        signature, cnf_formula, simplified_formulas, \
+            tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
+            non_boolean_clauses = FormulaParser._import_non_boolean(formula)
         congruence_graph = CongruenceGraph(signature, simplified_formulas,
                                            FormulaParser.ALL_OPS, FormulaParser.ALL_BINARY_OPS)
         return (
-            frozenset(cnf_formula),
+            cnf_formula,
             (tseitin_variable_to_subterm, subterm_to_tseitin_variable),
             (non_boolean_clauses, congruence_graph)
         )
 
     @staticmethod
-    def _parse_tq(formula: str):
-
-        pass
+    def import_tq(formula: str):
+        signature, cnf_formula, simplified_formulas, \
+            tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
+            non_boolean_clauses = FormulaParser._import_non_boolean(formula)
+        return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses
