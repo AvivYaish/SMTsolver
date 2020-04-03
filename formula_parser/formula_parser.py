@@ -547,6 +547,7 @@ class FormulaParser:
 
     @staticmethod
     def import_tq(formula: str):
+        # Importing is "smart" - does not create multiple abstractions for the same linear equation.
         signature, cnf_formula, simplified_formulas, \
             tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
             non_boolean_clauses = FormulaParser._import_non_boolean(formula)

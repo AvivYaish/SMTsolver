@@ -285,7 +285,11 @@ class TestFormulaParser:
     def test_import_linear_equation():
         formula = "(declare-fun x1 () Int) (assert (<= 5x1 1))"
         _, (_, _), non_boolean_clauses = FormulaParser.import_tq(formula)
-        assert non_boolean_clauses == {('<=', (5., ), 1.)}
+        assert non_boolean_clauses == {('<=', (5.,), 1.)}
+
+        formula = "(declare-fun x1 () Int) (assert (not (<= 5x1 1))) (assert (<= 5x1 1))"
+        _, (_, _), non_boolean_clauses = FormulaParser.import_tq(formula)
+        assert non_boolean_clauses == {('<=', (5.,), 1.)}
 
         formula = "(declare-fun x1 () Int) (declare-fun x2 () Int) (assert (<= 5x1 1)) (assert (<= (1x1 + 6x2) 0.5))"
         _, (_, _), non_boolean_clauses = FormulaParser.import_tq(formula)
