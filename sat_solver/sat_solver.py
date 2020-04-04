@@ -146,6 +146,7 @@ class SATSolver:
                 # return the conflict clause, the next literal to assign (which should be the
                 # watch literal of the conflict clause), and the decision level to jump to
                 if clause_on_incoming_edge is None:
+                    # If the clause is None, the literal to assign should be the opposite of the decision literal
                     max_level = self._assignment[abs(last_literal)]["level"]
                     last_literal = self._assignment_by_level[max_level][0]
                     if not self._assignment[abs(last_literal)]["value"]:
