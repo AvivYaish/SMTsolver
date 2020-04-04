@@ -355,7 +355,7 @@ class TestSATSolver:
             subformulas_our_txt.extend([("not " + cur_literal) for cur_literal in subformulas_our_txt])
             subformulas_our = [str(cur_literal) for cur_literal in variables]
             subformulas_our.extend([("not", cur_literal) for cur_literal in subformulas_our])
-
+        cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = None, None, None
         for cur_operator_idx in range(operator_num):
             param1_idx = random.randint(1, len(subformulas_z3)) - 1
             param1_z3, param1_our_txt, param1_our = \
@@ -371,7 +371,7 @@ class TestSATSolver:
                 if random_operator == 2:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our \
                         = z3.And(param1_z3, param2_z3), "and (" + param1_our_txt + ") (" + param2_our_txt + ")", \
-                          ("and", param1_our, param2_our)
+                        ("and", param1_our, param2_our)
                 elif random_operator == 3:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
                         z3.Or(param1_z3, param2_z3), "or (" + param1_our_txt + ") (" + param2_our_txt + ")", \
@@ -382,7 +382,7 @@ class TestSATSolver:
                         ("=>", param1_our, param2_our)
                 elif random_operator == 5:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
-                        (param1_z3 == param2_z3), "<=> (" + param1_our_txt + ") (" + param2_our_txt + ")", \
+                        ((param1_z3) == (param2_z3)), "<=> (" + param1_our_txt + ") (" + param2_our_txt + ")", \
                         ("<=>", param1_our, param2_our)
             subformulas_z3.append(cur_subformula_z3)
             subformulas_our_txt.append(cur_subformula_our_txt)

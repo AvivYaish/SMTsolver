@@ -1,4 +1,3 @@
-import pytest
 from formula_parser.formula_parser import FormulaParser
 from sat_solver.sat_solver import SATSolver
 import numpy as np
@@ -19,13 +18,13 @@ class TestFormulaParser:
     @staticmethod
     def test_parse_formula():
         assert FormulaParser._parse_formula("not (=> (not (and p q)) (not r))") == \
-               ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
+            ("not", ("=>", ("not", ("and", "p", "q")), ("not", "r")))
         assert FormulaParser._parse_formula("not (=> (not (and pq78 q)) (not r))") == \
-               ("not", ("=>", ("not", ("and", ("pq78"), ("q"))), ("not", ("r"))))
+            ("not", ("=>", ("not", ("and", "pq78", "q")), ("not", "r")))
         assert FormulaParser._parse_formula("not (=> (not (and ((p)) q)) ((not (r))))") == \
-               ("not", ("=>", ("not", ("and", ("p"), ("q"))), ("not", ("r"))))
+            ("not", ("=>", ("not", ("and", "p", "q")), ("not", "r")))
         assert FormulaParser._parse_formula("not (=> (not (and ((p)) ((not ((((r)))))))) ((not (r))))") == \
-               ("not", ("=>", ("not", ("and", ("p"), ("not", ("r")))), ("not", ("r"))))
+            ("not", ("=>", ("not", ("and", "p", ("not", "r"))), ("not", "r")))
 
     @staticmethod
     def test_tseitin_transform():
@@ -45,9 +44,9 @@ class TestFormulaParser:
             frozenset({2, -4})
         }
         assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("not (=> (not (and p q)) (not r))")) == \
-               transformed_formula
-        assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("not (=> (not (and pq78 q)) (not r))")) == \
-               transformed_formula
+            transformed_formula
+        assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("not (=> (not (and pq78 q)) (not r))")) ==\
+            transformed_formula
         assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("and (not x) x")) == {
             frozenset({1}),
             frozenset({1, -3, -2}),
@@ -62,23 +61,23 @@ class TestFormulaParser:
         assert FormulaParser._preprocess(frozenset({frozenset({})})) == frozenset()
         assert FormulaParser._preprocess(frozenset({frozenset({1})})) == frozenset({frozenset({1})})
         assert FormulaParser._preprocess(frozenset({frozenset({1}), frozenset({2})})) == \
-               frozenset({frozenset({2}), frozenset({1})})
+            frozenset({frozenset({2}), frozenset({1})})
         assert FormulaParser._preprocess(frozenset({frozenset({2, 1}), frozenset({3, 4})})) == \
-               frozenset({frozenset({3, 4}), frozenset({1, 2})})
+            frozenset({frozenset({3, 4}), frozenset({1, 2})})
         assert FormulaParser._preprocess(frozenset({frozenset({1, 2, 1, 1, 2}), frozenset({3, 4})})) == \
-               frozenset({frozenset({3, 4}), frozenset({1, 2})})
+            frozenset({frozenset({3, 4}), frozenset({1, 2})})
         assert FormulaParser._preprocess(frozenset({frozenset({1, 2, 1, 1, 2, -1}), frozenset({3, 4})})) == \
-               frozenset({frozenset({3, 4})})
+            frozenset({frozenset({3, 4})})
         assert FormulaParser._preprocess(frozenset({frozenset({1, -1}), frozenset({3, -4})})) == \
-               frozenset({frozenset({3, -4})})
+            frozenset({frozenset({3, -4})})
         assert FormulaParser._preprocess(frozenset({frozenset({2, 1, -1}), frozenset({3, -4})})) == \
-               frozenset({frozenset({3, -4})})
+            frozenset({frozenset({3, -4})})
         assert FormulaParser._preprocess(frozenset({frozenset({1, 2, -1}), frozenset({3, -4})})) == \
-               frozenset({frozenset({3, -4})})
+            frozenset({frozenset({3, -4})})
         assert FormulaParser._preprocess(frozenset({frozenset({1, -1, 2}), frozenset({3, -4})})) == \
-               frozenset({frozenset({3, -4})})
+            frozenset({frozenset({3, -4})})
         assert FormulaParser._preprocess(frozenset({frozenset({1, 1, 2, 3, 3, -4}), frozenset({3, -4, 1, 2})})) == \
-               frozenset({frozenset({1, 2, 3, -4})})
+            frozenset({frozenset({1, 2, 3, -4})})
 
     @staticmethod
     def test_convert_tseitin_assignment_to_regular():
