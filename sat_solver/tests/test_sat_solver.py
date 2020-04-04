@@ -3,10 +3,10 @@ from formula_parser.formula_parser import FormulaParser
 from sat_solver.sat_solver import SATSolver
 from itertools import combinations
 from scipy.special import comb
-import z3
-import random
+from random import randint
+from time import time
 import numpy
-import time
+import z3
 
 COLORING_BASIC_EDGES = [
     (1, 2), (1, 3), (1, 4), (1, 9), (1, 12),
@@ -357,15 +357,15 @@ class TestSATSolver:
             subformulas_our.extend([("not", cur_literal) for cur_literal in subformulas_our])
         cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = None, None, None
         for cur_operator_idx in range(operator_num):
-            param1_idx = random.randint(1, len(subformulas_z3)) - 1
+            param1_idx = randint(1, len(subformulas_z3)) - 1
             param1_z3, param1_our_txt, param1_our = \
                 subformulas_z3[param1_idx], subformulas_our_txt[param1_idx], subformulas_our[param1_idx]
-            random_operator = random.randint(1, 5)
+            random_operator = randint(1, 5)
             if random_operator == 1:
                 cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our \
                     = z3.Not(param1_z3), "not (" + param1_our_txt + ")", ("not", param1_our)
             else:  # Binary operators
-                param2_idx = random.randint(1, len(subformulas_z3)) - 1
+                param2_idx = randint(1, len(subformulas_z3)) - 1
                 param2_z3, param2_our_txt, param2_our = \
                     subformulas_z3[param2_idx], subformulas_our_txt[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
@@ -394,17 +394,17 @@ class TestSATSolver:
         # Solve with Z3
         z3_solver = z3.Solver()
         z3_solver.add(z3_formula)
-        start_time_z3 = time.time()
+        start_time_z3 = time()
         is_sat_z3 = (z3_solver.check() == z3.sat)
-        end_time_z3 = time.time()
+        end_time_z3 = time()
         if (is_sat_z3 is not True) and (is_sat_z3 is not False):
             # Malformed formula
             return True
 
         # Solve with ours
-        start_time_our = time.time()
+        start_time_our = time()
         is_sat_our = our_solver.solve()
-        end_time_our = time.time()
+        end_time_our = time()
 
         if print_time:
             print("\n", "Is SAT?", is_sat_z3, "\n",

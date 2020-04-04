@@ -2,9 +2,9 @@ import pytest
 from uf_solver.uf_solver import UFSolver
 from formula_parser.formula_parser import FormulaParser
 from sat_solver.tests.test_sat_solver import TestSATSolver
+from random import randint
 from copy import deepcopy
 import z3
-import random
 
 
 class TestUFSolver:
@@ -17,7 +17,7 @@ class TestUFSolver:
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause == frozenset({3, -1})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
@@ -27,7 +27,7 @@ class TestUFSolver:
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 4: {"value": False}}
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause == frozenset({4, -1, -2})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
@@ -36,7 +36,7 @@ class TestUFSolver:
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause is None
 
         formula = ('(declare-fun f (Bool) Bool) ' +
@@ -49,17 +49,17 @@ class TestUFSolver:
         graph = deepcopy(solver._basic_congruence_graph)
         solver.create_new_decision_level()
         solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause == frozenset({5, -1, -2, -3})
         assert solver._basic_congruence_graph._graph == graph._graph  # Make sure the original graph did not change
 
         # Verify that creating a new decision level copies the last graph
         solver.create_new_decision_level()
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause == frozenset({5, -1, -2, -3})
 
         # Verify that performing congruence closure again using the same data structure still works
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause == frozenset({5, -1, -2, -3})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
@@ -79,8 +79,8 @@ class TestUFSolver:
             15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
             20: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
         }
-        conflict_clause, assignments = solver.congruence_closure()
-        # assert solver.congruence_closure() == frozenset({20, -1, -4})  # <- this is the minimal
+        conflict_clause, assignments = solver.propagate()
+        # assert solver.propagate() == frozenset({20, -1, -4})  # <- this is the minimal
         assert conflict_clause == frozenset({-15, -12, 20, -7, -4, -1})
 
         solver = UFSolver(*FormulaParser.import_uf(formula))
@@ -94,7 +94,7 @@ class TestUFSolver:
             15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
             20: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
         }
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause == frozenset({-15, 20, -7, -4, -1})
 
         solver = UFSolver(*FormulaParser.import_uf(formula))
@@ -108,7 +108,7 @@ class TestUFSolver:
             15: {"value": False},  # ('=', ('f', 's'), ('f', 'a'))
             20: {"value": True},  # ('=', ('f', 'a'), ('f', 'c'))
         }
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause is None
 
     @staticmethod
@@ -125,7 +125,7 @@ class TestUFSolver:
             1: {"value": True},  # ('=', 'a', 'b')
             7: {"value": True},  # ('=', 's', 't')
         }
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause is None
         assert assignments == [10]
 
@@ -135,7 +135,7 @@ class TestUFSolver:
             10: {"value": True},  # ('=', ('f', 's'), ('f', 't'))
             4: {"value": True},  # ('=', 'b', 'c')
         }
-        conflict_clause, assignments = solver.congruence_closure()
+        conflict_clause, assignments = solver.propagate()
         assert conflict_clause is None
         assert assignments == [20]
 
@@ -206,10 +206,10 @@ class TestUFSolver:
         f, g = z3.Function('f', z3.IntSort(), z3.IntSort()), z3.Function('g', z3.IntSort(), z3.IntSort())
         cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = None, None, None
         for cur_operator_idx in range(operator_num):
-            param1_idx = random.randint(1, len(subformulas_z3)) - 1
+            param1_idx = randint(1, len(subformulas_z3)) - 1
             param1_z3, param1_our_txt, param1_our = \
                 subformulas_z3[param1_idx], subformulas_our_txt[param1_idx], subformulas_our[param1_idx]
-            random_operator = random.randint(1, 4)
+            random_operator = randint(1, 4)
             if random_operator <= 2:
                 if (random_operator == 1) or (function_num <= 1):
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
@@ -221,16 +221,16 @@ class TestUFSolver:
                 subformulas_our_txt.append(cur_subformula_our_txt)
                 subformulas_our.append(cur_subformula_our)
             else:
-                param2_idx = random.randint(1, len(subformulas_z3)) - 1
+                param2_idx = randint(1, len(subformulas_z3)) - 1
                 param2_z3, param2_our_txt, param2_our = \
                     subformulas_z3[param2_idx], subformulas_our_txt[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 3:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
-                        (param1_z3 == param2_z3), "= (" + param1_our_txt + ") (" + param2_our_txt + ")", \
+                        ((param1_z3) == (param2_z3)), "= (" + param1_our_txt + ") (" + param2_our_txt + ")", \
                         ("=", param1_our, param2_our)
                 elif random_operator == 4:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
-                        (param1_z3 != param2_z3), "not (= (" + param1_our_txt + ") (" + param2_our_txt + "))", \
+                        ((param1_z3) != (param2_z3)), "not (= (" + param1_our_txt + ") (" + param2_our_txt + "))", \
                         ("not", ("=", param1_our, param2_our))
                 equations_z3.append(cur_subformula_z3)
                 equations_our_txt.append(cur_subformula_our_txt)
@@ -768,8 +768,51 @@ Our:	 0.0009975433349609375
         assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
+    def test_bad18():
+        """
+        Z3 formula:  Or(Or(f(x2) != f(x3), (f(f(x3)) == f(x3)) == (Implies(f(x3) != x3, Or(f(x3) != x3, f(x3) != f(
+        x3))) == f(x3) != x3)), Implies(Implies(Or(Implies((f(f(x3)) == f(x3)) == (Implies(f(x3) != x3, Or(f(x3) !=
+        x3, f(x3) != f(x3))) == f(x3) != x3), x2 == x2), Implies(f(x3) != x3, Or(f(x3) != x3, f(x3) != f(x3)))),
+        Or(f(x3) != x3, f(x3) != f(x3))), Or(Or(Or(Implies((f(f(x3)) == f(x3)) == (Implies(f(x3) != x3, Or(f(x3) !=
+        x3, f(x3) != f(x3))) == f(x3) != x3), x2 == x2), Or(f(x3) != x3, f(x3) != f(x3))), Implies(f(x3) != x3,
+        Or(f(x3) != x3, f(x3) != f(x3)))) == (f(f(x3)) == f(x3)), Not(Or(f(x3) != x3, f(x3) != f(x3)))))) == (Or(x2
+        == x2, Or(Or(Implies((f(f(x3)) == f(x3)) == (Implies(f(x3) != x3, Or(f(x3) != x3, f(x3) != f(x3))) == f(x3)
+        != x3), x2 == x2), Or(f(x3) != x3, f(x3) != f(x3))), Implies(f(x3) != x3, Or(f(x3) != x3, f(x3) != f(x3))))
+        == (f(f(x3)) == f(x3))) == ((f(f(x3)) == f(x3)) == f(x2) != f(x3))) Our formula:  (declare-fun f (Int) Int) (
+        declare-fun g (Int) Int) (assert (<=> (or (or (not (= (f(x2)) (f(x3)))) (<=> (= (f(f(x3))) (f(x3))) (<=> (=>
+        (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (not (= (f(x3)) (x3)))))) (=> (
+        => (or (=> (<=> (= (f(f(x3))) (f(x3))) (<=> (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(
+        x3)) (f(x3)))))) (not (= (f(x3)) (x3))))) (= (x2) (x2))) (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (
+        x3))) (not (= (f(x3)) (f(x3))))))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (or (<=> (or (or (
+        => (<=> (= (f(f(x3))) (f(x3))) (<=> (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(
+        x3)))))) (not (= (f(x3)) (x3))))) (= (x2) (x2))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (=> (
+        not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3))))))) (= (f(f(x3))) (f(x3)))) (not (
+        or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3))))))))) (<=> (or (= (x2) (x2)) (<=> (or (or (=> (<=> (= (f(
+        f(x3))) (f(x3))) (<=> (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (not
+        (= (f(x3)) (x3))))) (= (x2) (x2))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (=> (not (= (f(x3))
+        (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3))))))) (= (f(f(x3))) (f(x3))))) (<=> (= (f(f(x3))) (
+        f(x3))) (not (= (f(x2)) (f(x3))))))))
+        """
+        formula = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (<=> (or (or (not (= (f(x2)) (f(x3)))) "\
+                  "(<=> (= (f(f(x3))) (f(x3))) (<=> (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(" \
+                  "x3)) (f(x3)))))) (not (= (f(x3)) (x3)))))) (=> (=> (or (=> (<=> (= (f(f(x3))) (f(x3))) (<=> (=> (" \
+                  "not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (not (= (f(x3)) (" \
+                  "x3))))) (= (x2) (x2))) (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(" \
+                  "x3))))))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (or (<=> (or (or (=> (<=> (= (f(" \
+                  "f(x3))) (f(x3))) (<=> (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(" \
+                  "x3)))))) (not (= (f(x3)) (x3))))) (= (x2) (x2))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(" \
+                  "x3)))))) (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3))))))) (= (f(" \
+                  "f(x3))) (f(x3)))) (not (or (not (= (f(x3)) (x3))) (not (= (f(x3)) (f(x3))))))))) (<=> (or (= (x2) " \
+                  "(x2)) (<=> (or (or (=> (<=> (= (f(f(x3))) (f(x3))) (<=> (=> (not (= (f(x3)) (x3))) (or (not (= (f(" \
+                  "x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (not (= (f(x3)) (x3))))) (= (x2) (x2))) (or (not (= (f(" \
+                  "x3)) (x3))) (not (= (f(x3)) (f(x3)))))) (=> (not (= (f(x3)) (x3))) (or (not (= (f(x3)) (x3))) (not "\
+                  "(= (f(x3)) (f(x3))))))) (= (f(f(x3))) (f(x3))))) (<=> (= (f(f(x3))) (f(x3))) (not (= (f(x2)) (f(" \
+                  "x3)))))))) "
+        assert UFSolver(*FormulaParser.import_uf(formula)).solve()
+
+    @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(2, operator_num, 1) for operator_num in list(range(1, 100))])
+                             [(3, operator_num, 2) for operator_num in list(range(1, 100)) * 1])
     def test_random_uf_equations(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, operator_num, function_num)
@@ -786,7 +829,7 @@ Our:	 0.0009975433349609375
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(2, clause_num, 1) for clause_num in list(range(1, 100))])
+                             [(3, clause_num, 2) for clause_num in list(range(1, 100)) * 1])
     def test_random_uf_formula(variable_num: int, operator_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, 10, function_num)

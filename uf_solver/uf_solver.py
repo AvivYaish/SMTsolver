@@ -27,7 +27,7 @@ class UFSolver:
         while len(self._congruence_graph_by_level) > level + 1:
             self._congruence_graph_by_level.pop()
 
-    def _theory_propagation(self, new_relations):
+    def _create_new_assignments(self, new_relations):
         new_assigments = []
         for new_relation in new_relations:
             # propagate new equalities from new_relations
@@ -38,7 +38,7 @@ class UFSolver:
             new_assigments.append(self._subterm_to_tseitin_variable[new_relation])
         return new_assigments
 
-    def congruence_closure(self):
+    def propagate(self):
         positive_relations = set()
         negative_relations = []
         for variable, value in self._solver.iterable_assignment():
@@ -55,7 +55,7 @@ class UFSolver:
         new_positive_relations = graph.process_positive_relations(positive_relations)
         conflict = graph.process_negative_relations(negative_relations)
         if conflict is None:
-            return None, self._theory_propagation(new_positive_relations)
+            return None, self._create_new_assignments(new_positive_relations)
         return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
                          | {self._subterm_to_tseitin_variable[conflict]}), None
 
@@ -66,5 +66,5 @@ class UFSolver:
                 assignment[self._tseitin_variable_to_subterm[variable]] = value
         return assignment
 
-    def solve(self):
+    def solve(self) -> bool:
         return self._solver.solve()

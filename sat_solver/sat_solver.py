@@ -297,7 +297,7 @@ class SATSolver:
     def _theory_propagation_to_exhaustion(self):
         if self._theory_solver is None:
             return True
-        conflict_clause, new_assignments = self._theory_solver.congruence_closure()
+        conflict_clause, new_assignments = self._theory_solver.propagate()
         while conflict_clause is not None:
             last_literal, prev_max_level, max_level_count = self._find_last_literal(conflict_clause)
             if prev_max_level == -1:
@@ -335,7 +335,7 @@ class SATSolver:
                 # Case-splitting, reassign the decision literal of the appropriate decision level
                 self._assign(None, decision_literal)
 
-            conflict_clause, new_assignments = self._theory_solver.congruence_closure()
+            conflict_clause, new_assignments = self._theory_solver.propagate()
 
         # Theory propagation
         for literal in new_assignments:
@@ -348,6 +348,9 @@ class SATSolver:
                 return False
         return True
 
+    def is_sat(self) -> bool:
+        return self._formula.issubset(self._satisfied_clauses)
+
     def solve(self) -> bool:
         """
         :return: True if SAT, False otherwise.
@@ -357,6 +360,6 @@ class SATSolver:
             self._increment_step()
             if not self._propagation():
                 return False
-            if self._formula.issubset(self._satisfied_clauses):     # Check if SAT
+            if self.is_sat():
                 return True
             self._decide()
