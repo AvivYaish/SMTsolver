@@ -199,14 +199,14 @@ class TestUFSolver:
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our)))
 
     @staticmethod
-    def generate_random_equations(variable_num: int, operator_num: int, function_num):
+    def generate_random_equations(variable_num: int, equation_num: int, function_num: int):
         all_variables = list(range(1, variable_num + 1))
         subformulas_z3, equations_z3 = [z3.Int("x" + str(cur_literal)) for cur_literal in all_variables], []
         subformulas_our_txt, equations_our_txt = ["x" + str(cur_literal) for cur_literal in all_variables], []
         subformulas_our, equations_our = ["x" + str(cur_literal) for cur_literal in all_variables], []
         f, g = z3.Function('f', z3.IntSort(), z3.IntSort()), z3.Function('g', z3.IntSort(), z3.IntSort())
         cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = None, None, None
-        for random_operator in np_randint(1, 5, size=operator_num):
+        for random_operator in np_randint(1, 5, size=equation_num):
             param1_idx = randint(1, len(subformulas_z3)) - 1
             param1_z3, param1_our_txt, param1_our = \
                 subformulas_z3[param1_idx], subformulas_our_txt[param1_idx], subformulas_our[param1_idx]
@@ -227,11 +227,11 @@ class TestUFSolver:
                 if random_operator == 3:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
                         ((param1_z3) == (param2_z3)), "= (" + param1_our_txt + ") (" + param2_our_txt + ")", \
-                        ("=", param1_our, param2_our)
+                        (FormulaParser.EQUALITY, param1_our, param2_our)
                 elif random_operator == 4:
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \
                         ((param1_z3) != (param2_z3)), "not (= (" + param1_our_txt + ") (" + param2_our_txt + "))", \
-                        ("not", ("=", param1_our, param2_our))
+                        ("not", (FormulaParser.EQUALITY, param1_our, param2_our))
                 equations_z3.append(cur_subformula_z3)
                 equations_our_txt.append(cur_subformula_our_txt)
                 equations_our.append(cur_subformula_our)
@@ -737,7 +737,7 @@ Our:	 0.001994609832763672
         if variable_conversions is None:
             variable_conversions = []
         cur_formula = formula
-        cur_formula.replace("<=>", "=")
+        cur_formula.replace("<=>", FormulaParser.EQUALITY)
         for orig, new in variable_conversions:
             cur_formula.replace('(' + orig + ')', ' ' + new)
         for func in functions:
@@ -811,11 +811,11 @@ Our:	 0.0009975433349609375
         assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, operator_num, 2) for operator_num in list(range(1, 100)) * 1])
-    def test_random_uf_equations(variable_num: int, operator_num: int, function_num: int):
+    @pytest.mark.parametrize("variable_num, equation_num, function_num",
+                             [(3, equation_num, 2) for equation_num in list(range(1, 100)) * 1])
+    def test_random_uf_equations(variable_num: int, equation_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
-            TestUFSolver.generate_random_equations(variable_num, operator_num, function_num)
+            TestUFSolver.generate_random_equations(variable_num, equation_num, function_num)
         if not equations_z3:
             return
         try:  # Might be the case that the formula is not valid
@@ -828,11 +828,11 @@ Our:	 0.0009975433349609375
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, operator_num, function_num",
-                             [(3, clause_num, 2) for clause_num in list(range(1, 100)) * 1])
-    def test_random_uf_formula(variable_num: int, operator_num: int, function_num: int):
+    @pytest.mark.parametrize("variable_num, equation_num, function_num, operator_num",
+                             [(3, 10, 2, operator_num) for operator_num in list(range(1, 100)) * 1])
+    def test_random_uf_formula(variable_num: int, equation_num: int, function_num: int, operator_num: int):
         equations_z3, equations_our_txt, equations_our = \
-            TestUFSolver.generate_random_equations(variable_num, 10, function_num)
+            TestUFSolver.generate_random_equations(variable_num, equation_num, function_num)
         if not equations_z3:
             return
         try:  # Might be the case that the formula is not valid

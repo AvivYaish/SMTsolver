@@ -33,8 +33,8 @@ class FormulaParser:
     ALL_BINARY_OPS = UF_OPS | BOOLEAN_BINARY_OPS
     ALL_OPS = BOOLEAN_OPS | NON_BOOLEAN_OPS
 
-    _OPENING_BRACKET = '('
-    _CLOSING_BRACKET = ')'
+    OPEN_ENCLOSE = '('
+    CLOSE_ENCLOSE = ')'
     _PARAMETER_SEPARATOR = ','
 
     _DECLARATION = re.compile(r'\(\s*declare-fun\s+(\w+)\s+\(([^)]*)\)\s+(\w+)\s*\)')
@@ -61,10 +61,10 @@ class FormulaParser:
         flag = False
         counter = 0
         for idx, char in enumerate(text):
-            if char == FormulaParser._OPENING_BRACKET:
+            if char == FormulaParser.OPEN_ENCLOSE:
                 flag = True
                 counter += 1
-            elif char == FormulaParser._CLOSING_BRACKET:
+            elif char == FormulaParser.CLOSE_ENCLOSE:
                 counter -= 1
             if flag and (counter == 0):
                 return idx + 1
@@ -85,7 +85,7 @@ class FormulaParser:
         :return: a "cleaned" up formula, ready for parsing.
         """
         formula = ' '.join(formula.split()).strip()
-        while (formula and (formula[0] == FormulaParser._OPENING_BRACKET) and
+        while (formula and (formula[0] == FormulaParser.OPEN_ENCLOSE) and
                (FormulaParser._find_closing_bracket(formula) == len(formula))):
             formula = formula[1:-1].strip()
         return formula
@@ -156,7 +156,7 @@ class FormulaParser:
                 if coefficient_str == FormulaParser.MINUS:
                     coefficient_float = -1.0
                 else:
-                    coefficient_float = float(match.group(1))
+                    coefficient_float = float(coefficient_str)
             coefficients[signature[match.group(2)]["index"]] += coefficient_float
         return FormulaParser.LESS_EQ, tuple(coefficients), float(right_side)
 

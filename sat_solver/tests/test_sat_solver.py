@@ -417,10 +417,12 @@ class TestSATSolver:
                              # +
                              # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
                              )
-    def test_random_formula(variable_num: int, operator_num: int, test_import):
+    def test_random_formula(variable_num: int, operator_num: int, test_import: bool, print_formulas=True):
         # Generates a random formula and compares our solver to Z3
         formula_z3, formula_our_txt, formula_our_parsed = TestSATSolver.generate_random_formula(variable_num,
                                                                                                 operator_num)
+        if print_formulas:
+            print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our_txt)
         if test_import:
             formula_our = FormulaParser.import_formula(formula_our_txt)
         else:
