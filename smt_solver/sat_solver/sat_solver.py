@@ -346,7 +346,7 @@ class SATSolver(Solver):
                 return False
         return True
 
-    def is_sat(self) -> bool:
+    def _is_sat(self) -> bool:
         return self._formula.issubset(self._satisfied_clauses)
 
     def solve(self) -> bool:
@@ -355,6 +355,6 @@ class SATSolver(Solver):
             self._increment_step()
             if not self.propagate():
                 return False
-            if self.is_sat():
+            if self._is_sat():
                 return True
             self._decide()
