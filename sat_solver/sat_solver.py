@@ -311,11 +311,28 @@ class SATSolver:
 
             self._backtrack(prev_max_level)
             self._add_conflict_clause(conflict_clause)
-            if max_level_count == 1:
-                self._assign(conflict_clause, last_literal)
 
-            # Case-splitting, reassign the decision literal of the appropriate decision level
-            if abs(decision_literal) not in self._assignment:
+            # Check if the conflict clause is already satisfied
+            unassigned_count, unassigned_literal = 0, None
+            min_sat_literal, min_level, min_idx = None, float('inf'), float('inf')
+            for literal in conflict_clause:
+                variable = abs(literal)
+                if variable in self._assignment:
+                    cur_level, cur_idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
+                    if ((self._assignment[variable]["value"] == literal > 0) and
+                            ((cur_level < min_level) or ((cur_level == min_level) and (cur_idx < min_idx)))):
+                        min_sat_literal, min_level, min_idx = literal, cur_level, cur_idx
+                else:
+                    unassigned_count, unassigned_literal = unassigned_count + 1, literal
+            if min_sat_literal is not None:
+                # If the clause is already satisfied, add it to the appropriate data structures
+                self._satisfaction_by_level[min_level].append(conflict_clause)
+                self._satisfied_clauses.add(conflict_clause)
+            elif unassigned_count == 1:
+                # If it is a unit clause, assign the last unassigned literal
+                self._assign(conflict_clause, unassigned_literal)
+            elif abs(decision_literal) not in self._assignment:
+                # Case-splitting, reassign the decision literal of the appropriate decision level
                 self._assign(None, decision_literal)
 
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
