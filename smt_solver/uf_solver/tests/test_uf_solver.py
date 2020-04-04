@@ -1,7 +1,7 @@
 import pytest
-from uf_solver.uf_solver import UFSolver
-from formula_parser.formula_parser import FormulaParser
-from sat_solver.tests.test_sat_solver import TestSATSolver
+from smt_solver.sat_solver.tests.test_sat_solver import TestSATSolver
+from smt_solver.formula_parser.formula_parser import FormulaParser
+from smt_solver.uf_solver.uf_solver import UFSolver
 from numpy.random import randint as np_randint
 from random import randint
 from copy import deepcopy
@@ -121,7 +121,7 @@ class TestUFSolver:
                    '(assert (or (or (not (= b c)) (not (= t r))) (= f(s) f(a))))' +
                    '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
         solver = UFSolver(*FormulaParser.import_uf(formula))
-        solver._solver._create_new_decision_level()
+        solver._solver.create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
             7: {"value": True},  # ('=', 's', 't')

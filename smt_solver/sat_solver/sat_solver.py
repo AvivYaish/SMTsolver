@@ -1,4 +1,4 @@
-from solver.solver import Solver
+from smt_solver.solver.solver import Solver
 from collections import deque, Counter
 
 

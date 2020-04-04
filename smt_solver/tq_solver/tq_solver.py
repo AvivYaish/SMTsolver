@@ -1,5 +1,5 @@
-from sat_solver.sat_solver import SATSolver
-from tq_solver.linear_solver.linear_solver import LinearSolver
+from smt_solver.sat_solver.sat_solver import SATSolver
+from smt_solver.tq_solver.linear_solver.linear_solver import LinearSolver
 import numpy as np
 
 

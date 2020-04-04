@@ -1,5 +1,4 @@
-import pytest
-from formula_parser.formula_parser import FormulaParser
+from smt_solver.formula_parser.formula_parser import FormulaParser
 
 
 class TestCongruenceGraph:

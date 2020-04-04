@@ -1,5 +1,5 @@
-from formula_parser.formula_parser import FormulaParser
-from sat_solver.sat_solver import SATSolver
+from smt_solver.formula_parser.formula_parser import FormulaParser
+from smt_solver.sat_solver.sat_solver import SATSolver
 import numpy as np
 
 

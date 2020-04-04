@@ -1,7 +1,7 @@
 import pytest
-from sat_solver.tests.test_sat_solver import TestSATSolver
-from formula_parser.formula_parser import FormulaParser
-from tq_solver.tq_solver import TQSolver
+from smt_solver.sat_solver.tests.test_sat_solver import TestSATSolver
+from smt_solver.formula_parser.formula_parser import FormulaParser
+from smt_solver.tq_solver.tq_solver import TQSolver
 import numpy as np
 import z3
 

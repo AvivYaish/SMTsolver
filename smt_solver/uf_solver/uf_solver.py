@@ -1,6 +1,6 @@
-from formula_parser.formula_parser import FormulaParser
-from sat_solver.sat_solver import SATSolver
-from solver.solver import Solver
+from smt_solver.formula_parser.formula_parser import FormulaParser
+from smt_solver.sat_solver.sat_solver import SATSolver
+from smt_solver.solver.solver import Solver
 from copy import deepcopy
 
 

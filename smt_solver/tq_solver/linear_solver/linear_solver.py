@@ -1,4 +1,4 @@
-from solver.solver import Solver
+from smt_solver.solver.solver import Solver
 from itertools import chain
 import numpy as np
 
