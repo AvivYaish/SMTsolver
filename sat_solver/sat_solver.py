@@ -108,6 +108,10 @@ class SATSolver:
             yield var, self._assignment[var]["value"]
 
     def _find_last_literal(self, clause):
+        """
+        :return: the last assigned literal in the clause, the second highest assignment level of literals in the clause,
+        and the number of literals from the highest assignment level.
+        """
         last_literal, prev_max_level, max_level, max_idx, max_level_count = None, -1, -1, -1, 0
         for literal in clause:
             variable = abs(literal)
@@ -126,7 +130,7 @@ class SATSolver:
             prev_max_level = max_level - 1
         return last_literal, prev_max_level, max_level_count
 
-    def _conflict_resolution(self, conflict_clause, limit=500):
+    def _conflict_resolution(self, conflict_clause, limit=float('inf')):
         """
         Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
         """
@@ -135,9 +139,12 @@ class SATSolver:
         while True:
             count += 1
             last_literal, prev_max_level, max_level_count = self._find_last_literal(conflict_clause)
-
             clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
             if (max_level_count == 1) or (clause_on_incoming_edge is None) or (count >= limit):
+                # If the last assigned literal is the only one from the last decision level,
+                # or if it was assigned because of the theory (thus, the incoming clause is None):
+                # return the conflict clause, the next literal to assign (which should be the
+                # watch literal of the conflict clause), and the decision level to jump to
                 if clause_on_incoming_edge is None:
                     max_level = self._assignment[abs(last_literal)]["level"]
                     last_literal = self._assignment_by_level[max_level][0]
@@ -145,12 +152,6 @@ class SATSolver:
                         last_literal = -last_literal
                     last_literal = -last_literal
                     conflict_clause.add(last_literal)
-                    if (prev_max_level == -1) and (max_level != -1):
-                        prev_max_level = max_level - 1
-                # If the last assigned literal is the only one from the last decision level,
-                # or if it was assigned because of the theory (thus, the incoming clause is None):
-                # return the conflict clause, the next literal to assign (which should be the
-                # watch literal of the conflict clause), and the decision level to jump to
                 return frozenset(conflict_clause), last_literal, prev_max_level
 
             # Resolve the conflict clause with the clause on the incoming edge
@@ -318,9 +319,6 @@ class SATSolver:
                 return False
         return True
 
-    def _is_sat(self) -> bool:
-        return self._formula.issubset(self._satisfied_clauses)
-
     def solve(self) -> bool:
         """
         :return: True if SAT, False otherwise.
@@ -330,6 +328,6 @@ class SATSolver:
             self._increment_step()
             if not self._propagation():
                 return False
-            if self._is_sat():
+            if self._formula.issubset(self._satisfied_clauses):     # Check if SAT
                 return True
             self._decide()
