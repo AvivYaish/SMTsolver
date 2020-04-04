@@ -304,7 +304,7 @@ class SATSolver:
                 return False
 
             # Find the decision literal of the level after the to jump to
-            decision_literal = self._assignment_by_level[prev_max_level + 1][0]
+            decision_literal = self._assignment_by_level[self._assignment[abs(last_literal)]["level"]][0]
             if not self._assignment[abs(decision_literal)]["value"]:
                 decision_literal = -decision_literal
             decision_literal = -decision_literal
