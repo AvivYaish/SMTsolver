@@ -42,8 +42,10 @@ class TQSolver:
                 b.append(self._tseitin_variable_to_np[variable][value][1])
                 conflict_clause.add(-variable if value else variable)
 
-        if LinearSolver(np.array(A), np.array(b), self._c).is_sat():
+        if (not A) or LinearSolver(np.array(A), np.array(b), self._c).is_sat():
             conflict_clause = None
+        else:
+            conflict_clause = frozenset(conflict_clause)
         return conflict_clause, []
 
     def get_assignment(self):

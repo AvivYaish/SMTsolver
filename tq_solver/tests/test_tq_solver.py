@@ -25,3 +25,15 @@ class TestTQSolver:
                   "(declare-fun x2 () Int) " \
                   "(assert (and (<= (x2 - x1) 4) (<= (x1) -2))) "
         assert not TQSolver(*FormulaParser.import_tq(formula)).solve()
+
+        formula = "(declare-fun x1 () Int) " \
+                  "(declare-fun x2 () Int) " \
+                  "(declare-fun x3 () Int) " \
+                  "(assert (or (and (<= (x2 -1.1x1) 4) (<= (x1) -2)) (not (<= x3 2.1)))) "
+        assert TQSolver(*FormulaParser.import_tq(formula)).solve()
+
+        formula = "(declare-fun x1 () Int) " \
+                  "(declare-fun x2 () Int) " \
+                  "(declare-fun x3 () Int) " \
+                  "(assert (or (and (<= x1 0.1) (not (<= x1 2))) ((<= x3 -0.1)))) "
+        assert not TQSolver(*FormulaParser.import_tq(formula)).solve()
