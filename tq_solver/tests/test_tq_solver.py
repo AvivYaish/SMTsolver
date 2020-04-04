@@ -90,6 +90,6 @@ class TestTQSolver:
             formula_z3 = z3.And(z3.And(all_pos_z3), formula_z3)
         except z3.Z3Exception:
             return
-        formula_our_txt = var_dec_our_txt + ' '.join(["(assert (" + formula + "))" for formula in formula_our_txt])
+        formula_our_txt = var_dec_our_txt + "(assert (" + formula_our_txt + "))"
         print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our_txt)
         assert TestSATSolver.compare_to_z3(formula_z3, TQSolver(*FormulaParser.import_tq(formula_our_txt)))
