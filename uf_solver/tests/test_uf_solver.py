@@ -2,6 +2,7 @@ import pytest
 from uf_solver.uf_solver import UFSolver
 from formula_parser.formula_parser import FormulaParser
 from sat_solver.tests.test_sat_solver import TestSATSolver
+from numpy.random import randint as np_randint
 from random import randint
 from copy import deepcopy
 import z3
@@ -205,11 +206,10 @@ class TestUFSolver:
         subformulas_our, equations_our = ["x" + str(cur_literal) for cur_literal in all_variables], []
         f, g = z3.Function('f', z3.IntSort(), z3.IntSort()), z3.Function('g', z3.IntSort(), z3.IntSort())
         cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = None, None, None
-        for cur_operator_idx in range(operator_num):
+        for random_operator in np_randint(1, 5, size=operator_num):
             param1_idx = randint(1, len(subformulas_z3)) - 1
             param1_z3, param1_our_txt, param1_our = \
                 subformulas_z3[param1_idx], subformulas_our_txt[param1_idx], subformulas_our[param1_idx]
-            random_operator = randint(1, 4)
             if random_operator <= 2:
                 if (random_operator == 1) or (function_num <= 1):
                     cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = \

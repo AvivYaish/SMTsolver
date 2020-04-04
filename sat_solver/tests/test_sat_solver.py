@@ -5,7 +5,8 @@ from itertools import combinations
 from scipy.special import comb
 from random import randint
 from time import time
-import numpy
+from numpy.random import randint as np_randint
+from numpy import array as np_array
 import z3
 
 COLORING_BASIC_EDGES = [
@@ -334,11 +335,10 @@ class TestSATSolver:
 
         # Generate formula
         formula_z3, formula_our = [], set()
-        variables_z3 = numpy.array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal))))
+        variables_z3 = np_array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal))))
                                     for cur_literal in range(1, variable_num + 1)]).flatten()
-        variables_our = numpy.array([(variable, -variable) for variable in range(1, variable_num + 1)]).flatten()
-        for cur_clause_idx in range(clause_num):
-            chosen_literals = numpy.random.randint(0, len(variables_our), size=clause_length)
+        variables_our = np_array([(variable, -variable) for variable in range(1, variable_num + 1)]).flatten()
+        for chosen_literals in np_randint(0, len(variables_our), size=(clause_num, clause_length)):
             formula_z3.append(z3.Or(*variables_z3[chosen_literals]))
             formula_our.add(frozenset(variables_our[chosen_literals]))
 
@@ -356,16 +356,15 @@ class TestSATSolver:
             subformulas_our = [str(cur_literal) for cur_literal in variables]
             subformulas_our.extend([("not", cur_literal) for cur_literal in subformulas_our])
         cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our = None, None, None
-        for cur_operator_idx in range(operator_num):
-            param1_idx = randint(1, len(subformulas_z3)) - 1
+        for random_operator in np_randint(1, 6, size=operator_num):
+            param1_idx = randint(0, len(subformulas_z3) - 1)
             param1_z3, param1_our_txt, param1_our = \
                 subformulas_z3[param1_idx], subformulas_our_txt[param1_idx], subformulas_our[param1_idx]
-            random_operator = randint(1, 5)
             if random_operator == 1:
                 cur_subformula_z3, cur_subformula_our_txt, cur_subformula_our \
                     = z3.Not(param1_z3), "not (" + param1_our_txt + ")", ("not", param1_our)
             else:  # Binary operators
-                param2_idx = randint(1, len(subformulas_z3)) - 1
+                param2_idx = randint(0, len(subformulas_z3) - 1)
                 param2_z3, param2_our_txt, param2_our = \
                     subformulas_z3[param2_idx], subformulas_our_txt[param2_idx], subformulas_our[param2_idx]
                 if random_operator == 2:
@@ -430,6 +429,6 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(5, clause_num, True) for clause_num in list(range(1, 500)) * 10])
+                             [(5, clause_num, True) for clause_num in list(range(1, 500)) * 1])
     def test_simple_random_formula(variable_num: int, operator_num: int, test_import):
         TestSATSolver.test_random_formula(variable_num, operator_num, test_import)
