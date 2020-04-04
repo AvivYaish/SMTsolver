@@ -781,9 +781,7 @@ Our:	 0.0009975433349609375
             return
         formula_our_txt = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) " + \
                           ' '.join(["(assert (" + eq + "))" for eq in equations_our_txt])
-        print()
-        print("Z3 formula: ", formula_z3)
-        print("Our formula: ", formula_our_txt)
+        print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our_txt)
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
 
     @staticmethod
@@ -800,7 +798,5 @@ Our:	 0.0009975433349609375
         except z3.Z3Exception:
             return
         formula_our_txt = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (" + formula_our_txt + "))"
-        print()
-        print("Z3 formula: ", formula_z3)
-        print("Our formula: ", formula_our_txt)
+        print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our_txt)
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))

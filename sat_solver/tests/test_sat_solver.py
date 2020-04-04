@@ -407,10 +407,9 @@ class TestSATSolver:
         end_time_our = time.time()
 
         if print_time:
-            print()
-            print("Is SAT?", is_sat_z3)
-            print("Z3:\t\t", end_time_z3 - start_time_z3)
-            print("Our:\t", end_time_our - start_time_our)
+            print("\n", "Is SAT?", is_sat_z3, "\n",
+                  "Z3:\t\t", end_time_z3 - start_time_z3, "\n",
+                  "Our:\t", end_time_our - start_time_our)
         return is_sat_our is is_sat_z3
 
     @staticmethod
