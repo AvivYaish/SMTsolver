@@ -23,6 +23,8 @@ class FormulaParser:
     EQUALITY = "="
     UF_OPS = frozenset({EQUALITY})
 
+    PLUS = "+"
+    MINUS = "-"
     LESS_EQ = "<="
     TQ_OPS = frozenset({LESS_EQ})
 
@@ -149,7 +151,13 @@ class FormulaParser:
         """
         coefficients = [0] * len(signature)
         for match in re.finditer(FormulaParser._SINGLE_COEFFICIENT_AND_VARIABLE, left_side):
-            coefficients[signature[match.group(2)]["index"]] += float(match.group(1))
+            coefficient_float, coefficient_str = 1.0, match.group(1)
+            if coefficient_str and (coefficient_str != FormulaParser.PLUS):
+                if coefficient_str == FormulaParser.MINUS:
+                    coefficient_float = -1.0
+                else:
+                    coefficient_float = float(match.group(1))
+            coefficients[signature[match.group(2)]["index"]] += coefficient_float
         return FormulaParser.LESS_EQ, tuple(coefficients), float(right_side)
 
     @staticmethod
