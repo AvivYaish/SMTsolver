@@ -50,11 +50,13 @@ class FormulaParser:
 
     @staticmethod
     def get_formula_type(formula: str):
-        if formula.find(FormulaParser._ASSERTION_KEYWORD) or formula.find(FormulaParser._DECLARATION_KEYWORD):
-            if formula.find(FormulaParser.EQUALITY + " "):
-                return FormulaParser.UF_FORMULA
-            elif formula.find(FormulaParser.LESS_EQ + " "):
+        if formula.find(FormulaParser._ASSERTION_KEYWORD) == -1:
+            return None
+        if formula.find(FormulaParser._DECLARATION_KEYWORD) != -1:
+            if formula.find(FormulaParser.LESS_EQ + " ") != -1:
                 return FormulaParser.TQ_FORMULA
+            elif formula.find(FormulaParser.EQUALITY + " ") != -1:
+                return FormulaParser.UF_FORMULA
             return None
         return FormulaParser.BOOLEAN_FORMULA
 
@@ -549,13 +551,13 @@ class FormulaParser:
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, simplified_formulas)
         return signature, frozenset(cnf_formula), simplified_formulas, \
-               tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
+            tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
 
     @staticmethod
     def import_uf(formula: str):
         signature, cnf_formula, simplified_formulas, \
-        tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
-        non_boolean_clauses = FormulaParser._import_non_boolean(formula)
+            tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
+            non_boolean_clauses = FormulaParser._import_non_boolean(formula)
         congruence_graph = CongruenceGraph(signature, simplified_formulas,
                                            FormulaParser.ALL_OPS, FormulaParser.ALL_BINARY_OPS)
         return (
@@ -568,6 +570,6 @@ class FormulaParser:
     def import_tq(formula: str):
         # Importing is "smart" - does not create multiple abstractions for the same linear equation.
         signature, cnf_formula, simplified_formulas, \
-        tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
-        non_boolean_clauses = FormulaParser._import_non_boolean(formula)
+            tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
+            non_boolean_clauses = FormulaParser._import_non_boolean(formula)
         return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses

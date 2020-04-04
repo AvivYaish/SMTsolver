@@ -77,19 +77,33 @@ class TestTQSolver:
         assert TestSATSolver.compare_to_z3(formula_z3, TQSolver(*FormulaParser.import_tq(formula_our_txt)))
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, equation_num, coefficient_limits, operator_num",
-                             [(5, 10, (-5, 5), operator_num) for operator_num in list(range(1, 25))])
-    def test_random_tq_formula(variable_num: int, equation_num: int, coefficient_limits: (int, int), operator_num: int):
+    def generate_random_tq_formula(variable_num: int, equation_num: int, coefficient_limits: (int, int),
+                                   operator_num: int):
         (all_pos_z3, equations_z3), (var_dec_our_txt, equations_our_txt), equations_our = \
             TestTQSolver.generate_random_equations(variable_num, equation_num, coefficient_limits)
         if not equations_z3:
-            return
+            return None, None
         try:  # Might be the case that the formula is not valid
             formula_z3, formula_our_txt, formula_our = \
                 TestSATSolver.generate_random_formula(0, operator_num, equations_z3, equations_our_txt, equations_our)
             formula_z3 = z3.And(z3.And(all_pos_z3), formula_z3)
         except z3.Z3Exception:
+            return None, None
+        formula_our = var_dec_our_txt + "(assert (" + formula_our_txt + "))"
+        return formula_z3, formula_our
+
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, equation_num, coefficient_limits, operator_num",
+                             [(5, 10, (-5, 5), operator_num) for operator_num in list(range(1, 25))])
+    def test_random_tq_formula(variable_num: int, equation_num: int, coefficient_limits: (int, int), operator_num: int):
+        formula_z3, formula_our = TestTQSolver.generate_random_tq_formula(variable_num, equation_num,
+                                                                          coefficient_limits, operator_num)
+        if formula_z3 is None:
             return
-        formula_our_txt = var_dec_our_txt + "(assert (" + formula_our_txt + "))"
-        print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our_txt)
-        assert TestSATSolver.compare_to_z3(formula_z3, TQSolver(*FormulaParser.import_tq(formula_our_txt)))
+        print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our)
+        assert TestSATSolver.compare_to_z3(formula_z3, TQSolver(*FormulaParser.import_tq(formula_our)))
+
+    @staticmethod
+    def test_bad():
+        formula_our = "(declare-fun x1 () Int) (declare-fun x2 () Int) (declare-fun x3 () Int) (declare-fun x4 () Int) (declare-fun x5 () Int)(assert (<=> (not (or (<= (-1.705x1+-0.594x2+2.196x3+-1.064x4+2.124x5) -0.483) (<= (0.047x1+-2.138x2+-2.104x3+1.299x4+-2.858x5) 4.838))) (or (not (<= (-1.689x1+1.734x2+0.21x3+2.61x4+4.337x5) -3.741)) (or (<= (-1.689x1+1.734x2+0.21x3+2.61x4+4.337x5) -3.741) (<= (-3.689x1+2.61x2+0.102x3+1.982x4+3.924x5) -1.098)))))"
+        print(TQSolver(*FormulaParser.import_tq(formula_our)).solve())

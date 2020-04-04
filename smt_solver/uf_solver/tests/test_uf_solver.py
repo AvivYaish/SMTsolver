@@ -191,11 +191,21 @@ class TestUFSolver:
         assert UFSolver(*FormulaParser.import_uf(formula)).solve()
 
     @staticmethod
+    def generate_random_boolean_formula(variable_num: int, operator_num: int):
+        """
+        Generates a random boolean formula, both in Z3's format and in ours.
+        :param variable_num: number of possible variables in the random formula.
+        :param operator_num: number of possible operators in the random formula.
+        :return: a matching pair of Z3 and our formulas, where our formula is an unparsed string.
+        """
+        formula_z3, formula_our_txt, formula_our_parsed = \
+            TestSATSolver.generate_random_formula(variable_num, operator_num)
+        return formula_z3, "(assert (" + formula_our_txt + "))"
+
+    @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num", [(5, clause_num) for clause_num in list(range(1, 50))])
     def test_random_boolean_formula(variable_num: int, operator_num: int):
-        formula_z3, formula_our_txt, formula_our_parsed = TestSATSolver.generate_random_formula(variable_num,
-                                                                                                operator_num)
-        formula_our = "(assert (" + formula_our_txt + "))"
+        formula_z3, formula_our = TestUFSolver.generate_random_boolean_formula(variable_num, operator_num)
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our)))
 
     @staticmethod
@@ -828,18 +838,26 @@ Our:	 0.0009975433349609375
         assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, equation_num, function_num, operator_num",
-                             [(3, 10, 2, operator_num) for operator_num in list(range(1, 100)) * 1])
-    def test_random_uf_formula(variable_num: int, equation_num: int, function_num: int, operator_num: int):
+    def generate_random_uf_formula(variable_num: int, equation_num: int, function_num: int, operator_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, equation_num, function_num)
         if not equations_z3:
-            return
+            return None, None
         try:  # Might be the case that the formula is not valid
             formula_z3, formula_our_txt, formula_our = \
                 TestSATSolver.generate_random_formula(0, operator_num, equations_z3, equations_our_txt, equations_our)
         except z3.Z3Exception:
+            return None, None
+        formula_our = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (" + formula_our_txt + "))"
+        return formula_z3, formula_our
+
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, equation_num, function_num, operator_num",
+                             [(3, 10, 2, operator_num) for operator_num in list(range(1, 100)) * 1])
+    def test_random_uf_formula(variable_num: int, equation_num: int, function_num: int, operator_num: int):
+        formula_z3, formula_our = TestUFSolver.generate_random_uf_formula(variable_num, equation_num,
+                                                                          function_num, operator_num)
+        if formula_z3 is None:
             return
-        formula_our_txt = "(declare-fun f (Int) Int) (declare-fun g (Int) Int) (assert (" + formula_our_txt + "))"
-        print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our_txt)
-        assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our_txt)))
+        print("\n", "Z3 formula: ", formula_z3, "\n", "Our formula: ", formula_our)
+        assert TestSATSolver.compare_to_z3(formula_z3, UFSolver(*FormulaParser.import_uf(formula_our)))

@@ -1,5 +1,7 @@
-from smt_solver.solver.solver import Solver
 from smt_solver.formula_parser.formula_parser import FormulaParser
+from smt_solver.uf_solver.uf_solver import UFSolver
+from smt_solver.tq_solver.tq_solver import TQSolver
+from smt_solver.solver.solver import Solver
 
 
 class SMTSolver(Solver):
@@ -17,11 +19,12 @@ class SMTSolver(Solver):
         Multiple asserts can be included in a formula, and it is assumed that all of them should be satisfied.
 
         Standard boolean formula requirements:
-        Cannot contain (declare-fun ...) or (assert ...).
+        Assumes all conditions are wrapped in asserts: "(assert (boolean_formula))"
         The formula is given in left-Polish notation, and should be enclosed in brackets: "(op param1 param2)"
         op, param1, param2 should be separated by 1 or more whitespaces.
         op can be either one of "not", "and", "or". If it is "not", param2 should be left empty.
         param1, param2 can either be: "true", "false", a variable name, or a formula.
+        Cannot contain (declare-fun ...).
 
         UF requirements:
         Assumes functions are declared using: "(declare-fun func_name (param1_type, param2_type, ...) return_type)"
@@ -41,20 +44,21 @@ class SMTSolver(Solver):
         Variables and coefficients can include a single leading operator, either '-' or '+'.
         Variables and can be separated from the coefficient by a '*'.
         All done according to https://moodle2.cs.huji.ac.il/nu19/mod/forum/discuss.php?d=40323
-        :param max_new_clauses:
-        :param halving_period:
+        :param max_new_clauses: the maximal allowed amount of new conflict clauses.
+        :param halving_period: the halving period for the VSIDS heuristic.
         """
         super().__init__()
+        self._solver: Solver = None
         formula_type = FormulaParser.get_formula_type(formula)
-        if formula_type == FormulaParser.BOOLEAN_FORMULA:
-            pass
-        elif formula_type == FormulaParser.UF_FORMULA:
-            pass
+        if (formula_type == FormulaParser.BOOLEAN_FORMULA) or (formula_type == FormulaParser.UF_FORMULA):
+            self._solver = UFSolver(*FormulaParser.import_uf(formula),
+                                    max_new_clauses=max_new_clauses, halving_period=halving_period)
         elif formula_type == FormulaParser.TQ_FORMULA:
-            pass
+            self._solver = TQSolver(*FormulaParser.import_tq(formula),
+                                    max_new_clauses=max_new_clauses, halving_period=halving_period)
 
     def get_assignment(self):
-        pass
+        return self._solver.get_assignment()
 
     def solve(self) -> bool:
         return self._solver.solve()
