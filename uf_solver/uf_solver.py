@@ -1,17 +1,19 @@
 from formula_parser.formula_parser import FormulaParser
 from sat_solver.sat_solver import SATSolver
+from solver.solver import Solver
 from copy import deepcopy
 
 
-class UFSolver:
-    def __init__(self, cnf_formula, tseitin_mappings, theory_datastructures,
-                 max_new_clauses=float('inf'), halving_period=10000):
-        self._cnf_formula = cnf_formula
+class UFSolver(Solver):
+    def __init__(self, formula, tseitin_mappings, theory_datastructures, max_new_clauses=float('inf'),
+                 halving_period=10000):
+        super().__init__()
+        self._formula = formula
         self._tseitin_variable_to_subterm, self._subterm_to_tseitin_variable = tseitin_mappings
         self._non_boolean_clauses, self._basic_congruence_graph = theory_datastructures
 
         self._congruence_graph_by_level = []
-        self._solver = SATSolver(cnf_formula,
+        self._solver = SATSolver(formula,
                                  max_new_clauses=max_new_clauses,
                                  halving_period=halving_period,
                                  theory_solver=self)

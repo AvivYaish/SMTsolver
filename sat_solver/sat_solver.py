@@ -1,20 +1,18 @@
+from solver.solver import Solver
 from collections import deque, Counter
 
 
-class SATSolver:
+class SATSolver(Solver):
 
-    def __init__(self,
-                 cnf_formula=None,
-                 max_new_clauses=float('inf'),
-                 halving_period=10000,
-                 theory_solver=None):
+    def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000, theory_solver=None):
         """
-        :param cnf_formula: a formula, in CNF. A formula is a set of clauses, where each clause is a frozenset.
+        :param formula: a formula, in CNF. A formula is a set of clauses, where each clause is a frozenset.
         """
-        if cnf_formula is None:
-            cnf_formula = frozenset()
+        super().__init__()
+        if formula is None:
+            formula = frozenset()
 
-        self._formula = cnf_formula
+        self._formula = formula
         self._max_new_clauses = max_new_clauses
         self._halving_period = halving_period  # The time period after which all VSIDS counters are halved
         self._theory_solver = theory_solver
@@ -243,13 +241,13 @@ class SATSolver:
             if level_to_jump_to == -1:
                 # An assignment that satisfies the formula's unit clauses causes a conflict, so the formula is UNSAT
                 return False
-            self._backtrack(level_to_jump_to)
+            self.backtrack(level_to_jump_to)
             self._add_conflict_clause(conflict_clause)
             self._assign(conflict_clause, watch_literal)
             conflict_clause = self._bcp()
         return True
 
-    def _backtrack(self, level: int):
+    def backtrack(self, level: int):
         """
         Non-chronological backtracking.
         """
@@ -275,19 +273,19 @@ class SATSolver:
         """
         Decides which literal to assign next, using the VSIDS decision heuristic.
         """
-        self._create_new_decision_level()
+        self.create_new_decision_level()
         if literal is None:
             literal, count = self._unassigned_vsids_count.most_common(1).pop()
         self._assign(None, literal)
 
-    def _create_new_decision_level(self):
+    def create_new_decision_level(self):
         self._assignment_by_level.append(list())
         self._satisfaction_by_level.append(list())
         if self._theory_solver:
             self._theory_solver.create_new_decision_level()
 
     def _satisfy_unit_clauses(self):
-        self._create_new_decision_level()
+        self.create_new_decision_level()
         for clause in self._formula:
             if len(clause) == 1:
                 for literal in clause:
@@ -309,7 +307,7 @@ class SATSolver:
                 decision_literal = -decision_literal
             decision_literal = -decision_literal
 
-            self._backtrack(prev_max_level)
+            self.backtrack(prev_max_level)
             self._add_conflict_clause(conflict_clause)
 
             # Check if the conflict clause is already satisfied
@@ -342,7 +340,7 @@ class SATSolver:
             self._assign(None, literal)
         return True
 
-    def _propagation(self) -> bool:
+    def propagate(self) -> bool:
         while self._last_assigned_literals:
             if (not self._bcp_to_exhaustion()) or (not self._theory_propagation_to_exhaustion()):
                 return False
@@ -352,13 +350,10 @@ class SATSolver:
         return self._formula.issubset(self._satisfied_clauses)
 
     def solve(self) -> bool:
-        """
-        :return: True if SAT, False otherwise.
-        """
         self._satisfy_unit_clauses()
         while True:
             self._increment_step()
-            if not self._propagation():
+            if not self.propagate():
                 return False
             if self.is_sat():
                 return True

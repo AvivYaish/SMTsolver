@@ -4,9 +4,9 @@ import numpy as np
 
 
 class TQSolver:
-    def __init__(self, cnf_formula, tseitin_mappings, non_boolean_clauses,
+    def __init__(self, formula, tseitin_mappings, non_boolean_clauses,
                  max_new_clauses=float('inf'), halving_period=10000, epsilon=0.00000001):
-        self._cnf_formula = cnf_formula
+        self._formula = formula
         self._tseitin_variable_to_subterm, self._subterm_to_tseitin_variable = tseitin_mappings
         self._non_boolean_clauses = non_boolean_clauses
 
@@ -22,7 +22,7 @@ class TQSolver:
                     False: (-np.array(clause[1], dtype=np.float64), -np.array(clause[2] + epsilon, dtype=np.float64))
                 }
 
-        self._solver = SATSolver(cnf_formula,
+        self._solver = SATSolver(formula,
                                  max_new_clauses=max_new_clauses,
                                  halving_period=halving_period,
                                  theory_solver=self)
