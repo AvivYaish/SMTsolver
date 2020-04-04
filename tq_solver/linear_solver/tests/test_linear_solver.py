@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from linear_solver.linear_solver import LinearSolver
+from tq_solver.linear_solver.linear_solver import LinearSolver
 
 
 class TestLinearSolver:
