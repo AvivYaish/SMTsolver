@@ -1,22 +1,15 @@
 from smt_solver.formula_parser.formula_parser import FormulaParser
-from smt_solver.sat_solver.sat_solver import SATSolver
-from smt_solver.solver.solver import Solver
+from smt_solver.solver.theory_solver import TheorySolver
 from copy import deepcopy
 
 
-class UFSolver(Solver):
-    def __init__(self, formula, tseitin_mappings, theory_datastructures, max_new_clauses=float('inf'),
+class UFSolver(TheorySolver):
+    def __init__(self, formula, tseitin_mappings, theory_data_structures, max_new_clauses=float('inf'),
                  halving_period=10000):
-        super().__init__()
-        self._formula = formula
-        self._tseitin_variable_to_subterm, self._subterm_to_tseitin_variable = tseitin_mappings
-        self._non_boolean_clauses, self._basic_congruence_graph = theory_datastructures
-
+        tseitin_variable_to_subterm, self._subterm_to_tseitin_variable = tseitin_mappings
+        non_boolean_clauses, self._basic_congruence_graph = theory_data_structures
+        super().__init__(formula, tseitin_variable_to_subterm, non_boolean_clauses, max_new_clauses, halving_period)
         self._congruence_graph_by_level = []
-        self._solver = SATSolver(formula,
-                                 max_new_clauses=max_new_clauses,
-                                 halving_period=halving_period,
-                                 theory_solver=self)
 
     def create_new_decision_level(self):
         if len(self._congruence_graph_by_level) == 0:
@@ -41,17 +34,17 @@ class UFSolver(Solver):
         return new_assigments
 
     def propagate(self):
-        positive_relations = set()
-        negative_relations = []
-        for variable, value in self._solver.iterable_assignment():
-            # Under the assumption that all literals are equations, this is faster than going over all equations
-            if variable in self._tseitin_variable_to_subterm:
-                subterm = self._tseitin_variable_to_subterm[variable]
-                if subterm in self._non_boolean_clauses:    # If the variable represents an equality
-                    if value:
-                        positive_relations.add(subterm)
-                    else:
-                        negative_relations.append(subterm)
+        positive_relations, negative_relations = set(), []
+        if self._non_boolean_clauses:
+            for variable, value in self._solver.iterable_assignment():
+                # Under the assumption that all literals are equations, this is faster than going over all equations
+                if variable in self._tseitin_variable_to_subterm:
+                    subterm = self._tseitin_variable_to_subterm[variable]
+                    if subterm in self._non_boolean_clauses:    # If the variable represents an equality
+                        if value:
+                            positive_relations.add(subterm)
+                        else:
+                            negative_relations.append(subterm)
 
         graph = self._congruence_graph_by_level[-1]
         new_positive_relations = graph.process_positive_relations(positive_relations)
@@ -60,13 +53,3 @@ class UFSolver(Solver):
             return None, self._create_new_assignments(new_positive_relations)
         return frozenset({-self._subterm_to_tseitin_variable[subterm] for subterm in positive_relations}
                          | {self._subterm_to_tseitin_variable[conflict]}), None
-
-    def get_assignment(self):
-        assignment = {}
-        for variable, value in self._solver.iterable_assignment():
-            if variable in self._tseitin_variable_to_subterm:
-                assignment[self._tseitin_variable_to_subterm[variable]] = value
-        return assignment
-
-    def solve(self) -> bool:
-        return self._solver.solve()

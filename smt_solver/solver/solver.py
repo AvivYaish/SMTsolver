@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 class Solver(ABC):
 
     @abstractmethod
-    def __init__(self, formula=None, max_new_clauses=float('inf'), halving_period=10000):
+    def __init__(self):
         """
         Initializes the solver.
         """

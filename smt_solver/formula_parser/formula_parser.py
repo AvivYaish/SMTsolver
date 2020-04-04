@@ -3,8 +3,11 @@ import re
 
 
 class FormulaParser:
-    # Assumes variables do not start with a character that is also an operator
     # It would definitely be better to use a Lexer here, but we assumed that parsing was also a part of the project.
+
+    BOOLEAN_FORMULA = "bool"
+    UF_FORMULA = "uf"
+    TQ_FORMULA = "tq"
 
     TRUE = 'true'
     FALSE = 'false'
@@ -35,13 +38,25 @@ class FormulaParser:
 
     OPEN_ENCLOSE = '('
     CLOSE_ENCLOSE = ')'
-    _PARAMETER_SEPARATOR = ','
 
-    _DECLARATION = re.compile(r'\(\s*declare-fun\s+(\w+)\s+\(([^)]*)\)\s+(\w+)\s*\)')
-    _ASSERTION = re.compile(r'\(\s*assert\s*')
-    _FUNCTION_COMMA = re.compile(r'\(.*?\)|(,)')
+    _DECLARATION_KEYWORD = "declare-fun"
+    _DECLARATION = re.compile(r'\(\s*' + _DECLARATION_KEYWORD + '\s+(\w+)\s+\(([^)]*)\)\s+(\w+)\s*\)')
+    _ASSERTION_KEYWORD = "assert"
+    _ASSERTION = re.compile(r'\(\s*' + _ASSERTION_KEYWORD + '\s*')
+    _PARAMETER_SEPARATOR = ','
+    _FUNCTION_PARAMETER = re.compile(r'\(.*?\)|(' + _PARAMETER_SEPARATOR + ')')
 
     _SINGLE_COEFFICIENT_AND_VARIABLE = re.compile(r'\s*([-+]?\s*\d?\s*(?:\.\s*\d+)?)\s*(?:\*)?\s*([\w.]+)\s*')
+
+    @staticmethod
+    def get_formula_type(formula: str):
+        if formula.find(FormulaParser._ASSERTION_KEYWORD) or formula.find(FormulaParser._DECLARATION_KEYWORD):
+            if formula.find(FormulaParser.EQUALITY + " "):
+                return FormulaParser.UF_FORMULA
+            elif formula.find(FormulaParser.LESS_EQ + " "):
+                return FormulaParser.TQ_FORMULA
+            return None
+        return FormulaParser.BOOLEAN_FORMULA
 
     @staticmethod
     def symmetric_formula(parsed_formula):
@@ -95,7 +110,7 @@ class FormulaParser:
         parameters = []
         if unparsed_parameters:
             start_idx = 0
-            for match in re.finditer(FormulaParser._FUNCTION_COMMA, unparsed_parameters):
+            for match in re.finditer(FormulaParser._FUNCTION_PARAMETER, unparsed_parameters):
                 if match.group(0) != FormulaParser._PARAMETER_SEPARATOR:
                     continue
                 cur_parameter = unparsed_parameters[start_idx:match.start()]
@@ -163,7 +178,7 @@ class FormulaParser:
     @staticmethod
     def _parse_formula(formula: str, signature=None):
         """
-        :return: given a textual representation of an SMT-LIBv2 formula, returns a tuple representation of it:
+        :return: given a textual representation of an semi-SMT-LIBv2 formula, returns a tuple representation of it:
         (operator, left side, right side (if exists))
         For functions: (function_name, param1, param2, ...)
         For linear inequalities of the form "<= (a1*x1+a2*x2+...) b": (inequality_type, (a1, a2, ...), b)
@@ -360,7 +375,7 @@ class FormulaParser:
                     frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
                     frozenset({subformulas[cur_formula], subformulas[left_parameter]})
                 }
-            else:   # Binary operator
+            else:  # Binary operator
                 right_parameter, in_subformulas = FormulaParser._get_from_subformulas(subformulas, cur_formula[2])
                 if not in_subformulas:
                     formula_list.append(right_parameter)
@@ -417,7 +432,7 @@ class FormulaParser:
                     # Remove trivial clauses, if the same variable appears twice with different signs in the same clause
                     trivial_clause = True
                     break
-            if trivial_clause or (len(clause) == 0):    # Remove empty clauses
+            if trivial_clause or (len(clause) == 0):  # Remove empty clauses
                 continue
             preprocessed_formula.append(clause)
         return frozenset(preprocessed_formula)
@@ -462,15 +477,6 @@ class FormulaParser:
         return FormulaParser._convert_to_cnf(FormulaParser._parse_formula(formula), output_all)
 
     @staticmethod
-    def convert_tseitin_assignment_to_regular(subformulas, assignment):
-        variable_to_subformula = {v: k for k, v in subformulas.items()}
-        regular_assignment = {}
-        for tseitin_variable in assignment:
-            if variable_to_subformula[tseitin_variable][0] not in FormulaParser.ALL_OPS:
-                regular_assignment[variable_to_subformula[tseitin_variable]] = assignment[tseitin_variable]
-        return regular_assignment
-
-    @staticmethod
     def _create_boolean_abstraction(parsed_formula, signature, abstraction=None, non_boolean_clauses=None):
         """
         :param abstraction: a dictionary that will hold the abstraction. It is update in-place, so an empty
@@ -513,8 +519,8 @@ class FormulaParser:
         subformulas = {}
         transformed_subformulas = {}
         cnf_formula = set()
-        abstraction = {}                # A map between subterms to new variables (the "abstractions")
-        non_boolean_clauses = set()     # A set of all non_boolean_clauses
+        abstraction = {}  # A map between subterms to new variables (the "abstractions")
+        non_boolean_clauses = set()  # A set of all non_boolean_clauses
         for parsed_formula in parsed_formulas:
             simplified_formula = FormulaParser._simplify_formula(parsed_formula)
             FormulaParser._convert_to_cnf(
@@ -543,21 +549,13 @@ class FormulaParser:
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, simplified_formulas)
         return signature, frozenset(cnf_formula), simplified_formulas, \
-            tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
+               tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
 
     @staticmethod
     def import_uf(formula: str):
-        """
-        Assumes functions are declared using: "(declare-fun func_name (param1_type, param2_type, ...) return_type)"
-        Function names and parameter types cannot contain whitespace.
-        Assumes all requirements are given using asserts: "(assert (boolean_formula))"
-        Where boolean_formula is valid according to import_formula's rules, and can only contain
-        literals of the form: "= param1 param2", and parameters are either variables or functions.
-        Functions can only be of the form: "func_name(param1,param2,...)"
-        """
         signature, cnf_formula, simplified_formulas, \
-            tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
-            non_boolean_clauses = FormulaParser._import_non_boolean(formula)
+        tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
+        non_boolean_clauses = FormulaParser._import_non_boolean(formula)
         congruence_graph = CongruenceGraph(signature, simplified_formulas,
                                            FormulaParser.ALL_OPS, FormulaParser.ALL_BINARY_OPS)
         return (
@@ -568,15 +566,8 @@ class FormulaParser:
 
     @staticmethod
     def import_tq(formula: str):
-        """
-        Assumes variables are declared using: "(declare-fun var_name () Int)"
-        Variable names cannot contain whitespace.
-        Assumes all requirements are given using asserts: "(assert (boolean_formula))"
-        Where boolean_formula is valid according to import_formula's rules, and can only contain
-        literals of the form: "<= (coeff1*var1+coeff2*var2+...) b"
-        """
         # Importing is "smart" - does not create multiple abstractions for the same linear equation.
         signature, cnf_formula, simplified_formulas, \
-            tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
-            non_boolean_clauses = FormulaParser._import_non_boolean(formula)
+        tseitin_variable_to_subterm, subterm_to_tseitin_variable, \
+        non_boolean_clauses = FormulaParser._import_non_boolean(formula)
         return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses

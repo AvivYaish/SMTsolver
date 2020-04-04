@@ -80,22 +80,6 @@ class TestFormulaParser:
             frozenset({frozenset({1, 2, 3, -4})})
 
     @staticmethod
-    def test_convert_tseitin_assignment_to_regular():
-        formula = "=> (5) (not 5)"
-        subformulas, transformed_subformulas, cnf_formula = FormulaParser.import_formula(formula, True)
-        solver = SATSolver(cnf_formula)
-        solver.solve()
-        assignment = FormulaParser.convert_tseitin_assignment_to_regular(subformulas, solver.get_assignment())
-        assert assignment == {'5': False}
-
-        formula = "=> (=> (not (or (5) (1))) (and (not 4) (not 5))) (or (or (5) (1)) (not 5))"
-        subformulas, transformed_subformulas, cnf_formula = FormulaParser.import_formula(formula, True)
-        solver = SATSolver(cnf_formula)
-        solver.solve()
-        assignment = FormulaParser.convert_tseitin_assignment_to_regular(subformulas, solver.get_assignment())
-        assert assignment == {'5': True, '4': False}
-
-    @staticmethod
     def test_parse_uf():
         formula = """(declare-fun cost (Int Int Bool) Real)
                        (declare-fun s1 () Bool)
