@@ -4,8 +4,11 @@ import numpy as np
 
 
 class TQSolver(TheorySolver):
-    def __init__(self, formula, tseitin_mappings, non_boolean_clauses, epsilon=0.00000001,
+    def __init__(self, formula, tseitin_mappings, non_boolean_clauses, epsilon=np.float64(1e-10),
                  max_new_clauses=float('inf'), halving_period=10000):
+        """
+        :param epsilon: defines the precision for solving equations that are ">", lower values are better.
+        """
         tseitin_variable_to_subterm, subterm_to_tseitin_variable = tseitin_mappings
         super().__init__(formula, tseitin_variable_to_subterm, non_boolean_clauses, max_new_clauses, halving_period)
 
