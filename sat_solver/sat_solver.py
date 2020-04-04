@@ -302,11 +302,22 @@ class SATSolver:
             last_literal, prev_max_level, max_level_count = self._find_last_literal(conflict_clause)
             if prev_max_level == -1:
                 return False
+
+            # Find the decision literal of the level after the to jump to
+            decision_literal = self._assignment_by_level[prev_max_level + 1][0]
+            if not self._assignment[abs(decision_literal)]["value"]:
+                decision_literal = -decision_literal
+            decision_literal = -decision_literal
+
             self._backtrack(prev_max_level)
             self._add_conflict_clause(conflict_clause)
-            if max_level_count != 1:
-                return True
-            self._assign(conflict_clause, last_literal)
+            if max_level_count == 1:
+                self._assign(conflict_clause, last_literal)
+
+            # Case-splitting, reassign the decision literal of the appropriate decision level
+            if abs(decision_literal) not in self._assignment:
+                self._assign(None, decision_literal)
+
             conflict_clause, new_assignments = self._theory_solver.congruence_closure()
 
         # Theory propagation
