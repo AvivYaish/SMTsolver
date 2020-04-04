@@ -1,3 +1,4 @@
+from itertools import chain
 import numpy as np
 
 
@@ -7,11 +8,14 @@ class LinearSolver:
     FirstPositive = "FirstPositive"
 
     def __init__(self, A, b, c, entering_selection_rule=Bland, auxiliary=False):
+        self._aux_solver: LinearSolver = None
+        self._score = np.float64(0.0)
         self._rows = np.size(A, 0)
         self._cols = np.size(A, 1)
         self._A_N = A.astype(np.float64).copy()
         self._B = np.identity(self._rows, dtype=np.float64)
         self._x_N_vars = np.arange(self._cols)
+        self._x_N_star = np.zeros(self._cols)
         self._x_B_vars = np.arange(self._rows) + self._cols
         self._x_B_star = b.astype(np.float64).copy()
         self._c_N = c.astype(np.float64).copy()
@@ -30,21 +34,21 @@ class LinearSolver:
     def _solve_auxiliary_problem(self) -> bool:
         new_A = np.concatenate((-np.ones((self._rows, 1)), self._A_N), axis=1)
         new_c = np.concatenate((np.array([-1]), np.zeros(self._cols)))
-        aux_solver = LinearSolver(new_A, self._x_B_star, new_c, auxiliary=True)
-        aux_solver.solve()
+        self._aux_solver = LinearSolver(new_A, self._x_B_star, new_c, auxiliary=True)
+        self._aux_solver.solve()
         # The auxiliary problem had an additional first variable, its ID is 0
-        if aux_solver.get_assignment()[0] != 0:
-            return False
+        return self._aux_solver.get_assignment()[0] == 0
 
+    def _update_to_match_auxiliary_problem(self):
         # Can prove the new variable is not in the basis.
-        self._x_B_vars = aux_solver._x_B_vars - 1   # All variables (including slack ones) are shifted by 1
-        self._x_B_star = aux_solver._x_B_star
-        self._B = aux_solver._B
+        self._x_B_vars = self._aux_solver._x_B_vars - 1   # All variables (including slack ones) are shifted by 1
+        self._x_B_star = self._aux_solver._x_B_star
+        self._B = self._aux_solver._B
 
         # Remove the new variable from all data structures
-        new_var_idx = np.argmin(aux_solver._x_N_vars)
-        self._x_N_vars = np.delete(aux_solver._x_N_vars - 1, new_var_idx)
-        self._A_N = np.delete(aux_solver._A_N, new_var_idx, axis=1)
+        new_var_idx = np.argmin(self._aux_solver._x_N_vars)
+        self._x_N_vars = np.delete(self._aux_solver._x_N_vars - 1, new_var_idx)
+        self._A_N = np.delete(self._aux_solver._A_N, new_var_idx, axis=1)
 
         # Reorder c_B and c_N accordingly
         for idx, var in enumerate(self._x_B_vars):
@@ -58,11 +62,10 @@ class LinearSolver:
             else:
                 new_c_N[idx] = self._c_N[var]
         self._c_N = new_c_N
-        return True
 
     def get_assignment(self):
         assignment = {var: 0 for var in range(self._cols)}
-        for var, value in zip(self._x_B_vars, self._x_B_star):
+        for var, value in chain(zip(self._x_B_vars, self._x_B_star), zip(self._x_N_vars, self._x_N_star)):
             if var in assignment:
                 assignment[var] = value
         return assignment
@@ -77,17 +80,26 @@ class LinearSolver:
         t, d = -self._x_B_star[leaving_var], self._A_N[:, entering_var].copy()
         self._pivot(entering_var, leaving_var, t, d)
 
-    def solve(self):
+    def is_sat(self) -> bool:
+        return np.all(self._x_B_star >= 0) or self._solve_auxiliary_problem()
+
+    def get_score(self) -> np.float64:
+        return self._score
+
+    def solve(self) -> bool:
         """
 
         """
-        if (not np.all(self._x_B_star >= 0)) and (not self._solve_auxiliary_problem()):
-            return None
+        if not self.is_sat():
+            return False
+        elif self._aux_solver is not None:
+            self._update_to_match_auxiliary_problem()
 
         while True:
             result = self._single_iteration()
             if result is not None:
-                return result
+                self._score = result
+                return True
 
     def _single_iteration(self):
         y = self._btran(self._B, self._c_B)
@@ -98,6 +110,7 @@ class LinearSolver:
         d = self._ftran(self._B, self._A_N[:, entering_col])
         leaving_col, t = self._choose_leaving_col(d)
         if t == np.inf:
+            self._x_N_star[entering_col] = np.inf
             return np.inf
 
         self._pivot(entering_col, leaving_col, t, d)
