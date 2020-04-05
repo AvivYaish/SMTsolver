@@ -9,6 +9,14 @@ class LinearSolver(Solver):
     FirstPositive = "FirstPositive"
 
     def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False):
+        """
+        :param a_matrix: the coefficient matrix.
+        :param b: the constraints.
+        :param c: the objective function.
+        :param entering_selection_rule: the entering selection rule, either LinearSolver.Bland, LinearSolver.Dantzig or
+        LinearSolver.FirstPositive (which picks the first positive variable in the current objective function).
+        :param auxiliary: True iff this is an auxiliary problem.
+        """
         super().__init__()
         self._aux_solver: LinearSolver = None
         self._score = np.float64(0.0)
@@ -52,7 +60,7 @@ class LinearSolver(Solver):
         self._x_n_vars = np.delete(self._aux_solver._x_n_vars - 1, new_var_idx)
         self._a_matrix_n = np.delete(self._aux_solver._a_matrix_n, new_var_idx, axis=1)
 
-        # Reorder c_B and c_N accordingly
+        # Reorder _c_b and _c_n accordingly
         for idx, var in enumerate(self._x_b_vars):
             if var < self._cols:  # var is not slack
                 self._c_b[idx] = self._c_n[var]
@@ -73,11 +81,11 @@ class LinearSolver(Solver):
         return assignment
 
     def _initial_auxiliary_step(self):
-        # The entering variable is always the new variable created for the
-        # aux. problem, so a = A_N[:, 0] = [-1, ..., -1].
+        # The entering variable is always the new variable created for the auxiliary
+        # problem which has an index of 0, so a = _a_matrix_n[:, 0] = [-1, ..., -1].
         # The leaving variable is the one corresponding to the minimal b_i.
-        # Because this is the first iteration, the B matrix is I,
-        # so d = a * (B^-1) = a * (I^-1) = a * I = a, thus t = -min_b_i
+        # Because this is the first iteration, _a_matrix_b is the identity matrix,
+        # so d = a * (_a_matrix_b^-1) = a * (I^-1) = a * I = a, thus t = -min_b_i
         entering_var, leaving_var = 0, np.argmin(self._x_b_star)
         t, d = -self._x_b_star[leaving_var], self._a_matrix_n[:, entering_var].copy()
         self._pivot(entering_var, leaving_var, t, d)
@@ -166,7 +174,7 @@ class LinearSolver(Solver):
 
     def _btran(self):
         """
-        :return: the solution 'y' of yB = c_B
+        :return: the solution 'y' of y * _a_matrix_b = _c_b
         """
         return np.matmul(self._c_b, np.linalg.inv(self._a_matrix_b))
 
