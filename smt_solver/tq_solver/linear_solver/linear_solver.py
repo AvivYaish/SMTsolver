@@ -18,18 +18,19 @@ class LinearSolver(Solver):
         :param auxiliary: True iff this is an auxiliary problem.
         """
         super().__init__()
-        self._aux_solver: LinearSolver = None
-        self._score = np.float64(0.0)
+        self._score = np.float64(0.0)   # Current score
         self._rows = np.size(a_matrix, 0)
         self._cols = np.size(a_matrix, 1)
-        self._a_matrix_n = a_matrix.astype(np.float64).copy()
-        self._a_matrix_b = np.identity(self._rows, dtype=np.float64)
+
+        self._a_matrix_b = np.identity(self._rows, dtype=np.float64)  # "base" matrix
+        self._x_b_vars = np.arange(self._rows) + self._cols  # Indices of current base variables
+        self._x_b_star = b.astype(np.float64).copy()  # Current assignment for base variables
+        self._c_b = np.zeros(self._rows, dtype=np.float64)  # The objective function for each base variable
+
+        self._a_matrix_n = a_matrix.astype(np.float64).copy()   # "non-basis" matrix
         self._x_n_vars = np.arange(self._cols)
         self._x_n_star = np.zeros(self._cols)
-        self._x_b_vars = np.arange(self._rows) + self._cols
-        self._x_b_star = b.astype(np.float64).copy()
         self._c_n = c.astype(np.float64).copy()
-        self._c_b = np.zeros(self._rows, dtype=np.float64)
 
         if entering_selection_rule == LinearSolver.Bland:
             self._entering_selection_rule = self._bland_rule
@@ -38,6 +39,7 @@ class LinearSolver(Solver):
         elif entering_selection_rule == LinearSolver.FirstPositive:
             self._entering_selection_rule = self._first_positive_rule
 
+        self._aux_solver: LinearSolver = None
         if auxiliary:
             self._initial_auxiliary_step()
 
@@ -46,10 +48,13 @@ class LinearSolver(Solver):
         new_c = np.concatenate((np.array([-1]), np.zeros(self._cols)))
         self._aux_solver = LinearSolver(new_a_matrix, self._x_b_star, new_c, auxiliary=True)
         self._aux_solver.solve()
-        # The auxiliary problem had an additional first variable, its ID is 0
+        # The auxiliary problem has an additional first variable, its ID is 0
         return self._aux_solver.get_assignment()[0] == 0
 
     def _update_to_match_auxiliary_problem(self):
+        """
+        Update the data-structure of the current problem to match the auxiliary's.
+        """
         # Can prove the new variable is not in the basis.
         self._x_b_vars = self._aux_solver._x_b_vars - 1   # All variables (including slack ones) are shifted by 1
         self._x_b_star = self._aux_solver._x_b_star
