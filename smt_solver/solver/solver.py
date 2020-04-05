@@ -24,14 +24,14 @@ class Solver(ABC):
 
     def propagate(self):
         """
-        Propagates assignments.
+        Propagates constraints.
         """
         pass
 
     @abstractmethod
     def get_assignment(self):
         """
-        :return: a literal -> bool dictionary.
+        :return: a literal -> bool dictionary containing the current assignment.
         """
         pass
 

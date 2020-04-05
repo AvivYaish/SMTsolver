@@ -219,11 +219,11 @@ class SATSolver(Solver):
         self._new_clauses.append(conflict_clause)
         self._add_clause(conflict_clause)
 
-    def _bcp_to_exhaustion(self) -> bool:
+    def _generic_constraint_propagation_to_exhaustion(self, propagation_func):
         """
-        :return: performs BCP until exhaustion, returns False iff formula is UNSAT.
+        :return: performs constraint propagation until exhaustion, returns False iff formula is UNSAT.
         """
-        conflict_clause = self._bcp()
+        conflict_clause = propagation_func()
         while conflict_clause is not None:
             conflict_clause, watch_literal, level_to_jump_to = self._conflict_resolution(conflict_clause)
             if level_to_jump_to == -1:
@@ -232,7 +232,27 @@ class SATSolver(Solver):
             self.backtrack(level_to_jump_to)
             self._add_conflict_clause(conflict_clause)
             self._assign(conflict_clause, watch_literal)
-            conflict_clause = self._bcp()
+            conflict_clause = propagation_func()
+        return True
+
+    def _tcp(self):
+        """
+        Theory constraint propagation.
+        :return: the conflict-clause, or None if there is no conflict.
+        """
+        conflict_clause, new_assignments = self._theory_solver.propagate()
+        if conflict_clause is not None:
+            return conflict_clause
+        for literal in new_assignments:
+            self._assign(frozenset({literal, -literal}), literal)
+        return None
+
+    def propagate(self) -> bool:
+        while self._last_assigned_literals:
+            if (not self._generic_constraint_propagation_to_exhaustion(self._bcp)) or \
+                    ((self._theory_solver is not None) and
+                     (not self._generic_constraint_propagation_to_exhaustion(self._tcp))):
+                return False
         return True
 
     def backtrack(self, level: int):
@@ -279,34 +299,6 @@ class SATSolver(Solver):
                 for literal in clause:
                     if abs(literal) not in self._assignment:
                         self._assign(clause, literal)
-
-    def _theory_propagation_to_exhaustion(self):
-        if self._theory_solver is None:
-            return True
-        conflict_clause, new_assignments = self._theory_solver.propagate()
-        while conflict_clause is not None:
-            last_literal, prev_max_level, max_level, max_level_count = self._find_last_literal(conflict_clause)
-            if prev_max_level == -1:
-                return False
-            self.backtrack(prev_max_level)
-            self._add_conflict_clause(conflict_clause)
-
-            if max_level_count != 1:    # It is not a unit clause, can return
-                return True
-            # If it is a unit clause, assign the last unassigned literal
-            self._assign(conflict_clause, last_literal)
-            conflict_clause, new_assignments = self._theory_solver.propagate()
-
-        # Theory propagation
-        for literal in new_assignments:
-            self._assign(frozenset({literal, -literal}), literal)
-        return True
-
-    def propagate(self) -> bool:
-        while self._last_assigned_literals:
-            if (not self._bcp_to_exhaustion()) or (not self._theory_propagation_to_exhaustion()):
-                return False
-        return True
 
     def _is_sat(self) -> bool:
         return self._formula.issubset(self._satisfied_clauses)
