@@ -62,7 +62,7 @@ class TestTQSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, equation_num, coefficient_limits",
-                             [(5, equation_num, (-5, 5)) for equation_num in list(range(1, 25))])
+                             [(5, equation_num, (-5, 5)) for equation_num in list(range(1, 25)) * 10])
     def test_random_tq_equations(variable_num: int, equation_num: int, coefficient_limits: (int, int)):
         (all_pos_z3, equations_z3), (var_dec_our_txt, equations_our_txt), equations_our = \
             TestTQSolver.generate_random_equations(variable_num, equation_num, coefficient_limits)
@@ -89,12 +89,12 @@ class TestTQSolver:
             formula_z3 = z3.And(z3.And(all_pos_z3), formula_z3)
         except z3.Z3Exception:
             return None, None
-        formula_our = var_dec_our_txt + "(assert (" + formula_our_txt + "))"
+        formula_our = var_dec_our_txt + " (assert (" + formula_our_txt + "))"
         return formula_z3, formula_our
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, equation_num, coefficient_limits, operator_num",
-                             [(5, 10, (-5, 5), operator_num) for operator_num in list(range(1, 25))])
+                             [(5, 10, (-5, 5), operator_num) for operator_num in list(range(1, 100)) * 100])
     def test_random_tq_formula(variable_num: int, equation_num: int, coefficient_limits: (int, int), operator_num: int):
         formula_z3, formula_our = TestTQSolver.generate_random_tq_formula(variable_num, equation_num,
                                                                           coefficient_limits, operator_num)
@@ -105,5 +105,55 @@ class TestTQSolver:
 
     @staticmethod
     def test_bad():
-        formula_our = "(declare-fun x1 () Int) (declare-fun x2 () Int) (declare-fun x3 () Int) (declare-fun x4 () Int) (declare-fun x5 () Int)(assert (<=> (not (or (<= (-1.705x1+-0.594x2+2.196x3+-1.064x4+2.124x5) -0.483) (<= (0.047x1+-2.138x2+-2.104x3+1.299x4+-2.858x5) 4.838))) (or (not (<= (-1.689x1+1.734x2+0.21x3+2.61x4+4.337x5) -3.741)) (or (<= (-1.689x1+1.734x2+0.21x3+2.61x4+4.337x5) -3.741) (<= (-3.689x1+2.61x2+0.102x3+1.982x4+3.924x5) -1.098)))))"
-        print(TQSolver(*FormulaParser.import_tq(formula_our)).solve())
+        """
+Z3 formula:  And(And(x1 >= 0, x2 >= 0, x3 >= 0, x4 >= 0, x5 >= 0),
+    Not((-4943/1000*x1 +
+         -13/250*x2 +
+         -947/1000*x3 +
+         -1763/1000*x4 +
+         169/500*x5 <=
+         4269/1000) ==
+        Or(And(159/50*x1 +
+               -2269/1000*x2 +
+               -453/100*x3 +
+               -4967/1000*x4 +
+               -546/125*x5 <=
+               169/125,
+               And(159/50*x1 +
+                   -2269/1000*x2 +
+                   -453/100*x3 +
+                   -4967/1000*x4 +
+                   -546/125*x5 <=
+                   169/125,
+                   4837/1000*x1 +
+                   -1957/500*x2 +
+                   1173/250*x3 +
+                   757/200*x4 +
+                   -3853/1000*x5 <=
+                   4433/1000)),
+           Implies(And(159/50*x1 +
+                       -2269/1000*x2 +
+                       -453/100*x3 +
+                       -4967/1000*x4 +
+                       -546/125*x5 <=
+                       169/125,
+                       4837/1000*x1 +
+                       -1957/500*x2 +
+                       1173/250*x3 +
+                       757/200*x4 +
+                       -3853/1000*x5 <=
+                       4433/1000),
+                   1103/250*x1 +
+                   1187/500*x2 +
+                   386/125*x3 +
+                   -264/125*x4 +
+                   -1511/500*x5 <=
+                   -2403/500))))
+ Our formula:  (declare-fun x1 () Int) (declare-fun x2 () Int) (declare-fun x3 () Int) (declare-fun x4 () Int) (declare-fun x5 () Int) (assert (not (<=> (<= (-4.943x1+-0.052x2+-0.947x3+-1.763x4+0.338x5) 4.269) (or (and (<= (3.18x1+-2.269x2+-4.53x3+-4.967x4+-4.368x5) 1.352) (and (<= (3.18x1+-2.269x2+-4.53x3+-4.967x4+-4.368x5) 1.352) (<= (4.837x1+-3.914x2+4.692x3+3.785x4+-3.853x5) 4.433))) (=> (and (<= (3.18x1+-2.269x2+-4.53x3+-4.967x4+-4.368x5) 1.352) (<= (4.837x1+-3.914x2+4.692x3+3.785x4+-3.853x5) 4.433)) (<= (4.412x1+2.374x2+3.088x3+-2.112x4+-3.022x5) -4.806))))))
+
+ Is SAT? True
+ Z3:		 0.021941423416137695
+ Our:	 0.003988027572631836
+        """
+        formula_our = "(declare-fun x1 () Int) (declare-fun x2 () Int) (declare-fun x3 () Int) (declare-fun x4 () Int) (declare-fun x5 () Int) (assert (not (<=> (<= (-4.943x1+-0.052x2+-0.947x3+-1.763x4+0.338x5) 4.269) (or (and (<= (3.18x1+-2.269x2+-4.53x3+-4.967x4+-4.368x5) 1.352) (and (<= (3.18x1+-2.269x2+-4.53x3+-4.967x4+-4.368x5) 1.352) (<= (4.837x1+-3.914x2+4.692x3+3.785x4+-3.853x5) 4.433))) (=> (and (<= (3.18x1+-2.269x2+-4.53x3+-4.967x4+-4.368x5) 1.352) (<= (4.837x1+-3.914x2+4.692x3+3.785x4+-3.853x5) 4.433)) (<= (4.412x1+2.374x2+3.088x3+-2.112x4+-3.022x5) -4.806))))))"
+        assert TQSolver(*FormulaParser.import_tq(formula_our)).solve()

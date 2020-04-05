@@ -8,7 +8,7 @@ class LinearSolver(Solver):
     Dantzig = "Dantzig"
     FirstPositive = "FirstPositive"
 
-    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False):
+    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=10):
         """
         :param a_matrix: the coefficient matrix.
         :param b: the constraints.
@@ -18,6 +18,7 @@ class LinearSolver(Solver):
         :param auxiliary: True iff this is an auxiliary problem.
         """
         super().__init__()
+        self._refactorization_threshold = refactorization_threshold
         self._score = np.float64(0.0)   # Current score
         self._rows = np.size(a_matrix, 0)
         self._cols = np.size(a_matrix, 1)

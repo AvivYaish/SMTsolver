@@ -39,9 +39,23 @@ class EtaMatrix:
         result[self._col_idx] = (np.matmul(-self._col_vals, result) + y[self._col_idx]) / self._col_vals[self._col_idx]
         return result
 
+    @staticmethod
+    def iteratively_solve_left_mult(eta_matrices, y: np.array):
+        """
+        :return: solution of [x1, ..., xn] * E1 * E2 * ... = y, where E1, ... are eta matrices.
+        >>> e1 = EtaMatrix(1, np.array([1, 1, 3]))
+        >>> e2 = EtaMatrix(0, np.array([2, 1, 1]))
+        >>> EtaMatrix.iteratively_solve_left_mult([e1, e2], np.array([19, 12, 0]))
+        array([3.5, 8.5, 0. ])
+        """
+        cur_y = y
+        for cur_matrix in reversed(eta_matrices):
+            cur_y = cur_matrix.solve_left_mult(cur_y)
+        return cur_y
+
     def solve_right_mult(self, y: np.array):
         """
-        Solves a formula of the form: [x1, ..., xn] * self = y
+        Solves a formula of the form: self * [x1, ..., xn] = y
         >>> m = EtaMatrix(1, np.array([-4., 3., 2.]))
         >>> m.solve_right_mult(np.array([1., 2., 3.]))
         array([3.66666667, 0.66666667, 1.66666667])
@@ -51,3 +65,13 @@ class EtaMatrix:
         result -= self._col_vals * eta_val
         result[self._col_idx] = eta_val
         return result
+
+    @staticmethod
+    def iteratively_solve_right_mult(eta_matrices, y: np.array):
+        """
+        :return: solution of E1 * E2 * ... * [x1, ..., xn] = y, where E1, ... are eta matrices.
+        """
+        cur_y = y
+        for cur_matrix in eta_matrices:
+            cur_y = cur_matrix.solve_right_mult(cur_y)
+        return cur_y

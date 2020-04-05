@@ -329,9 +329,9 @@ class SATSolver(Solver):
             elif unassigned_count == 1:
                 # If it is a unit clause, assign the last unassigned literal
                 self._assign(conflict_clause, unassigned_literal)
-            elif abs(decision_literal) not in self._assignment:
+            if abs(decision_literal) not in self._assignment:
                 # Case-splitting, reassign the decision literal of the appropriate decision level
-                self._assign(None, decision_literal)
+                self._decide(decision_literal)
 
             conflict_clause, new_assignments = self._theory_solver.propagate()
 
