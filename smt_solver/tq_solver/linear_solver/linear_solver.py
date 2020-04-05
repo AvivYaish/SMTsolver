@@ -22,12 +22,12 @@ class LinearSolver(Solver):
         self._rows = np.size(a_matrix, 0)
         self._cols = np.size(a_matrix, 1)
 
-        self._a_matrix_b = np.identity(self._rows, dtype=np.float64)  # "base" matrix
+        self._a_matrix_b = np.identity(self._rows, dtype=np.float64)  # coefficient matrix for "base" variables
         self._x_b_vars = np.arange(self._rows) + self._cols  # Indices of current base variables
         self._x_b_star = b.astype(np.float64).copy()  # Current assignment for base variables
         self._c_b = np.zeros(self._rows, dtype=np.float64)  # The objective function for each base variable
 
-        self._a_matrix_n = a_matrix.astype(np.float64).copy()   # "non-basis" matrix
+        self._a_matrix_n = a_matrix.astype(np.float64).copy()   # coefficient matrix for non-"base" variables
         self._x_n_vars = np.arange(self._cols)
         self._x_n_star = np.zeros(self._cols)
         self._c_n = c.astype(np.float64).copy()
