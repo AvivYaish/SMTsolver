@@ -52,12 +52,10 @@ class FormulaParser:
     def get_formula_type(formula: str):
         if formula.find(FormulaParser._ASSERTION_KEYWORD) == -1:
             return None
-        if formula.find(FormulaParser._DECLARATION_KEYWORD) != -1:
-            if formula.find(FormulaParser.LESS_EQ + " ") != -1:
-                return FormulaParser.TQ_FORMULA
-            elif formula.find(FormulaParser.EQUALITY + " ") != -1:
-                return FormulaParser.UF_FORMULA
-            return None
+        elif formula.find(FormulaParser.LESS_EQ + " ") != -1:
+            return FormulaParser.TQ_FORMULA
+        elif formula.find(FormulaParser.EQUALITY + " ") != -1:
+            return FormulaParser.UF_FORMULA
         return FormulaParser.BOOLEAN_FORMULA
 
     @staticmethod
