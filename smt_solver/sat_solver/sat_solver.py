@@ -301,12 +301,6 @@ class SATSolver(Solver):
             if prev_max_level == -1:
                 return False
 
-            # Find the decision literal of the level after the to jump to
-            decision_literal = self._assignment_by_level[self._assignment[abs(last_literal)]["level"]][0]
-            if not self._assignment[abs(decision_literal)]["value"]:
-                decision_literal = -decision_literal
-            decision_literal = -decision_literal
-
             self.backtrack(prev_max_level)
             self._add_conflict_clause(conflict_clause)
 
@@ -326,14 +320,13 @@ class SATSolver(Solver):
                 # If the clause is already satisfied, add it to the appropriate data structures
                 self._satisfaction_by_level[min_level].append(conflict_clause)
                 self._satisfied_clauses.add(conflict_clause)
+                return True
             elif unassigned_count == 1:
                 # If it is a unit clause, assign the last unassigned literal
                 self._assign(conflict_clause, unassigned_literal)
-            if abs(decision_literal) not in self._assignment:
-                # Case-splitting, reassign the decision literal of the appropriate decision level
-                self._decide(decision_literal)
-
-            conflict_clause, new_assignments = self._theory_solver.propagate()
+                conflict_clause, new_assignments = self._theory_solver.propagate()
+            else:
+                return True
 
         # Theory propagation
         for literal in new_assignments:
