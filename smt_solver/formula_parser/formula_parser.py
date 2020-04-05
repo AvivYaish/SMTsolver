@@ -431,7 +431,7 @@ class FormulaParser:
             trivial_clause = False
             for literal in clause:
                 if -literal in clause:
-                    # Remove trivial clauses, if the same variable appears twice with different signs in the same clause
+                    # Remove trivial clauses, if the same variable appears twice with different signs in a clause
                     trivial_clause = True
                     break
             if trivial_clause or (len(clause) == 0):  # Remove empty clauses
@@ -455,16 +455,16 @@ class FormulaParser:
             transformed_subformulas = {}
         if cnf_formula is None:
             cnf_formula = set()
+
         simplified_formula = FormulaParser._simplify_formula(parsed_formula)
         if simplified_formula == FormulaParser.FALSE:
-            # Create a simple conflict
-            cnf_formula.add(frozenset({1}))
-            cnf_formula.add(frozenset({-1}))
+            cnf_formula.update([frozenset({1}), frozenset({-1})])   # Create a simple conflict
         else:
             FormulaParser._tseitin_transform(simplified_formula,
                                              subformulas=subformulas,
                                              transformed_subformulas=transformed_subformulas,
                                              transformed_formula=cnf_formula)
+
         cnf_formula = FormulaParser._preprocess(cnf_formula)
         if output_all:
             return subformulas, transformed_subformulas, cnf_formula
@@ -473,7 +473,7 @@ class FormulaParser:
     @staticmethod
     def import_formula(formula: str, output_all=False):
         """
-        Assumes formulas are given in left Polish notation, and all parameters are enclosed by brackets.
+        Assumes formulas are given in left-Polish notation, and all parameters are enclosed by brackets.
         For example: "not (and (a) (or (a) (b)))"
         """
         return FormulaParser._convert_to_cnf(FormulaParser._parse_formula(formula), output_all)
@@ -518,11 +518,10 @@ class FormulaParser:
 
     @staticmethod
     def _convert_non_boolean_formulas_to_cnf(signature, parsed_formulas):
-        subformulas = {}
-        transformed_subformulas = {}
-        cnf_formula = set()
+        cnf_formula, subformulas, transformed_subformulas = set(), {}, {}
         abstraction = {}  # A map between subterms to new variables (the "abstractions")
         non_boolean_clauses = set()  # A set of all non_boolean_clauses
+
         for parsed_formula in parsed_formulas:
             simplified_formula = FormulaParser._simplify_formula(parsed_formula)
             FormulaParser._convert_to_cnf(
@@ -536,12 +535,12 @@ class FormulaParser:
             )
 
         # Keep a mapping of new tseitin variables to original subterms
-        tseitin_variable_to_subterm = {}
-        subterm_to_tseitin_variable = {}
+        tseitin_variable_to_subterm, subterm_to_tseitin_variable = {}, {}
         for subterm, abstracted_subterm in abstraction.items():
             if abstracted_subterm in subformulas:
                 tseitin_variable_to_subterm[subformulas[abstracted_subterm]] = subterm
                 subterm_to_tseitin_variable[subterm] = subformulas[abstracted_subterm]
+
         return cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses
 
     @staticmethod
