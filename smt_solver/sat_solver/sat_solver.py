@@ -126,37 +126,25 @@ class SATSolver(Solver):
 
         if (prev_max_level == -1) and (max_level != -1):
             prev_max_level = max_level - 1
-        return last_literal, prev_max_level, max_level_count
+        return last_literal, prev_max_level, max_level, max_level_count
 
-    def _conflict_resolution(self, conflict_clause, limit=float('inf')):
+    def _conflict_resolution(self, conflict_clause):
         """
         Learns conflict clauses using implication graphs, with the Unique Implication Point heuristic.
         """
-        count = 0
         conflict_clause = set(conflict_clause)
         while True:
-            count += 1
-            last_literal, prev_max_level, max_level_count = self._find_last_literal(conflict_clause)
-            clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
-            if (max_level_count == 1) or (clause_on_incoming_edge is None) or (count >= limit):
-                # If the last assigned literal is the only one from the last decision level,
-                # or if it was assigned because of the theory (thus, the incoming clause is None):
+            last_literal, prev_max_level, max_level, max_level_count = self._find_last_literal(conflict_clause)
+            if max_level_count == 1:
+                # If the last assigned literal is the only one from the last decision level:
                 # return the conflict clause, the next literal to assign (which should be the
                 # watch literal of the conflict clause), and the decision level to jump to
-                if clause_on_incoming_edge is None:
-                    # If the clause is None, the literal to assign should be the opposite of the decision literal
-                    max_level = self._assignment[abs(last_literal)]["level"]
-                    last_literal = self._assignment_by_level[max_level][0]
-                    if not self._assignment[abs(last_literal)]["value"]:
-                        last_literal = -last_literal
-                    last_literal = -last_literal
-                    conflict_clause.add(last_literal)
                 return frozenset(conflict_clause), last_literal, prev_max_level
 
             # Resolve the conflict clause with the clause on the incoming edge
             # Might be the case that the last literal was assigned because of the
             # theory, and in that case it is impossible to do resolution
-            conflict_clause |= clause_on_incoming_edge
+            conflict_clause |= self._assignment[abs(last_literal)]["clause"]
             conflict_clause.remove(last_literal)
             conflict_clause.remove(-last_literal)
 
@@ -297,40 +285,21 @@ class SATSolver(Solver):
             return True
         conflict_clause, new_assignments = self._theory_solver.propagate()
         while conflict_clause is not None:
-            last_literal, prev_max_level, max_level_count = self._find_last_literal(conflict_clause)
+            last_literal, prev_max_level, max_level, max_level_count = self._find_last_literal(conflict_clause)
             if prev_max_level == -1:
                 return False
-
             self.backtrack(prev_max_level)
             self._add_conflict_clause(conflict_clause)
 
-            # Check if the conflict clause is already satisfied
-            unassigned_count, unassigned_literal = 0, None
-            min_sat_literal, min_level, min_idx = None, float('inf'), float('inf')
-            for literal in conflict_clause:
-                variable = abs(literal)
-                if variable in self._assignment:
-                    cur_level, cur_idx = self._assignment[variable]["level"], self._assignment[variable]["idx"]
-                    if ((self._assignment[variable]["value"] == literal > 0) and
-                            ((cur_level < min_level) or ((cur_level == min_level) and (cur_idx < min_idx)))):
-                        min_sat_literal, min_level, min_idx = literal, cur_level, cur_idx
-                else:
-                    unassigned_count, unassigned_literal = unassigned_count + 1, literal
-            if min_sat_literal is not None:
-                # If the clause is already satisfied, add it to the appropriate data structures
-                self._satisfaction_by_level[min_level].append(conflict_clause)
-                self._satisfied_clauses.add(conflict_clause)
+            if max_level_count != 1:    # It is not a unit clause, can return
                 return True
-            elif unassigned_count == 1:
-                # If it is a unit clause, assign the last unassigned literal
-                self._assign(conflict_clause, unassigned_literal)
-                conflict_clause, new_assignments = self._theory_solver.propagate()
-            else:
-                return True
+            # If it is a unit clause, assign the last unassigned literal
+            self._assign(conflict_clause, last_literal)
+            conflict_clause, new_assignments = self._theory_solver.propagate()
 
         # Theory propagation
         for literal in new_assignments:
-            self._assign(None, literal)
+            self._assign(frozenset({literal, -literal}), literal)
         return True
 
     def propagate(self) -> bool:
