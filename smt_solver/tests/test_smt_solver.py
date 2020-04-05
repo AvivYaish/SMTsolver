@@ -11,7 +11,7 @@ class TestSMTSolver:
     @staticmethod
     @pytest.mark.parametrize("variable_num, equation_num, function_num, coefficient_limits, operator_num",
                              # [(5, 10, 2, (-5, 5), operator_num) for operator_num in np.full(100000, 10)]
-                             np.full((20000, 5), (5, 10, 2, (-5, 5), 10))
+                             np.full((5000, 5), (5, 10, 2, (-5, 5), 10))
                              )
     def test_random_formula(variable_num: int, equation_num: int, function_num: int, coefficient_limits: (int, int),
                             operator_num: int):

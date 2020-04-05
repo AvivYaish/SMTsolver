@@ -235,16 +235,16 @@ class FormulaParser:
                 FormulaParser._parse_formula(right_side, signature))
 
     @staticmethod
-    def _is_parameter_not(parameter):
-        return (len(parameter) > 1) and (parameter[0] == FormulaParser.NOT)
+    def _is_formula_not(formula):
+        return (len(formula) > 1) and (formula[0] == FormulaParser.NOT)
 
     @staticmethod
     def _is_left_not_right(left_parameter, right_parameter):
         return (  # This case is: op (not x) (x)
-                (FormulaParser._is_parameter_not(right_parameter) and (right_parameter[1] == left_parameter))
+                (FormulaParser._is_formula_not(right_parameter) and (right_parameter[1] == left_parameter))
                 or
                 # This case is: op (not x) (x)
-                (FormulaParser._is_parameter_not(left_parameter) and (left_parameter[1] == right_parameter))
+                (FormulaParser._is_formula_not(left_parameter) and (left_parameter[1] == right_parameter))
         )
 
     @staticmethod
@@ -260,7 +260,7 @@ class FormulaParser:
 
         left_parameter = FormulaParser._simplify_formula(parsed_formula[1])
         if operator == FormulaParser.NOT:
-            if FormulaParser._is_parameter_not(left_parameter):
+            if FormulaParser._is_formula_not(left_parameter):
                 # not (not x)
                 return left_parameter[1]
             if left_parameter == FormulaParser.FALSE:
@@ -330,17 +330,25 @@ class FormulaParser:
         return operator, left_parameter, right_parameter
 
     @staticmethod
-    def _get_from_subformulas(subformulas, formula):
-        in_subformulas = True
+    def _add_to_subformulas(subformulas, formula):
+        """
+        :param subformulas: a formula -> int dictionary, which holds for each formula its subformula index.
+        :param formula: a parsed formula to add to the dictionary.
+        :return: if the symmetric formula is already in subformulas, returns it. Otherwise, returns 'formula' unchanged.
+        """
         if formula not in subformulas:
             symmetric_cur_formula = FormulaParser.symmetric_formula(formula)
-            if symmetric_cur_formula in subformulas:
-                # If a symmetric clause exists, can reuse it
+            if symmetric_cur_formula in subformulas:    # If a symmetric clause exists, can reuse it
                 formula = symmetric_cur_formula
             else:
-                in_subformulas = False
-                subformulas[formula] = len(subformulas) + 1  # + 1 to avoid getting zeros (-0=0)
-        return formula, in_subformulas
+                if FormulaParser._is_formula_not(formula):
+                    # If the formula that was received is simplified, there cannot be recursive not operations,
+                    # thus _add_to_subformulas recurses at most once.
+                    left_parameter = FormulaParser._add_to_subformulas(subformulas, formula[1])
+                    subformulas[formula] = -subformulas[left_parameter]
+                else:   # This is a new subformula
+                    subformulas[formula] = len(subformulas) + 1  # + 1 to avoid getting zeros (-0=0)
+        return formula
 
     @staticmethod
     def _tseitin_transform(parsed_formula,
@@ -358,26 +366,24 @@ class FormulaParser:
         if transformed_formula is None:
             transformed_formula = set()
 
-        formula_list = [parsed_formula]
+        already_seen, formula_list = set(), [parsed_formula]
         while formula_list:
-            cur_formula, in_subformulas = FormulaParser._get_from_subformulas(subformulas, formula_list.pop())
+            cur_formula = FormulaParser._add_to_subformulas(subformulas, formula_list.pop())
+            already_seen.add(cur_formula)
             if not cur_formula:
                 continue
             operator = cur_formula[0]
             if operator not in FormulaParser.BOOLEAN_OPS:
                 continue
 
-            left_parameter, in_subformulas = FormulaParser._get_from_subformulas(subformulas, cur_formula[1])
-            if not in_subformulas:
+            left_parameter = FormulaParser._add_to_subformulas(subformulas, cur_formula[1])
+            if left_parameter not in already_seen:
                 formula_list.append(left_parameter)
             if operator == FormulaParser.NOT:
-                transformed_subformulas[subformulas[cur_formula]] = {
-                    frozenset({-subformulas[cur_formula], -subformulas[left_parameter]}),
-                    frozenset({subformulas[cur_formula], subformulas[left_parameter]})
-                }
+                continue
             else:  # Binary operator
-                right_parameter, in_subformulas = FormulaParser._get_from_subformulas(subformulas, cur_formula[2])
-                if not in_subformulas:
+                right_parameter = FormulaParser._add_to_subformulas(subformulas, cur_formula[2])
+                if right_parameter not in already_seen:
                     formula_list.append(right_parameter)
                 if operator == FormulaParser.AND:
                     transformed_subformulas[subformulas[cur_formula]] = {
@@ -547,6 +553,7 @@ class FormulaParser:
         simplified_formulas = [FormulaParser._simplify_formula(formula) for formula in parsed_formulas]
         cnf_formula, (tseitin_variable_to_subterm, subterm_to_tseitin_variable), non_boolean_clauses = \
             FormulaParser._convert_non_boolean_formulas_to_cnf(signature, simplified_formulas)
+        cnf_formula = FormulaParser._preprocess(cnf_formula)
         return signature, frozenset(cnf_formula), simplified_formulas, \
             tseitin_variable_to_subterm, subterm_to_tseitin_variable, non_boolean_clauses
 

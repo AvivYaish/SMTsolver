@@ -17,9 +17,9 @@ class TestUFSolver:
                    '(assert (not (= f(f(a, b), b) a)))')
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
-        solver._solver._assignment = {1: {"value": True}, 3: {"value": False}}
+        solver._solver._assignment = {1: {"value": True}, 2: {"value": False}}
         conflict_clause, assignments = solver.propagate()
-        assert conflict_clause == frozenset({3, -1})
+        assert conflict_clause == frozenset({2, -1})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(f(f(a))) a)) ' +
@@ -27,9 +27,9 @@ class TestUFSolver:
                    '(assert (not (= f(a) a)))')
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
-        solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 4: {"value": False}}
+        solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": False}}
         conflict_clause, assignments = solver.propagate()
-        assert conflict_clause == frozenset({4, -1, -2})
+        assert conflict_clause == frozenset({3, -1, -2})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= f(x) f(y))) ' +
@@ -49,19 +49,19 @@ class TestUFSolver:
         solver = UFSolver(*FormulaParser.import_uf(formula))
         graph = deepcopy(solver._basic_congruence_graph)
         solver.create_new_decision_level()
-        solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 5: {"value": False}}
+        solver._solver._assignment = {1: {"value": True}, 2: {"value": True}, 3: {"value": True}, 4: {"value": False}}
         conflict_clause, assignments = solver.propagate()
-        assert conflict_clause == frozenset({5, -1, -2, -3})
+        assert conflict_clause == frozenset({4, -1, -2, -3})
         assert solver._basic_congruence_graph._graph == graph._graph  # Make sure the original graph did not change
 
         # Verify that creating a new decision level copies the last graph
         solver.create_new_decision_level()
         conflict_clause, assignments = solver.propagate()
-        assert conflict_clause == frozenset({5, -1, -2, -3})
+        assert conflict_clause == frozenset({4, -1, -2, -3})
 
         # Verify that performing congruence closure again using the same data structure still works
         conflict_clause, assignments = solver.propagate()
-        assert conflict_clause == frozenset({5, -1, -2, -3})
+        assert conflict_clause == frozenset({4, -1, -2, -3})
 
         formula = ('(declare-fun f (Bool) Bool) ' +
                    '(assert (= a b)) ' +
@@ -71,43 +71,44 @@ class TestUFSolver:
                    '(assert (or (not (= f(s) f(a))) (not (= f(a) f(c)))))')
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
+        print(solver._subterm_to_tseitin_variable)
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
-            7: {"value": True},  # ('=', 's', 't')
+            6: {"value": True},  # ('=', 's', 't')
             4: {"value": True},  # ('=', 'b', 'c')
-            12: {"value": True},  # ('=', 't', 'r')
+            11: {"value": True},  # ('=', 't', 'r')
             # 10: {"value": },      # ('=', ('f', 's'), ('f', 't'))
             15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
-            20: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
+            19: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
         }
         conflict_clause, assignments = solver.propagate()
         # assert solver.propagate() == frozenset({20, -1, -4})  # <- this is the minimal
-        assert conflict_clause == frozenset({-15, -12, 20, -7, -4, -1})
+        assert conflict_clause == frozenset({-15, -11, 19, -6, -4, -1})
 
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
-            7: {"value": True},  # ('=', 's', 't')
+            6: {"value": True},  # ('=', 's', 't')
             4: {"value": True},  # ('=', 'b', 'c')
-            12: {"value": False},  # ('=', 't', 'r')
+            11: {"value": False},  # ('=', 't', 'r')
             # 10: {"value": },      # ('=', ('f', 's'), ('f', 't'))
             15: {"value": True},  # ('=', ('f', 's'), ('f', 'a'))
-            20: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
+            19: {"value": False},  # ('=', ('f', 'a'), ('f', 'c'))
         }
         conflict_clause, assignments = solver.propagate()
-        assert conflict_clause == frozenset({-15, 20, -7, -4, -1})
+        assert conflict_clause == frozenset({-15, 19, -6, -4, -1})
 
         solver = UFSolver(*FormulaParser.import_uf(formula))
         solver.create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
-            7: {"value": True},  # ('=', 's', 't')
+            6: {"value": True},  # ('=', 's', 't')
             4: {"value": True},  # ('=', 'b', 'c')
-            12: {"value": False},  # ('=', 't', 'r')
+            11: {"value": False},  # ('=', 't', 'r')
             10: {"value": True},  # ('=', ('f', 's'), ('f', 't'))
             15: {"value": False},  # ('=', ('f', 's'), ('f', 'a'))
-            20: {"value": True},  # ('=', ('f', 'a'), ('f', 'c'))
+            19: {"value": True},  # ('=', ('f', 'a'), ('f', 'c'))
         }
         conflict_clause, assignments = solver.propagate()
         assert conflict_clause is None
@@ -124,7 +125,7 @@ class TestUFSolver:
         solver._solver.create_new_decision_level()
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
-            7: {"value": True},  # ('=', 's', 't')
+            6: {"value": True},  # ('=', 's', 't')
         }
         conflict_clause, assignments = solver.propagate()
         assert conflict_clause is None
@@ -132,13 +133,13 @@ class TestUFSolver:
 
         solver._solver._assignment = {
             1: {"value": True},  # ('=', 'a', 'b')
-            7: {"value": True},  # ('=', 's', 't')
+            6: {"value": True},  # ('=', 's', 't')
             10: {"value": True},  # ('=', ('f', 's'), ('f', 't'))
             4: {"value": True},  # ('=', 'b', 'c')
         }
         conflict_clause, assignments = solver.propagate()
         assert conflict_clause is None
-        assert assignments == [20]
+        assert assignments == [19]
 
     @staticmethod
     def test_integration():
