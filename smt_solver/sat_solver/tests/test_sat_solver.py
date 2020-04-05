@@ -287,7 +287,7 @@ class TestSATSolver:
         return clauses
 
     @staticmethod
-    @pytest.mark.parametrize("color_num, edges, is_sat",
+    @pytest.mark.parametrize("color_num, edges, _is_sat",
                              [(color_num, COLORING_BASIC_EDGES, (color_num >= 4)) for color_num in range(1, 11)])
     def test_coloring_basic(color_num: int, edges, is_sat: bool):
         # When colors are 1 ... 300:
@@ -299,7 +299,7 @@ class TestSATSolver:
         assert SATSolver(TestSATSolver.generate_coloring_clauses(color_num, edges)).solve() is is_sat
 
     @staticmethod
-    @pytest.mark.parametrize("color_num, edges, is_sat",
+    @pytest.mark.parametrize("color_num, edges, _is_sat",
                              [(color_num, COLORING_MANY_EDGES, (color_num >= 5)) for color_num in range(1, 7)])
     def test_coloring_many_edges(color_num: int, edges, is_sat: bool):
         # When colors are 1 ... 100:
@@ -406,9 +406,9 @@ class TestSATSolver:
         end_time_our = time()
 
         if print_time:
-            print("\n", "Is SAT?", is_sat_z3, "\n",
+            print("Is SAT?", is_sat_z3, "\n",
                   "Z3:\t\t", end_time_z3 - start_time_z3, "\n",
-                  "Our:\t", end_time_our - start_time_our)
+                  "Our:\t", end_time_our - start_time_our, "\n")
         return is_sat_our is is_sat_z3
 
     @staticmethod
