@@ -2,7 +2,7 @@
 
 An SMT solver that can solve pure boolean, UF and TQ formulas.
 
-Accepts formulas in an (almost) SMTLibV2 format, see full details in smt_solver.py.
+Accepts formulas in an (almost) SMT-LIBv2 format, see full details in smt_solver.py.
 
 Tested over more than four million random formulas, and compared against Z3. Surprisingly, it is quite faster than Z3 on 
 short formulas. 
