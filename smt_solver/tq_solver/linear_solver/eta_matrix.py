@@ -5,10 +5,10 @@ class EtaMatrix:
     def __init__(self, col_idx: int, col_vals: np.array):
         """
         :param col_idx: column count starts from 0.
-        :param col_vals: the values of the column, as a 1 dimensional numpy array.
+        :param col_vals: the values of the column, as a 1 dimensional numpy array. Does not copy them!
         """
         self._col_idx = col_idx
-        self._col_vals = col_vals.astype(np.float64)
+        self._col_vals = col_vals
 
     def invert(self):
         """
@@ -30,12 +30,12 @@ class EtaMatrix:
         Solves a formula of the form: [x1, ..., xn] * self = y
         >>> m = EtaMatrix(1, np.array([-4, 3, 2]))
         >>> m.solve_left_mult(np.array([1, 2, 3]))
-        array([1., 0., 3.])
+        array([1, 0, 3])
         >>> m.solve_left_mult(np.array([3, 2, 1]))
-        array([3., 4., 1.])
+        array([3, 4, 1])
         """
-        result = y.astype(np.float64)
-        result[self._col_idx] = np.float64(0)
+        result = np.copy(y)
+        result[self._col_idx] = 0
         result[self._col_idx] = (np.matmul(-self._col_vals, result) + y[self._col_idx]) / self._col_vals[self._col_idx]
         return result
 
@@ -60,9 +60,8 @@ class EtaMatrix:
         >>> m.solve_right_mult(np.array([1., 2., 3.]))
         array([3.66666667, 0.66666667, 1.66666667])
         """
-        result = y.astype(np.float64)
-        eta_val = np.float64(y[self._col_idx] / self._col_vals[self._col_idx])
-        result -= self._col_vals * eta_val
+        eta_val = y[self._col_idx] / self._col_vals[self._col_idx]
+        result = y - self._col_vals * eta_val
         result[self._col_idx] = eta_val
         return result
 
@@ -75,3 +74,16 @@ class EtaMatrix:
         for cur_matrix in eta_matrices:
             cur_y = cur_matrix.solve_right_mult(cur_y)
         return cur_y
+
+    def get_full_matrix(self):
+        """
+        >>> e1 = EtaMatrix(1, np.array([1, 1, 3]))
+        >>> np.all(e1.get_full_matrix() == np.array([[1., 1., 0.], [0., 1., 0.], [0., 3., 1.]]))
+        True
+        >>> e2 = EtaMatrix(0, np.array([2, 1, 1]))
+        >>> np.all(e2.get_full_matrix() == np.array([[2., 0., 0.], [1., 1., 0.], [1., 0., 1.]]))
+        True
+        """
+        matrix = np.identity(len(self._col_vals))
+        matrix[:, self._col_idx] = np.copy(self._col_vals)
+        return matrix
