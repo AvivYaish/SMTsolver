@@ -171,9 +171,7 @@ class SATSolver(Solver):
           - If it has 1 unassigned literals, assign the correct value to the last literal.
           - If it has > 2 unassigned literals, pick one to become the new watch literal.
         """
-        watch_variable = abs(watch_literal)
-        replaced_watcher = False
-        unassigned_literals = []
+        watch_variable, replaced_watcher, unassigned_literals = abs(watch_literal), False, []
         for unassigned_literal in clause:
             unassigned_variable = abs(unassigned_literal)
             if unassigned_variable in self._assignment:
@@ -219,9 +217,10 @@ class SATSolver(Solver):
         self._new_clauses.append(conflict_clause)
         self._add_clause(conflict_clause)
 
-    def _generic_constraint_propagation_to_exhaustion(self, propagation_func):
+    def _constraint_propagation_to_exhaustion(self, propagation_func):
         """
-        :return: performs constraint propagation until exhaustion, returns False iff formula is UNSAT.
+        :return: performs constraint propagation using the given function
+        until exhaustion, returns False iff formula is UNSAT.
         """
         conflict_clause = propagation_func()
         while conflict_clause is not None:
@@ -249,9 +248,8 @@ class SATSolver(Solver):
 
     def propagate(self) -> bool:
         while self._last_assigned_literals:
-            if (not self._generic_constraint_propagation_to_exhaustion(self._bcp)) or \
-                    ((self._theory_solver is not None) and
-                     (not self._generic_constraint_propagation_to_exhaustion(self._tcp))):
+            if (not self._constraint_propagation_to_exhaustion(self._bcp)) or \
+                    ((self._theory_solver is not None) and (not self._constraint_propagation_to_exhaustion(self._tcp))):
                 return False
         return True
 
