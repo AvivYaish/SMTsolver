@@ -4,7 +4,7 @@ import numpy as np
 
 
 class TQSolver(TheorySolver):
-    def __init__(self, formula, tseitin_mappings, non_boolean_clauses, epsilon=np.float64(1e-10),
+    def __init__(self, formula, tseitin_mappings, non_boolean_clauses, epsilon=np.float64(1e-5),
                  max_new_clauses=float('inf'), halving_period=10000):
         """
         :param epsilon: defines the precision for solving equations that are ">", lower values are better.
