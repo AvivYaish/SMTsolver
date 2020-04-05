@@ -328,20 +328,24 @@ class TestSATSolver:
         assert SATSolver(formula, halving_period=float('inf')).solve()
 
     @staticmethod
-    @pytest.mark.parametrize("variable_num, clause_num, clause_length",
-                             [(5, clause_num, 3) for clause_num in list(range(1, 100))])
-    def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
-        # Generates a random CNF and compares our solver to Z3
-
-        # Generate formula
+    def generate_random_cnf(variable_num: int, clause_num: int, clause_length: int):
+        """
+        Generates a random CNF, both in Z3's format and ours.
+        """
         formula_z3, formula_our = [], set()
         variables_z3 = np_array([(z3.Bool(str(cur_literal)), z3.Not(z3.Bool(str(cur_literal))))
-                                    for cur_literal in range(1, variable_num + 1)]).flatten()
+                                 for cur_literal in range(1, variable_num + 1)]).flatten()
         variables_our = np_array([(variable, -variable) for variable in range(1, variable_num + 1)]).flatten()
         for chosen_literals in np_randint(0, len(variables_our), size=(clause_num, clause_length)):
             formula_z3.append(z3.Or(*variables_z3[chosen_literals]))
             formula_our.add(frozenset(variables_our[chosen_literals]))
+        return formula_z3, formula_our
 
+    @staticmethod
+    @pytest.mark.parametrize("variable_num, clause_num, clause_length",
+                             [(5, clause_num, 3) for clause_num in list(range(1, 100))])
+    def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
+        formula_z3, formula_our = TestSATSolver.generate_random_cnf(variable_num, clause_num, clause_length)
         assert TestSATSolver.compare_to_z3(formula_z3, SATSolver(formula_our))
 
     @staticmethod
