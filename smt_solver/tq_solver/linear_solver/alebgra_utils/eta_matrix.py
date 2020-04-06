@@ -7,13 +7,12 @@ class EtaMatrix:
         :param col_idx: column count starts from 0.
         :param col_vals: the values of the column, as a 1 dimensional numpy array. Does not copy them!
         """
-        self._col_idx = col_idx
-        self._col_vals = col_vals
+        self._col_idx, self._col_vals = col_idx, col_vals
 
     def invert(self):
         """
         Inverts the matrix, in place.
-        :return: this matrix.
+        :return: this matrix, inverted.
         >>> m = EtaMatrix(1, np.array([-4, 3, 2]))
         >>> np.all(np.isclose(m.invert()._col_vals, np.array([ 1.33333333,  0.33333333, -0.66666667])))
         True

@@ -16,7 +16,7 @@ class LUFactorization:
         value in each column and will generate a list of all pivots.
         :return: pivot_list, a list of (row1, row2) tuples, where row1 and row2 were switched at that step.
         """
-        cur_matrix,  pivot_list = matrix.astype(np.float64), []
+        cur_matrix, pivot_list = matrix.astype(np.float64), []
         for row_idx in np.arange(np.size(matrix, 1)):
             max_row = np.argmax(np.abs(cur_matrix[row_idx:, row_idx])) + row_idx
             if row_idx != max_row:

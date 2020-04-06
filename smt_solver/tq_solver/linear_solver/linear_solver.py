@@ -11,7 +11,7 @@ class LinearSolver(Solver):
     Dantzig = "Dantzig"
     FirstPositive = "FirstPositive"
 
-    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=2):
+    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=100):
         """
         :param a_matrix: the coefficient matrix.
         :param b: the constraints.
