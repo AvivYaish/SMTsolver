@@ -29,31 +29,23 @@ class TestFormulaParser:
     @staticmethod
     def test_tseitin_transform():
         transformed_formula = {
-            frozenset({2, 3}),
-            frozenset({1, 2}),
-            frozenset({-8, -7, 6}),
-            frozenset({4, 5}),
-            frozenset({-6, -3}),
-            frozenset({3, 6}),
-            frozenset({4, -3, -2}),
-            frozenset({-1, -2}),
-            frozenset({8, -6}),
-            frozenset({-5, -4}),
-            frozenset({-6, 7}),
-            frozenset({1}),
-            frozenset({2, -4})
+            frozenset({1, -3}),
+            frozenset({3, -1, -5}),
+            frozenset({8, -3}),
+            frozenset({-8, -7, 3}),
+            frozenset({-3, 7}),
+            frozenset({-1}),
+            frozenset({1, 5})
         }
         assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("not (=> (not (and p q)) (not r))")) == \
             transformed_formula
         assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("not (=> (not (and pq78 q)) (not r))")) ==\
             transformed_formula
         assert FormulaParser._tseitin_transform(FormulaParser._parse_formula("and (not x) x")) == {
+            frozenset({1, 2, -2}),
+            frozenset({-1, -2}),
             frozenset({1}),
-            frozenset({1, -3, -2}),
-            frozenset({2, 3}),
-            frozenset({3, -1}),
-            frozenset({2, -1}),
-            frozenset({-3, -2})
+            frozenset({2, -1})
         }
 
     @staticmethod
@@ -207,13 +199,11 @@ class TestFormulaParser:
                    '(assert (not f(5,7)))')
         cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
+            frozenset({-4}),
+            frozenset({1}),
             frozenset({1, -3, -2}),
             frozenset({3, -1}),
-            frozenset({4, 5}),
-            frozenset({-5, -4}),
-            frozenset({1}),
-            frozenset({2, -1}),
-            frozenset({4})
+            frozenset({2, -1})
         })
 
         formula = ('(declare-fun f (Int Int) Bool) ' +
@@ -222,36 +212,24 @@ class TestFormulaParser:
                    '(assert (not g(1, 2)))')
         cnf_formula, _, _ = FormulaParser.import_uf(formula)
         assert cnf_formula == frozenset({
+            frozenset({-4}),
+            frozenset({1}),
             frozenset({1, -3, -2}),
             frozenset({3, -1}),
-            frozenset({4, 5}),
-            frozenset({-5, -4}),
-            frozenset({1}),
-            frozenset({2, -1}),
-            frozenset({4})
+            frozenset({2, -1})
         })
 
         formula = ('(declare-fun f (Int Int) Bool) ' +
                    '(assert (= f(2,3) a) ' +
                    '(assert (not (= f(2,3) a))')
         cnf_formula, _, _ = FormulaParser.import_uf(formula)
-        assert cnf_formula == frozenset({
-            frozenset({2}),
-            frozenset({1}),
-            frozenset({-2, -1}),
-            frozenset({1, 2})
-        })
+        assert cnf_formula == frozenset({frozenset({1}), frozenset({-1})})
 
         formula = ('(declare-fun f (Int Int) Bool) ' +
                    '(assert (= f(3,3) a) ' +
                    '(assert (not (= f(2,3) a))')
         cnf_formula, _, _ = FormulaParser.import_uf(formula)
-        assert cnf_formula == frozenset({
-            frozenset({2}),
-            frozenset({1}),
-            frozenset({2, 3}),
-            frozenset({-3, -2})
-        })
+        assert cnf_formula == frozenset({frozenset({1}), frozenset({-2})})
 
     @staticmethod
     def test_parse_linear_equation():

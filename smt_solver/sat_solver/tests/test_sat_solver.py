@@ -343,7 +343,7 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, clause_num, clause_length",
-                             [(5, clause_num, 3) for clause_num in list(range(1, 100))])
+                             [(5, clause_num, 3) for clause_num in list(range(1, 10))])
     def test_random_cnf(variable_num: int, clause_num: int, clause_length: int):
         formula_z3, formula_our = TestSATSolver.generate_random_cnf(variable_num, clause_num, clause_length)
         assert TestSATSolver.compare_to_z3(formula_z3, SATSolver(formula_our))
@@ -419,7 +419,7 @@ class TestSATSolver:
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
                              [(variable_num, variable_num ** 4, True) for variable_num in list(range(1, 15))]
                              # +
-                             # [(variable_num, variable_num, False) for variable_num in list(range(1, 5000))]
+                             # [(variable_num, variable_num ** 4, False) for variable_num in list(range(1, 15))]
                              )
     def test_random_formula(variable_num: int, operator_num: int, test_import: bool, print_formulas=True):
         # Generates a random formula and compares our solver to Z3
@@ -435,6 +435,6 @@ class TestSATSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, operator_num, test_import",
-                             [(5, clause_num, True) for clause_num in list(range(1, 500)) * 1])
+                             [(5, clause_num, True) for clause_num in list(range(1, 50))])
     def test_simple_random_formula(variable_num: int, operator_num: int, test_import):
         TestSATSolver.test_random_formula(variable_num, operator_num, test_import)

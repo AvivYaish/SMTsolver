@@ -94,7 +94,7 @@ class TestTQSolver:
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, equation_num, coefficient_limits, operator_num",
-                             [(5, 10, (-5, 5), operator_num) for operator_num in list(range(1, 100)) * 50])
+                             [(5, 10, (-5, 5), operator_num) for operator_num in list(range(1, 50))])
     def test_random_tq_formula(variable_num: int, equation_num: int, coefficient_limits: (int, int), operator_num: int):
         formula_z3, formula_our = TestTQSolver.generate_random_tq_formula(variable_num, equation_num,
                                                                           coefficient_limits, operator_num)
