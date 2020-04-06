@@ -1,4 +1,7 @@
 from smt_solver.solver.solver import Solver
+from smt_solver.tq_solver.linear_solver.alebgra_utils.lu_factorization import LUFactorization
+from smt_solver.tq_solver.linear_solver.alebgra_utils.eta_matrix import EtaMatrix
+from typing import Optional
 from itertools import chain
 import numpy as np
 
@@ -8,7 +11,7 @@ class LinearSolver(Solver):
     Dantzig = "Dantzig"
     FirstPositive = "FirstPositive"
 
-    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=10):
+    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=2):
         """
         :param a_matrix: the coefficient matrix.
         :param b: the constraints.
@@ -16,12 +19,13 @@ class LinearSolver(Solver):
         :param entering_selection_rule: the entering selection rule, either LinearSolver.Bland, LinearSolver.Dantzig or
         LinearSolver.FirstPositive (which picks the first positive variable in the current objective function).
         :param auxiliary: True iff this is an auxiliary problem.
+        :param refactorization_threshold: if the solver accumulated more eta matrices than the threshold, refactorize
+        the base.
         """
         super().__init__()
-        self._refactorization_threshold = refactorization_threshold
         self._score = np.float64(0.0)   # Current score
-        self._rows = np.size(a_matrix, 0)
-        self._cols = np.size(a_matrix, 1)
+        self._rows, self._cols = np.size(a_matrix, 0), np.size(a_matrix, 1)
+        self._refactorization_threshold, self._eta_matrices, self._pivot_list = refactorization_threshold, [], []
 
         self._a_matrix_b = np.identity(self._rows, dtype=np.float64)  # coefficient matrix for "base" variables
         self._x_b_vars = np.arange(self._rows) + self._cols  # Indices of current base variables
@@ -40,7 +44,7 @@ class LinearSolver(Solver):
         elif entering_selection_rule == LinearSolver.FirstPositive:
             self._entering_selection_rule = self._first_positive_rule
 
-        self._aux_solver: LinearSolver = None
+        self._aux_solver: Optional[LinearSolver] = None
         if auxiliary:
             self._initial_auxiliary_step()
 
@@ -60,6 +64,7 @@ class LinearSolver(Solver):
         self._x_b_vars = self._aux_solver._x_b_vars - 1   # All variables (including slack ones) are shifted by 1
         self._x_b_star = self._aux_solver._x_b_star
         self._a_matrix_b = self._aux_solver._a_matrix_b
+        self._pivot_list, self._eta_matrices = self._aux_solver._pivot_list, self._aux_solver._eta_matrices
 
         # Remove the new variable from all data structures
         new_var_idx = np.argmin(self._aux_solver._x_n_vars)
@@ -102,6 +107,9 @@ class LinearSolver(Solver):
     def get_score(self) -> np.float64:
         return self._score
 
+    def _refactorize_base(self):
+        (_, self._pivot_list), self._eta_matrices = LUFactorization.plu_factorization(self._a_matrix_b)
+
     def solve(self) -> bool:
         if not self.is_sat():
             return False
@@ -115,36 +123,42 @@ class LinearSolver(Solver):
                 return True
 
     def _single_iteration(self):
+        if len(self._eta_matrices) > self._refactorization_threshold:
+            self._refactorize_base()
         y = self._btran()
-        entering_col = self._choose_entering_col(y)
-        if entering_col == -1:
+        entering_col_idx = self._choose_entering_col(y)
+        if entering_col_idx == -1:
             return np.matmul(self._c_b, self._x_b_star)
 
-        d = self._ftran(entering_col)
-        leaving_col, t = self._choose_leaving_col(d)
+        d = self._ftran(entering_col_idx)
+        leaving_col_idx, t = self._choose_leaving_col(d)
         if t == np.inf:
-            self._x_n_star[entering_col] = np.inf
+            self._x_n_star[entering_col_idx] = np.inf
             return np.inf
 
-        self._pivot(entering_col, leaving_col, t, d)
+        self._pivot(entering_col_idx, leaving_col_idx, t, d)
         return None
 
-    def _pivot(self, entering_var: int, leaving_var: int, t, d):
+    def _pivot(self, entering_col_idx: int, leaving_col_idx: int, t: np.array, d: np.array):
         # Update the matrices
-        entering_col = self._a_matrix_n[:, entering_var].copy()
-        self._a_matrix_n[:, entering_var] = self._a_matrix_b[:, leaving_var]
-        self._a_matrix_b[:, leaving_var] = entering_col
+        entering_col = self._a_matrix_n[:, entering_col_idx].copy()
+        self._a_matrix_n[:, entering_col_idx] = self._a_matrix_b[:, leaving_col_idx]
+        self._a_matrix_b[:, leaving_col_idx] = entering_col
+
+        # Update etas
+        self._eta_matrices.append(EtaMatrix(leaving_col_idx, d))
 
         # Update the objective function
-        self._c_b[leaving_var], self._c_n[entering_var] = self._c_n[entering_var], self._c_b[leaving_var]
+        self._c_b[leaving_col_idx], self._c_n[entering_col_idx] = \
+            self._c_n[entering_col_idx], self._c_b[leaving_col_idx]
 
         # Update indices
-        self._x_b_vars[leaving_var], self._x_n_vars[entering_var] = \
-            self._x_n_vars[entering_var], self._x_b_vars[leaving_var]
+        self._x_b_vars[leaving_col_idx], self._x_n_vars[entering_col_idx] = \
+            self._x_n_vars[entering_col_idx], self._x_b_vars[leaving_col_idx]
 
         # Update the assignment
         self._x_b_star -= t * d
-        self._x_b_star[leaving_var] = t
+        self._x_b_star[leaving_col_idx] = t
 
     @staticmethod
     def _first_positive_rule(cur_objective_func):
@@ -182,7 +196,28 @@ class LinearSolver(Solver):
         """
         :return: the solution 'y' of y * _a_matrix_b = _c_b
         """
-        return np.matmul(self._c_b, np.linalg.inv(self._a_matrix_b))
+        a = np.matmul(self._c_b, np.linalg.inv(self._a_matrix_b))
+        b = LUFactorization.pivot_array(self._pivot_list,
+                                        EtaMatrix.iteratively_solve_left_mult(self._eta_matrices, self._c_b),
+                                        reverse=True)
+        if not np.all(np.isclose(a, b)):
+            print("BTRAN: ")
+            print(a)
+            print(b)
+            LUFactorization.pivot_array(self._pivot_list,
+                                        EtaMatrix.iteratively_solve_left_mult(self._eta_matrices, self._c_b),
+                                        reverse=True)
+        return a
 
     def _ftran(self, entering_col):
-        return np.linalg.solve(self._a_matrix_b, self._a_matrix_n[:, entering_col])
+        a = np.linalg.solve(self._a_matrix_b, self._a_matrix_n[:, entering_col])
+        b = EtaMatrix.iteratively_solve_right_mult(self._eta_matrices,
+                                                   LUFactorization.pivot_array(self._pivot_list,
+                                                                               self._a_matrix_n[:, entering_col],
+                                                                               in_place=False))
+        if not np.all(np.isclose(a, b)):
+            print("FTRAN: ")
+            print(a)
+            print(b)
+            print(self._pivot_list)
+        return a
