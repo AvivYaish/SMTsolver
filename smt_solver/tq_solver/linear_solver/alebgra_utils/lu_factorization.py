@@ -46,7 +46,8 @@ class LUFactorization:
         :return: An iterable(L_1^-1, L_2^-1, ..., U_N, U_N-1, ...) such that
         matrix = L_1^-1 * ... * L_N^-1 * U_N * ... U_1, and all L_i^-1, U_i are eta matrices.
         """
-        # Could probably speed this up using nifty numpy tricks, but this still achieves the best theoretical run-time
+        # Could probably speed this up using nifty numpy tricks,
+        # but this still achieves the best theoretical run-time
         col_num = np.size(matrix, 1)    # square matrix, so this is equal to the row number, too
         cur_matrix, matrices = np.copy(matrix), deque()
         for col_idx, cur_eta_col in enumerate(np.identity(col_num)):
