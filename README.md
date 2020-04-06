@@ -2,11 +2,12 @@
 
 An SMT solver that can solve pure boolean, UF and TQ formulas.
 
-Accepts formulas in an (almost) SMT-LIBv2 format, see full details in smt_solver.py.
+Accepts formulas in an (almost) SMT-LIBv2 format, see full details below.
 
-Tested over more than four million random formulas, and compared against Z3. Surprisingly, it is quite faster than Z3 on 
-short formulas. When receiving complex formulas as inputs, the solver still holds its ground: it can solve a randomly 
-generated formula with 20 million operators (Not, And, Or, =>, <=>) and 100,000 literals in a few minutes.
+Tested and compared against Z3 over more than four million random formulas. Surprisingly, it is quite faster than Z3 on 
+short formulas (tens of thousands of clauses long). When receiving complex formulas as inputs, the solver still holds 
+its ground: it can solve a randomly generated formula with 20 million operators (Not, And, Or, =>, <=>) and 100,000 
+literals in a few minutes.
 
 ### Installation
 Download the repository and run: 
@@ -32,7 +33,7 @@ Download the repository and run:
         solver.get_assignment()
         
 ### Formula format
-The formula must be pure, and is either a "standard" boolean formula, or a UF formula, or a TQ formula.
+The formula must be pure, either a "standard" boolean formula, or a UF formula, or a TQ formula.
 
 ##### General requirements
 Reserved words that cannot be used as names or anywhere in a name:
@@ -46,25 +47,25 @@ Multiple asserts can be included in a formula, and it is assumed that all of the
 Assumes all conditions are wrapped in asserts: "(assert (boolean_formula))"
 The formula is given in left-Polish notation, and should be enclosed in brackets: "(op param1 param2)"
 op, param1, param2 should be separated by 1 or more whitespaces.
-op can be either one of "not", "and", "or". If it is "not", param2 should be left empty.
+op can be either one of "not", "and", "or", "=>", "<=>". If it is "not", param2 should be left empty.
 param1, param2 can either be: "true", "false", a variable name, or a formula.
 Cannot contain (declare-fun ...).
 
 ##### UF requirements
 Assumes functions are declared using: "(declare-fun func_name (param1_type, param2_type, ...) return_type)"
-Assumes all conditions are wrapped in asserts: "(assert (boolean_formula))"
-Where boolean_formula is a valid boolean formula, and can only contain literals of the
-form: "(= param1 param2)", and parameters are either variables or functions.
+Assumes all conditions are wrapped in asserts: "(assert (boolean_formula))", where boolean_formula is a 
+valid boolean formula, and can only contain literals of the form: "(= param1 param2)", and parameters are 
+either variables or functions. 
 Functions can only be of the form: "func_name(param1,param2,...)"
 
 ##### TQ requirements
 Assumes variables are declared using: "(declare-fun var_name () Int)"
-Assumes all conditions are wrapped in asserts: "(assert (boolean_formula))"
-Where boolean_formula is a valid boolean formula, and can only contain literals of the
-form: "(<= (coeff1*var1+coeff2*var2+...) b)"
+Assumes all conditions are wrapped in asserts: "(assert (boolean_formula))", where boolean_formula is a 
+valid boolean formula, and can only contain literals of the form: "(<= (coeff1*var1+coeff2*var2+...) b)"
 The left parameter is enclosed in brackets if it includes multiple parameters.
 The right parameter is always a single number.
 Coefficients are either an int (e.g. "68"), or an int followed by a dot followed by an int (e.g. "68.52").
+Variable names must start with a letter.
 Variables and coefficients can include a single leading operator, either '-' or '+'.
 Variables and can be separated from the coefficient by a '*'.
 All done according to https://moodle2.cs.huji.ac.il/nu19/mod/forum/discuss.php?d=40323
@@ -72,7 +73,7 @@ All done according to https://moodle2.cs.huji.ac.il/nu19/mod/forum/discuss.php?d
 ### Technical details
 ##### FormulaParser
 - Simplifies formulas, uses symmetry
-- Converts to CNF using Tseitin's transform. The transform does not create multiple variables for "not".
+- Converts to CNF using Tseitin's transform. The transform does not create new variables for "not".
 - Preprocess CNF clauses
 - Drops identical clauses
 
@@ -87,9 +88,10 @@ Performs the congruence-closure algorithm, supports functions with multiple argu
 
 ##### TQSolver
 Uses LinearSolver, an LP solver that uses revised-simplex and supports auxiliary problems.
+Uses eta matrices, LU decomposition, checks numerical stability.
 
 ##### SMTSolver
-Unifies all above solvers
+Unifies all above solvers.
 
 ##### Tests
 - Uses all homework assignments.
