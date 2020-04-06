@@ -72,26 +72,33 @@ All done according to https://moodle2.cs.huji.ac.il/nu19/mod/forum/discuss.php?d
 
 ### Technical details
 ##### FormulaParser
-- Simplifies formulas, uses symmetry
-- Converts to CNF using Tseitin's transform. The transform does not create new variables for "not".
-- Preprocess CNF clauses
-- Drops identical clauses
+- Simplifies formulas: 1. Removes doubles Nots: Not (Not ...), 2. (And x x) = (Or x x) = x, 3. MUCH much more! 
+See FormulaParser._simplify_formula for all details 
+- Converts to CNF using Tseitin's transform. The transform does not create new variables for "not" or for identical
+subformulas.
+- Preprocesses CNF clauses to remove redundant literals, trivial clauses, and multiple identical clauses. 
 
 ##### SATSolver
-Uses 
-VSIDS, 
-watch-clauses, 
-Conflict clause learning using implication graphs, with the Unique Implication Point heuristic.
+Uses:
+- Unit propagation.
+- Case splitting, with non-chronological backtracking.
+- The VSIDS heuristic. 
+- Watch-clauses. 
+- Conflict clause learning and analysis using implication graphs, with the Unique Implication Point heuristic.
 
 ##### UFSolver
-Performs the congruence-closure algorithm, supports functions with multiple arguments.
+- Checks partial and satisfying assignments to determine T-satisfiability.
+- Reports T-conflicts to the SAT solver and performs T-propagations.
+- Performs the congruence-closure algorithm, supports functions with multiple arguments.
 
 ##### TQSolver
-Uses LinearSolver, an LP solver that uses revised-simplex and supports auxiliary problems.
-Uses eta matrices, LU decomposition, checks numerical stability.
+Uses LinearSolver, an LP solver that implements the following: 
+- Revised-simplex, which uses eta matrices, LU decomposition and checks numerical stability.
+- Supports auxiliary problems.
+- Implements Bland's and Dantzig's selection rules.
 
 ##### SMTSolver
-Unifies all above solvers.
+Unifies all above solvers, and picks the correct one according to the input formula.
 
 ##### Tests
 - Uses all homework assignments.
