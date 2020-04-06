@@ -11,9 +11,7 @@ class LUFactorization:
     @staticmethod
     def generate_pivot_list(matrix):
         """
-        Moving rows such that each column's max value is on the diagonal ensures us the
-        resulting matrix has a LU decomposition. The function will search for the max
-        value in each column and will generate a list of all pivots.
+        This function finds a permutation of the matrix's rows such that the resulting matrix has a LU decomposition.
         :return: pivot_list, a list of (row1, row2) tuples, where row1 and row2 were switched at that step.
         """
         cur_matrix, pivot_list = matrix.astype(np.float64), []
