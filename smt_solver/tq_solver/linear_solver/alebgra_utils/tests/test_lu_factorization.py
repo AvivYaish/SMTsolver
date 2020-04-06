@@ -3,7 +3,7 @@ import numpy as np
 
 
 class TestLUFactorization:
-    MATRIX1 = np.array([[3, 1, 0], [1, 1, 0], [4, 3, 1]])
+    MATRIX1 = np.array([[3., 1., 0.], [1., 1., 0.], [4., 3., 1.]])
 
     @staticmethod
     def test_generate_pivot_list():

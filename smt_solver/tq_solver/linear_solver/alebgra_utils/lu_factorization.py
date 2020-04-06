@@ -27,8 +27,9 @@ class LUFactorization:
         return pivot_list
 
     @staticmethod
-    def pivot_array(pivot_list, array: np.array, reverse=False, in_place=True):
+    def pivot_array(pivot_list, array: np.array, reverse=False, in_place=True) -> np.array:
         """
+        :param reverse: True if the pivots of pivot_list should be done in a reverse order (from last to first).
         :return: the array, after pivoting according to 'pivots'.
         """
         if in_place:
@@ -46,13 +47,17 @@ class LUFactorization:
         return array_to_return
 
     @staticmethod
-    def lu_factorization(matrix):
+    def lu_factorization(matrix, in_place=True):
         """
         :return: A list [L_1^-1, L_2^-1, ..., U_N, U_N-1, ...] such that
         matrix = L_1^-1 * ... * L_N^-1 * U_N * ... U_1, and all L_i^-1, U_i are eta matrices.
         """
+        if in_place:
+            cur_matrix = matrix
+        else:
+            cur_matrix = matrix.astype(np.float64)
         # Achieves the best theoretical run-time
-        row_num, cur_matrix, matrices = np.size(matrix, 0), matrix.astype(np.float64), []
+        row_num, matrices = np.size(matrix, 0), []
 
         # Create L matrices
         for row_idx, cur_eta_col in enumerate(np.identity(row_num)):
