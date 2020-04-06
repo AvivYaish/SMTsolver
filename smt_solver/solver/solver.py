@@ -29,7 +29,7 @@ class Solver(ABC):
         pass
 
     @abstractmethod
-    def get_assignment(self):
+    def get_assignment(self) -> dict:
         """
         :return: a literal -> bool dictionary containing the current assignment.
         """

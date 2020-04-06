@@ -89,13 +89,13 @@ class SATSolver(Solver):
             self._unassigned_vsids_count[cur_sign] = self._assigned_vsids_count[cur_sign]
             del self._assigned_vsids_count[cur_sign]
 
-    def get_assignment(self):
+    def get_assignment(self) -> dict:
         """
         Returns the current assignment (variable-value pairs only).
         """
         return {var: val for var, val in self.iterable_assignment()}
 
-    def get_variable_assignment(self, variable):
+    def get_variable_assignment(self, variable) -> bool:
         return self._assignment.get(variable, {"value": None})["value"]
 
     def iterable_assignment(self):

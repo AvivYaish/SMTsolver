@@ -8,13 +8,13 @@ class TheorySolver(Solver):
         super().__init__()
         self._formula, self._tseitin_variable_to_subterm, self._non_boolean_clauses = \
             formula, tseitin_variable_to_subterm, non_boolean_clauses
-        self._solver = SATSolver(formula,
-                                 max_new_clauses=max_new_clauses,
-                                 halving_period=halving_period,
-                                 theory_solver=self)
+        self._solver: SATSolver = SATSolver(formula,
+                                            max_new_clauses=max_new_clauses,
+                                            halving_period=halving_period,
+                                            theory_solver=self)
 
-    def get_assignment(self):
-        assignment = {}
+    def get_assignment(self) -> dict:
+        assignment: dict = {}
         for variable, value in self._solver.iterable_assignment():
             if variable in self._tseitin_variable_to_subterm:
                 assignment[self._tseitin_variable_to_subterm[variable]] = value
