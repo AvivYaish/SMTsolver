@@ -275,6 +275,7 @@ class SATSolver(Solver):
         # Maintain data structures related to VSIDS
         self._step_counter += 1
         if self._step_counter >= self._halving_period:
+            self._step_counter = 0
             for literal in self._unassigned_vsids_count:
                 self._unassigned_vsids_count[literal] /= 2
             for literal in self._assigned_vsids_count:
