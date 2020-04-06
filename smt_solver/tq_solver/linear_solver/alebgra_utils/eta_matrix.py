@@ -45,7 +45,7 @@ class EtaMatrix:
         >>> EtaMatrix.iteratively_solve_left_mult([e1, e2], np.array([19, 12, 0]))
         array([3.5, 8.5, 0. ])
         """
-        cur_y = np.copy(y)
+        cur_y = y.astype(np.float64)    # Copies y
         for cur_matrix in reversed(eta_matrices):
             cur_y = cur_matrix.solve_left_mult(cur_y)
         return cur_y
@@ -67,7 +67,7 @@ class EtaMatrix:
         """
         :return: solution of E1 * E2 * ... * [x1, ..., xn] = y, where E1, ... are eta matrices.
         """
-        cur_y = np.copy(y)
+        cur_y = y.astype(np.float64)    # Copies y
         for cur_matrix in eta_matrices:
             cur_y = cur_matrix.solve_right_mult(cur_y)
         return cur_y
