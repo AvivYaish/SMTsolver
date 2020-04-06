@@ -823,7 +823,7 @@ Our:	 0.0009975433349609375
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, equation_num, function_num",
-                             [(5, equation_num, 2) for equation_num in list(range(1, 50)) * 100])
+                             [(5, equation_num, 2) for equation_num in list(range(1, 1000)) * 1])
     def test_random_uf_equations(variable_num: int, equation_num: int, function_num: int):
         equations_z3, equations_our_txt, equations_our = \
             TestUFSolver.generate_random_equations(variable_num, equation_num, function_num)
@@ -854,7 +854,7 @@ Our:	 0.0009975433349609375
 
     @staticmethod
     @pytest.mark.parametrize("variable_num, equation_num, function_num, operator_num",
-                             [(5, 10, 2, operator_num) for operator_num in list(range(1, 100)) * 100])
+                             [(5, 10, 2, operator_num) for operator_num in list(range(1, 1000)) * 1])
     def test_random_uf_formula(variable_num: int, equation_num: int, function_num: int, operator_num: int):
         formula_z3, formula_our = TestUFSolver.generate_random_uf_formula(variable_num, equation_num,
                                                                           function_num, operator_num)
