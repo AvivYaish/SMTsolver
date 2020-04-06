@@ -23,7 +23,7 @@ class EtaMatrix:
         self._col_vals[self._col_idx] = inverse_diag_element
         return self
 
-    def solve_left_mult(self, y: np.array):
+    def solve_left_mult(self, y: np.array) -> np.array:
         """
         Solves a formula of the form: [x1, ..., xn] * self = y
         >>> m = EtaMatrix(1, np.array([-4, 3, 2]))
@@ -38,7 +38,7 @@ class EtaMatrix:
         return result
 
     @staticmethod
-    def iteratively_solve_left_mult(eta_matrices, y: np.array):
+    def iteratively_solve_left_mult(eta_matrices, y: np.array) -> np.array:
         """
         :return: solution of [x1, ..., xn] * E1 * E2 * ... = y, where E1, ... are eta matrices.
         >>> e1 = EtaMatrix(1, np.array([1, 1, 3]))
@@ -51,7 +51,7 @@ class EtaMatrix:
             cur_y = cur_matrix.solve_left_mult(cur_y)
         return cur_y
 
-    def solve_right_mult(self, y: np.array):
+    def solve_right_mult(self, y: np.array) -> np.array:
         """
         Solves a formula of the form: self * [x1, ..., xn] = y
         >>> m = EtaMatrix(1, np.array([-4., 3., 2.]))
@@ -64,7 +64,7 @@ class EtaMatrix:
         return result
 
     @staticmethod
-    def iteratively_solve_right_mult(eta_matrices, y: np.array):
+    def iteratively_solve_right_mult(eta_matrices, y: np.array) -> np.array:
         """
         :return: solution of E1 * E2 * ... * [x1, ..., xn] = y, where E1, ... are eta matrices.
         """
@@ -73,7 +73,7 @@ class EtaMatrix:
             cur_y = cur_matrix.solve_right_mult(cur_y)
         return cur_y
 
-    def get_full_matrix(self):
+    def get_full_matrix(self) -> np.array:
         """
         >>> e1 = EtaMatrix(1, np.array([1, 1, 3]))
         >>> np.all(e1.get_full_matrix() == np.array([[1., 1., 0.], [0., 1., 0.], [0., 3., 1.]]))
