@@ -108,7 +108,7 @@ class LinearSolver(Solver):
         return self._score
 
     def _refactorize_base(self):
-        (_, self._pivot_list), self._eta_matrices = LUFactorization.plu_factorization(self._a_matrix_b)
+        self._pivot_list, self._eta_matrices = LUFactorization.plu_factorization(self._a_matrix_b)
 
     def solve(self) -> bool:
         if not self.is_sat():
@@ -196,28 +196,14 @@ class LinearSolver(Solver):
         """
         :return: the solution 'y' of y * _a_matrix_b = _c_b
         """
-        a = np.matmul(self._c_b, np.linalg.inv(self._a_matrix_b))
-        b = LUFactorization.pivot_array(self._pivot_list,
-                                        EtaMatrix.iteratively_solve_left_mult(self._eta_matrices, self._c_b),
-                                        reverse=True)
-        if not np.all(np.isclose(a, b)):
-            print("BTRAN: ")
-            print(a)
-            print(b)
-            LUFactorization.pivot_array(self._pivot_list,
-                                        EtaMatrix.iteratively_solve_left_mult(self._eta_matrices, self._c_b),
-                                        reverse=True)
-        return a
+        # return np.matmul(self._c_b, np.linalg.inv(self._a_matrix_b))
+        return LUFactorization.pivot_array(self._pivot_list,
+                                           EtaMatrix.iteratively_solve_left_mult(self._eta_matrices, self._c_b),
+                                           reverse=True)
 
     def _ftran(self, entering_col):
-        a = np.linalg.solve(self._a_matrix_b, self._a_matrix_n[:, entering_col])
-        b = EtaMatrix.iteratively_solve_right_mult(self._eta_matrices,
-                                                   LUFactorization.pivot_array(self._pivot_list,
-                                                                               self._a_matrix_n[:, entering_col],
-                                                                               in_place=False))
-        if not np.all(np.isclose(a, b)):
-            print("FTRAN: ")
-            print(a)
-            print(b)
-            print(self._pivot_list)
-        return a
+        # return np.linalg.solve(self._a_matrix_b, self._a_matrix_n[:, entering_col])
+        return EtaMatrix.iteratively_solve_right_mult(self._eta_matrices,
+                                                      LUFactorization.pivot_array(self._pivot_list,
+                                                                                  self._a_matrix_n[:, entering_col],
+                                                                                  in_place=False))
