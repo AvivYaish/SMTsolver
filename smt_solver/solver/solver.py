@@ -31,7 +31,7 @@ class Solver(ABC):
     @abstractmethod
     def get_assignment(self) -> dict:
         """
-        :return: a literal -> bool dictionary containing the current assignment.
+        :return: a {literal: int -> value: bool} dictionary containing the current assignment.
         """
         pass
 

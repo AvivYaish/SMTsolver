@@ -90,9 +90,6 @@ class SATSolver(Solver):
             del self._assigned_vsids_count[cur_sign]
 
     def get_assignment(self) -> dict:
-        """
-        Returns the current assignment (variable-value pairs only).
-        """
         return {var: val for var, val in self.iterable_assignment()}
 
     def get_variable_assignment(self, variable) -> bool:
@@ -100,7 +97,7 @@ class SATSolver(Solver):
 
     def iterable_assignment(self):
         """
-        :return: a (variable, value) tuple for every assigned variable.
+        :return: a (variable: int, value: bool) tuple for every assigned variable.
         """
         for var in self._assignment:
             yield var, self._assignment[var]["value"]
