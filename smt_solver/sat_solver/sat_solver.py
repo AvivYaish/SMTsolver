@@ -135,7 +135,15 @@ class SATSolver(Solver):
         conflict_clause = set(conflict_clause)
         while True:
             last_literal, prev_max_level, max_level, max_level_count = self._find_last_literal(conflict_clause)
-            if max_level_count == 1:
+            clause_on_incoming_edge = self._assignment[abs(last_literal)]["clause"]
+            if (max_level_count == 1) or (clause_on_incoming_edge is None):
+                if max_level_count != 1:
+                    # If the last literal was assigned because of the theory, there is no incoming edge
+                    # The literal to reassign should be the decision literal of the same level
+                    last_literal = self._assignment_by_level[max_level][0]
+                    if self._assignment[last_literal]["value"]:
+                        last_literal = -last_literal
+                    conflict_clause.add(last_literal)
                 # If the last assigned literal is the only one from the last decision level:
                 # return the conflict clause, the next literal to assign (which should be the
                 # watch literal of the conflict clause), and the decision level to jump to
@@ -144,7 +152,7 @@ class SATSolver(Solver):
             # Resolve the conflict clause with the clause on the incoming edge
             # Might be the case that the last literal was assigned because of the
             # theory, and in that case it is impossible to do resolution
-            conflict_clause |= self._assignment[abs(last_literal)]["clause"]
+            conflict_clause |= clause_on_incoming_edge
             conflict_clause.remove(last_literal)
             conflict_clause.remove(-last_literal)
 
@@ -243,7 +251,7 @@ class SATSolver(Solver):
         if conflict_clause is not None:
             return conflict_clause
         for literal in new_assignments:
-            self._assign(frozenset({literal, -literal}), literal)
+            self._assign(None, literal)
         return None
 
     def propagate(self) -> bool:
@@ -275,13 +283,12 @@ class SATSolver(Solver):
             for literal in self._assigned_vsids_count:
                 self._assigned_vsids_count[literal] /= 2
 
-    def _decide(self, literal=None):
+    def _decide(self):
         """
         Decides which literal to assign next, using the VSIDS decision heuristic.
         """
         self.create_new_decision_level()
-        if literal is None:
-            literal, count = self._unassigned_vsids_count.most_common(1).pop()
+        literal, count = self._unassigned_vsids_count.most_common(1).pop()
         self._assign(None, literal)
 
     def create_new_decision_level(self):
