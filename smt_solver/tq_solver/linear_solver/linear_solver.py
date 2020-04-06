@@ -12,7 +12,7 @@ class LinearSolver(Solver):
     FirstPositive = "FirstPositive"
 
     def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=100,
-                 epsilon=np.float64(1e-5), stability_testing_period=100):
+                 epsilon=np.float64(1e-10), stability_testing_period=100):
         """
         :param a_matrix: the coefficient matrix.
         :param b: the constraint vector.
@@ -69,7 +69,6 @@ class LinearSolver(Solver):
         """
         # Can prove the new variable is not in the basis.
         self._x_b_vars = self._aux_solver._x_b_vars - 1   # All variables (including slack ones) are shifted by 1
-        self._original_b = self._aux_solver._original_b
         self._x_b_star = self._aux_solver._x_b_star
         self._a_matrix_b = self._aux_solver._a_matrix_b
         self._pivot_list, self._eta_matrices = self._aux_solver._pivot_list, self._aux_solver._eta_matrices
@@ -131,15 +130,12 @@ class LinearSolver(Solver):
         self._pivot_list, self._eta_matrices = LUFactorization.plu_factorization(self._a_matrix_b)
 
     def _is_a_matrix_b_epsilon_close(self) -> bool:
-        val = np.all(np.isclose(self._original_b,
+        return np.all(np.isclose(self._original_b,
                                  EtaMatrix.iteratively_solve_right_mult(self._eta_matrices,
                                                                         LUFactorization.pivot_array(self._pivot_list,
                                                                                                     self._x_b_star,
                                                                                                     in_place=False)),
                                  rtol=0, atol=self._epsilon))
-        if not val:
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        return val
 
     def _single_iteration(self):
         self._step_count = (self._step_count + 1) % self._stability_testing_period
