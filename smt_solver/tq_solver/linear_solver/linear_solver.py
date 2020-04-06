@@ -35,7 +35,7 @@ class LinearSolver(Solver):
 
         self._a_matrix_b = np.identity(self._rows, dtype=np.float64)  # coefficient matrix for "base" variables
         self._x_b_vars = np.arange(self._rows) + self._cols  # Indices of current base variables
-        self._original_b = b.astype(np.float64)
+        self._original_b = b.astype(np.float64)     # Note that astype copies the array.
         self._x_b_star = b.astype(np.float64)  # Current assignment for base variables
         self._c_b = np.zeros(self._rows, dtype=np.float64)  # The objective function for each base variable
 
