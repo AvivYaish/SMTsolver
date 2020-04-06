@@ -12,18 +12,16 @@ class EtaMatrix:
 
     def invert(self):
         """
-        :return: the inversion of this matrix.
+        Inverts the matrix, in place.
+        :return: this matrix.
         >>> m = EtaMatrix(1, np.array([-4, 3, 2]))
-        >>> m_inverse = m.invert()
-        >>> m_inverse._col_idx == 1
-        True
-        >>> np.all(np.isclose(m_inverse._col_vals, np.array([ 1.33333333,  0.33333333, -0.66666667])))
+        >>> np.all(np.isclose(m.invert()._col_vals, np.array([ 1.33333333,  0.33333333, -0.66666667])))
         True
         """
-        inverse_diag_element = np.float64(1 / self._col_vals[self._col_idx])
-        inversion = EtaMatrix(self._col_idx, self._col_vals * -inverse_diag_element)
-        inversion._col_vals[self._col_idx] = inverse_diag_element
-        return inversion
+        inverse_diag_element = 1 / self._col_vals[self._col_idx]
+        self._col_vals = np.multiply(self._col_vals, -inverse_diag_element)
+        self._col_vals[self._col_idx] = inverse_diag_element
+        return self
 
     def solve_left_mult(self, y: np.array):
         """
