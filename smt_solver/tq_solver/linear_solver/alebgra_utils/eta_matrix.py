@@ -25,7 +25,7 @@ class EtaMatrix:
 
     def solve_left_mult(self, y: np.array) -> np.array:
         """
-        Solves a formula of the form: [x1, ..., xn] * self = y
+        :return: solution of [x1, ..., xn] * self = y.
         >>> m = EtaMatrix(1, np.array([-4, 3, 2]))
         >>> m.solve_left_mult(np.array([1, 2, 3]))
         array([1, 0, 3])
@@ -53,7 +53,7 @@ class EtaMatrix:
 
     def solve_right_mult(self, y: np.array) -> np.array:
         """
-        Solves a formula of the form: self * [x1, ..., xn] = y
+        :return: solution of self * [x1, ..., xn] = y.
         >>> m = EtaMatrix(1, np.array([-4., 3., 2.]))
         >>> m.solve_right_mult(np.array([1., 2., 3.]))
         array([3.66666667, 0.66666667, 1.66666667])
@@ -75,6 +75,7 @@ class EtaMatrix:
 
     def get_full_matrix(self) -> np.array:
         """
+        :return: this eta matrix, as a "regular" numpy matrix.
         >>> e1 = EtaMatrix(1, np.array([1, 1, 3]))
         >>> np.all(e1.get_full_matrix() == np.array([[1., 1., 0.], [0., 1., 0.], [0., 3., 1.]]))
         True
