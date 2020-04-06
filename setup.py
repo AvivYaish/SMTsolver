@@ -19,7 +19,7 @@ setup(
     author_email='aviv.yaish@mail.huji.ac.il',
     long_description=readme(),
     python_requires='>=3.7.6',
-    install_requires=['numpy==1.18.2'],
-    setup_requires=['pytest-runner==5.2'],
-    tests_require=['pytest==5.4.1','scipy==1.4.1','z3-solver==4.8.7.0']
+    install_requires=['numpy>=1.18.2'],
+    setup_requires=['pytest-runner>=5.2'],
+    tests_require=['pytest>=5.4.1', 'scipy>=1.4.1', 'z3-solver>=4.8.7.0']
 )
