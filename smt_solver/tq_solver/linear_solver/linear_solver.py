@@ -11,31 +11,38 @@ class LinearSolver(Solver):
     Dantzig = "Dantzig"
     FirstPositive = "FirstPositive"
 
-    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=100):
+    def __init__(self, a_matrix, b, c, entering_selection_rule=Bland, auxiliary=False, refactorization_threshold=100,
+                 epsilon=np.float64(1e-5), stability_testing_period=100):
         """
         :param a_matrix: the coefficient matrix.
-        :param b: the constraints.
+        :param b: the constraint vector.
         :param c: the objective function.
-        :param entering_selection_rule: the entering selection rule, either LinearSolver.Bland, LinearSolver.Dantzig or
-        LinearSolver.FirstPositive (which picks the first positive variable in the current objective function).
+        :param entering_selection_rule: the entering selection rule, either LinearSolver.Bland, LinearSolver.Dantzig
+        or LinearSolver.FirstPositive (which picks the first positive variable in the current objective function).
         :param auxiliary: True iff this is an auxiliary problem.
         :param refactorization_threshold: if the solver accumulated more eta matrices than the threshold, refactorize
         the base.
+        :param epsilon: the tolerance for picking the entering variable (the component of c_n - y * a_matrix_n that will
+        be picked will have to be greater than epsilon), and for checking that a_matrix_b * x_b_star is epsilon-close to
+        b (the constraint vector).
+        :param stability_testing_period: the time period after which epsilon-closeness to b is checked.
         """
         super().__init__()
         self._score = np.float64(0.0)   # Current score
         self._rows, self._cols = np.size(a_matrix, 0), np.size(a_matrix, 1)
+        self._epsilon, self._stability_testing_period, self._step_count = epsilon, stability_testing_period, 0
         self._refactorization_threshold, self._eta_matrices, self._pivot_list = refactorization_threshold, [], []
 
         self._a_matrix_b = np.identity(self._rows, dtype=np.float64)  # coefficient matrix for "base" variables
         self._x_b_vars = np.arange(self._rows) + self._cols  # Indices of current base variables
-        self._x_b_star = b.astype(np.float64).copy()  # Current assignment for base variables
+        self._original_b = b.astype(np.float64)
+        self._x_b_star = b.astype(np.float64)  # Current assignment for base variables
         self._c_b = np.zeros(self._rows, dtype=np.float64)  # The objective function for each base variable
 
-        self._a_matrix_n = a_matrix.astype(np.float64).copy()   # coefficient matrix for non-"base" variables
+        self._a_matrix_n = a_matrix.astype(np.float64)   # coefficient matrix for non-"base" variables
         self._x_n_vars = np.arange(self._cols)
         self._x_n_star = np.zeros(self._cols)
-        self._c_n = c.astype(np.float64).copy()
+        self._c_n = c.astype(np.float64)
 
         if entering_selection_rule == LinearSolver.Bland:
             self._entering_selection_rule = self._bland_rule
@@ -62,6 +69,7 @@ class LinearSolver(Solver):
         """
         # Can prove the new variable is not in the basis.
         self._x_b_vars = self._aux_solver._x_b_vars - 1   # All variables (including slack ones) are shifted by 1
+        self._original_b = self._aux_solver._original_b
         self._x_b_star = self._aux_solver._x_b_star
         self._a_matrix_b = self._aux_solver._a_matrix_b
         self._pivot_list, self._eta_matrices = self._aux_solver._pivot_list, self._aux_solver._eta_matrices
@@ -107,9 +115,6 @@ class LinearSolver(Solver):
     def get_score(self) -> np.float64:
         return self._score
 
-    def _refactorize_base(self):
-        self._pivot_list, self._eta_matrices = LUFactorization.plu_factorization(self._a_matrix_b)
-
     def solve(self) -> bool:
         if not self.is_sat():
             return False
@@ -122,11 +127,27 @@ class LinearSolver(Solver):
                 self._score = result
                 return True
 
+    def _refactorize_base(self):
+        self._pivot_list, self._eta_matrices = LUFactorization.plu_factorization(self._a_matrix_b)
+
+    def _is_a_matrix_b_epsilon_close(self) -> bool:
+        val = np.all(np.isclose(self._original_b,
+                                 EtaMatrix.iteratively_solve_right_mult(self._eta_matrices,
+                                                                        LUFactorization.pivot_array(self._pivot_list,
+                                                                                                    self._x_b_star,
+                                                                                                    in_place=False)),
+                                 rtol=0, atol=self._epsilon))
+        if not val:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        return val
+
     def _single_iteration(self):
-        if len(self._eta_matrices) > self._refactorization_threshold:
+        self._step_count = (self._step_count + 1) % self._stability_testing_period
+        if ((self._step_count == 0) and (not self._is_a_matrix_b_epsilon_close())) or \
+                (len(self._eta_matrices) > self._refactorization_threshold):
             self._refactorize_base()
-        y = self._btran()
-        entering_col_idx = self._choose_entering_col(y)
+
+        entering_col_idx = self._choose_entering_col(self._btran())  # y = self._btran()
         if entering_col_idx == -1:
             return np.matmul(self._c_b, self._x_b_star)
 
@@ -175,7 +196,7 @@ class LinearSolver(Solver):
         return np.argmax(cur_objective_func)
 
     def _choose_entering_col(self, y):
-        cur_objective_func = self._c_n - np.matmul(y, self._a_matrix_n)
+        cur_objective_func = self._c_n - np.matmul(y, self._a_matrix_n) - self._epsilon
         positive_indices = cur_objective_func > 0
         if not np.any(positive_indices):
             return -1
