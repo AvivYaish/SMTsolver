@@ -2,6 +2,7 @@ from smt_solver.formula_parser.formula_parser import FormulaParser
 from smt_solver.uf_solver.uf_solver import UFSolver
 from smt_solver.tq_solver.tq_solver import TQSolver
 from smt_solver.solver.solver import Solver
+from typing import Optional
 
 
 class SMTSolver(Solver):
@@ -48,7 +49,7 @@ class SMTSolver(Solver):
         :param halving_period: the halving period for the VSIDS heuristic.
         """
         super().__init__()
-        self._solver: Solver = None
+        self._solver: Optional[Solver] = None
         formula_type = FormulaParser.get_formula_type(formula)
         if (formula_type == FormulaParser.BOOLEAN_FORMULA) or (formula_type == FormulaParser.UF_FORMULA):
             self._solver = UFSolver(*FormulaParser.import_uf(formula),
