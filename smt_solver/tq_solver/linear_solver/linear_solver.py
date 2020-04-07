@@ -192,6 +192,7 @@ class LinearSolver(Solver):
         return np.argmax(cur_objective_func)
 
     def _choose_entering_col(self, y):
+        # Can do y * a_matrix_n using eta matrices!
         cur_objective_func = self._c_n - np.matmul(y, self._a_matrix_n) - self._epsilon
         positive_indices = cur_objective_func > 0
         if not np.any(positive_indices):
