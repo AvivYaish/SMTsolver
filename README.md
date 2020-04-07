@@ -74,12 +74,11 @@ valid boolean formula, and can only contain literals of the form: "(<= (coeff1*v
 ##### FormulaParser
 - Simplifies formulas: 1. Removes doubles Nots: Not (Not ...), 2. (And x x) = (Or x x) = x, 3. MUCH much more! 
 See FormulaParser._simplify_formula for all details 
-- Converts to CNF using Tseitin's transform. The transform does not create new variables for "not" or for identical
-subformulas.
+- Converts to CNF using Tseitin's transform. The transform does not create new variables for "not" or for identical or
+symmetrical subformulas.
 - Preprocesses CNF clauses to remove redundant literals, trivial clauses, and multiple identical clauses. 
 
 ##### SATSolver
-Uses:
 - Unit propagation.
 - Case splitting, with non-chronological backtracking.
 - The VSIDS heuristic. 
