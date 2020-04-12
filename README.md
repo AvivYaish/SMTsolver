@@ -68,7 +68,6 @@ valid boolean formula, and can only contain literals of the form: "(<= (coeff1*v
 - Variable names must start with a letter.
 - Variables and coefficients can include a single leading operator, either '-' or '+'.
 - Variables and can be separated from the coefficient by a '*'.
-- All done according to https://moodle2.cs.huji.ac.il/nu19/mod/forum/discuss.php?d=40323
 
 ### Technical details
 ##### FormulaParser
@@ -100,7 +99,6 @@ Uses LinearSolver, an LP solver that implements the following:
 Unifies all above solvers, and picks the correct one according to the input formula.
 
 ##### Tests
-- Uses all homework assignments.
 - Uses randomly generated formulas.
 - We have noticed that most run-time is spent simply generating the random tests, so
 fast numpy code was used to speed this up. Still, generation is the most time-consuming task. 
