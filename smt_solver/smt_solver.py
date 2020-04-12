@@ -44,7 +44,6 @@ class SMTSolver(Solver):
         Coefficients are either an int (e.g. "68"), or an int followed by a dot followed by an int (e.g. "68.52").
         Variables and coefficients can include a single leading operator, either '-' or '+'.
         Variables and can be separated from the coefficient by a '*'.
-        All done according to https://moodle2.cs.huji.ac.il/nu19/mod/forum/discuss.php?d=40323
         :param max_new_clauses: the maximal allowed amount of new conflict clauses.
         :param halving_period: the halving period for the VSIDS heuristic.
         """
